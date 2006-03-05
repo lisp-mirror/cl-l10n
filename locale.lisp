@@ -12,7 +12,7 @@
 
 (defvar *locale-path* 
   (merge-pathnames (make-pathname :directory '(:relative "locales"))
-                   (directory-namestring *load-pathname*)))
+                   (asdf:component-pathname (asdf:find-system :cl-l10n))))
 
 (defvar *locale* nil)
 
