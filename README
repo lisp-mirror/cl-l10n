@@ -1,0 +1,26 @@
+README for Package CL-L10N
+Author: Sean Ross 
+Homepage: http://www.common-lisp.net/project/cl-l10n/
+
+
+0. About
+cl-l10n is a localization package for common-lisp. It is meant 
+to be serve the same purpose as Allegro Common Lisp's
+various locale functions. It currently runs on 
+CMUCL, SBCL, CLISP, ECL, Lispworks and Allegro CL although porting 
+to a new implementation should be trivial.
+It is distributed under an MIT style license although the locale
+files themselves are distributed under the LGPL.
+
+
+1. API
+See docs/cl-l10n.texi
+
+
+2. Testing
+Run (asdf:oos 'asdf:test-op :cl-l10n) to test the package.
+If any tests fail please drop me a line at the mailing lists
+or at (sross <at> common-lisp.net).
+
+Enjoy 
+  Sean.
