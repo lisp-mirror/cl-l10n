@@ -7,7 +7,7 @@
   (:shadow cl:format cl:formatter)
   (:export #:locale-name #:category-name #:locale #:category #:locale-error
            #:get-category #:get-cat-val #:locale-value #:load-all-locales
-           #:*locale* #:*locale-path* #:*locales*
+           #:get-locale #:*locale* #:*locale-path* #:*locales*
            #:format-number #:print-number #:format-money #:print-money
            #:format-time #:print-time #:add-resources #:bundle 
            #:add-resource #:gettext #:parse-number #:*float-digits*
