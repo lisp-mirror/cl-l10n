@@ -23,13 +23,13 @@
                (:file "printers" :depends-on ("load-locale"))
                (:file "parsers" :depends-on ("printers" "parse-number"))
                (:file "parse-time" :depends-on ("load-locale"))
-               (:file "i18n" :depends-on ("printers")))
-  :depends-on (:cl-ppcre :cl-fad))
+               (:file "i18n" :depends-on ("printers"))
+               (:file "localize" :depends-on ("locale")))
+  :depends-on (:cl-ppcre :cl-fad :split-sequence))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-l10n))))
   (funcall (find-symbol "LOAD-DEFAULT-LOCALE" "CL-L10N"))
   (provide 'cl-l10n))
-      
 
 (defmethod perform ((op test-op) (sys (eql (find-system :cl-l10n))))
   (oos 'load-op :cl-l10n-tests)

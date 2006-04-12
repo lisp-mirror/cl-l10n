@@ -3,7 +3,7 @@
 (in-package #:cl-l10n.system)
 
 (defpackage #:cl-l10n 
-  (:use #:cl #:cl-ppcre #:cl-fad)
+  (:use #:cl #:cl-ppcre #:cl-fad #:split-sequence)
   (:shadow cl:format cl:formatter)
   (:export #:locale-name #:category-name #:locale #:category #:locale-error
            #:get-category #:get-cat-val #:locale-value #:load-all-locales
@@ -13,5 +13,7 @@
            #:add-resource #:gettext #:parse-number #:*float-digits*
            #:parse-time #:month #:day #:year #:hour #:minute #:second
            #:date-divider #:time-divider #:weekday #:noon-midn 
-           #:secondp #:am-pm #:zone #:parser-error))
-           
+           #:secondp #:am-pm #:zone #:parser-error
+           #:with-locale #:locale-for #:define-all-locales #:lookup-resource
+           #:lookup-resource-with-fallback #:*fallback-locales* #:localize
+           #:missing-resource))
