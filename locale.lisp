@@ -7,6 +7,8 @@
 ;;  Parsers (money)
 ;;  locale aliases?
 ;;  Optimizing print-time
+;;  Handle _ and - in time directives (see date --help)
+;;  Compile locales into fasl files.
 
 (in-package :cl-l10n )
 
@@ -89,7 +91,7 @@
 
 (defun getenv (word)
   #+sbcl (sb-ext:posix-getenv word)
-  #+lispworks (hcl:getenv word)
+  #+lispworks (lw:environment-variable word)
   #+acl (sys:getenv word)
   #+cmu (cdr (assoc (intern word :keyword) ext:*environment-list*))
   #+clisp (ext:getenv word)

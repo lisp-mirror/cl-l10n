@@ -32,7 +32,7 @@
 
 (in-package :cl-l10n)
 
-(define-condition parser-error (error)
+(define-condition parser-error (parse-error)
   ((value :reader value
 	  :initarg :value
 	  :initform nil)

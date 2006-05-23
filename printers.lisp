@@ -62,9 +62,10 @@ determine the number of zero's to print")
 
 (defun format-money (stream arg use-int-sym no-ts &optional (locale *locale*))
   (let* ((locale (locale-des->locale locale))
-         (frac-digits (if use-int-sym
-                          (locale-int-frac-digits locale)
-                          (locale-frac-digits locale)))
+         (frac-digits (max (if use-int-sym
+                               (locale-int-frac-digits locale)
+                               (locale-frac-digits locale))
+                           0))
          (val-to-print (round-money (abs (coerce arg 'double-float))
                                     frac-digits))
          (float-part (float-part val-to-print))
@@ -113,9 +114,8 @@ determine the number of zero's to print")
              #',name))))
 
 (defun lookup-formatter (char)
-  (aif (gethash char *time-formatters*)
-       it
-       (locale-error "No format directive for char ~S." char)))
+  (or (gethash char *time-formatters*)
+      (locale-error "No format directive for char ~S." char)))
 
 (defun princ-pad-val (val stream &optional (pad "0") (size 2))
   (declare (type stream stream) (optimize speed)
@@ -243,7 +243,7 @@ determine the number of zero's to print")
   (print-time-string "%H:%M:%S %p" stream ut locale))
 
 (def-formatter #\R
-  (print-time-string "%H:%M" stream ut locale))
+  (print-time-string "%I:%M" stream ut locale))
 
 (defvar *1970-01-01* (encode-universal-time 0 0 0 01 01 1970 0))
 
@@ -314,11 +314,11 @@ determine the number of zero's to print")
 (def-formatter #\Z
   (print-time-string "%z" stream ut locale))
 
-(defvar *time-zone* (nth-value 8 (get-decoded-time)))
+(defvar *time-zone*)
 
 (defun format-time (stream ut show-date show-time &optional (locale *locale*) fmt time-zone)
   (let ((locale (locale-des->locale (or locale *locale*)))
-        (*time-zone* (or time-zone *time-zone*)))
+        (*time-zone* (or time-zone (nth-value 8 (decode-universal-time ut)))))
     (print-time-string (or fmt (get-time-fmt-string locale 
                                                     show-date show-time))
                        stream ut locale))
@@ -371,11 +371,14 @@ determine the number of zero's to print")
            (string (parse-fmt-string fmt-cntrl)))
          args))
 
-(defvar *scanner* (cl-ppcre:create-scanner "~[@v,:]*[m|u|n|M|U|N]"))
+(defun shadow-format (&optional (package *package*))
+  (shadowing-import '(cl-l10n::format cl-l10n::formatter) package))
+
+(defvar *scanner* (cl-ppcre:create-scanner "~[@V,:]*[M|U|N]"))
 
 (defun needs-parsing (string)
   (declare (optimize speed (safety 1) (debug 0)))
-  (cl-ppcre:scan *scanner* string))
+  (cl-ppcre:scan *scanner* (string-upcase string)))
 
 (defun parse-fmt-string (string)
   (if (needs-parsing string)

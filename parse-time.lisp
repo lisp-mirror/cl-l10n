@@ -423,7 +423,7 @@
   (do ((string-index start)
        (next-negative nil)
        (parts-list nil))
-      ((eq string-index end) (nreverse parts-list))
+      ((eql string-index end) (nreverse parts-list))
     (let ((next-char (char string string-index))
 	  (prev-char (if (= string-index start)
 			 nil
@@ -431,7 +431,7 @@
       (cond ((alpha-char-p next-char)
 	     ;; Alphabetic character - scan to the end of the substring.
 	     (do ((scan-index (1+ string-index) (1+ scan-index)))
-		 ((or (eq scan-index end)
+		 ((or (eql scan-index end)
 		      (not (alpha-char-p (char string scan-index))))
 		  (let ((match-symbol (match-substring
 				       (subseq string string-index scan-index))))
@@ -444,7 +444,7 @@
 	     (do ((scan-index string-index (1+ scan-index))
 		  (numeric-value 0 (+ (* numeric-value radix)
 				      (digit-char-p (char string scan-index) radix))))
-		 ((or (eq scan-index end)
+		 ((or (eql scan-index end)
 		      (not (digit-char-p (char string scan-index) radix)))
 		  ;; If next-negative is t, set the numeric value to it's
 		  ;; opposite and reset next-negative to nil.
@@ -475,7 +475,7 @@
 	    ((char= next-char #\()
 	     ;; Parenthesized string - scan to the end and ignore it.
 	     (do ((scan-index string-index (1+ scan-index)))
-		 ((or (eq scan-index end)
+		 ((or (eql scan-index end)
 		      (char= (char string scan-index) #\)))
  		  (setf string-index (1+ scan-index)))))
 	    (t
@@ -551,7 +551,7 @@
 (defun deal-with-am-pm (form-value parsed-values)
   (let ((hour (decoded-time-hour parsed-values)))
     (cond ((eq form-value 'am)
-	   (cond ((eq hour 12)
+	   (cond ((eql hour 12)
 		  (setf (decoded-time-hour parsed-values) 0))
 		 ((not (<= 0 hour 12))
 		  (if *error-on-mismatch*

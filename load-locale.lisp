@@ -5,7 +5,6 @@
 (defparameter *ignore-categories*
   (list "LC_CTYPE" "LC_COLLATE"))
 
-
 ;; Add a restart here?
 (defun locale (loc-name &key (use-cache t) (errorp t) (loader nil))
   "Find locale named by the string LOC-NAME. If USE-CACHE
@@ -43,12 +42,14 @@ actual locale object."
     (symbol (locale (string loc)))))
 
 (defun load-locale (name)
-  (let ((path (merge-pathnames *locale-path* name)))
+  (let ((path (merge-pathnames *locale-path* name))
+        (ef #+sbcl :iso-8859-1
+            #+clisp (ext:make-encoding :charset 'charset:iso-8859-1
+                                       :line-terminator :unix)
+            #-(or sbcl clisp) :default)) 
     (cl:format *debug-io* "~&;; Loading locale from ~A.~%" path)
     (let ((locale (make-instance *locale-type* :name name)))
-      (with-open-file (stream path
-                       :external-format #+(and sbcl sb-unicode) :latin1 
-                                        #-(and sbcl sb-unicode) :default)
+      (with-open-file (stream path :external-format ef)
         (multiple-value-bind (escape comment) (munge-headers stream)
           (loop for header = (next-header stream)
                 while header do
@@ -83,7 +84,7 @@ actual locale object."
 (defun create-number-fmt-string (locale no-ts)
   (cl:format nil "~~A~~,,'~A,~A~A~~{~~A~~}" 
              (thousands-sep-char (locale-thousands-sep locale))
-             (locale-grouping locale)
+             (if (minusp (locale-grouping locale)) 3 (locale-grouping locale))
              (if no-ts "D" ":D")))
 
 (defun get-descriptors (minusp locale)
@@ -114,7 +115,7 @@ actual locale object."
         ;; Actual number
         (cl:format stream "~~,,'~A,~A~A~~{~~A~~}" 
                    (thousands-sep-char (locale-mon-thousands-sep locale))
-                   (locale-mon-grouping locale)
+                   (if (minusp (locale-mon-grouping locale)) 3 (locale-mon-grouping locale))
                    (if no-ts "D" ":D"))
         (unless prec
           (princ sym-sep stream))
@@ -313,9 +314,9 @@ actual locale object."
         with in-special = nil
         with result = ()
         with special-val = () do
-        (cond ((eql char #\"))
+        (cond ((eql char #\") nil) ;;ignore
               ((eql char #\<) (setf in-special t))
-              ((and in-special (eq char #\>))
+              ((and in-special (eql char #\>))
                (push (code-char 
                       (parse-integer (coerce (cdr (nreverse special-val)) 'string)
                                      :radix 16))
@@ -358,14 +359,18 @@ actual locale object."
                      *ignore-categories*))
         (return-from next-header (trim line)))))
 
+(defun set-locale (locale-des)
+  (setf *locale* (locale-des->locale locale-des)))
+
 (defun load-default-locale ()
   (setf *locale* (get-default-locale)))
 
 (defun get-default-locale () 
   (or (locale (getenv "CL_LOCALE") :errorp nil)
       (locale (getenv "LC_CTYPE") :errorp nil)
-      (locale "POSIX")))
+      (locale (getenv "LANG") :errorp nil)
+      (locale "POSIX" :errorp nil)))
 
-
+(load-default-locale)
 
 ;; EOF

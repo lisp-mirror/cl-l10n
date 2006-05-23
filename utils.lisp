@@ -182,4 +182,105 @@
                   (scale (* f 2) (* (expt float-radix (- e)) 2) 1 1)
                   (scale (* f float-radix 2)
                          (* (expt float-radix (- 1 e)) 2) float-radix 1))))))))
+
+#+(or) 
+(defun flonum-to-digits (v &optional position relativep)
+  (let ((print-base 10) ; B
+        (float-radix 2) ; b
+        (float-digits (float-digits v)) ; p
+        (digit-characters "0123456789")
+        (min-e
+         (etypecase v
+           (single-float single-float-min-e)
+           (double-float double-float-min-e))))
+    (multiple-value-bind (f e)
+        (integer-decode-float v)
+      (let (;; FIXME: these even tests assume normal IEEE rounding
+            ;; mode.  I wonder if we should cater for non-normal?
+            (high-ok (evenp f))
+            (low-ok (evenp f))
+            (result (make-array 50 :element-type 'base-char
+                                :fill-pointer 0 :adjustable t)))
+        (labels ((scale (r s m+ m-)
+                   (do ((k 0 (1+ k))
+                        (s s (* s print-base)))
+                       ((not (or (> (+ r m+) s)
+                                 (and high-ok (= (+ r m+) s))))
+                        (do ((k k (1- k))
+                             (r r (* r print-base))
+                             (m+ m+ (* m+ print-base))
+                             (m- m- (* m- print-base)))
+                            ((not (or (< (* (+ r m+) print-base) s)
+                                      (and (not high-ok)
+                                           (= (* (+ r m+) print-base) s))))
+                             (values k (generate r s m+ m-)))))))
+                 (generate (r s m+ m-)
+                   (let (d tc1 tc2)
+                     (tagbody
+                      loop
+                        (setf (values d r) (truncate (* r print-base) s))
+                        (setf m+ (* m+ print-base))
+                        (setf m- (* m- print-base))
+                        (setf tc1 (or (< r m-) (and low-ok (= r m-))))
+                        (setf tc2 (or (> (+ r m+) s)
+                                      (and high-ok (= (+ r m+) s))))
+                        (when (or tc1 tc2)
+                          (go end))
+                        (vector-push-extend (char digit-characters d) result)
+                        (go loop)
+                      end
+                        (let ((d (cond
+                                   ((and (not tc1) tc2) (1+ d))
+                                   ((and tc1 (not tc2)) d)
+                                   (t ; (and tc1 tc2)
+                                    (if (< (* r 2) s) d (1+ d))))))
+                          (vector-push-extend (char digit-characters d) result)
+                          (return-from generate result)))))
+                 (initialize ()
+                   (let (r s m+ m-)
+                     (if (>= e 0)
+                         (let* ((be (expt float-radix e))
+                                (be1 (* be float-radix)))
+                           (if (/= f (expt float-radix (1- float-digits)))
+                               (setf r (* f be 2)
+                                     s 2
+                                     m+ be
+                                     m- be)
+                               (setf r (* f be1 2)
+                                     s (* float-radix 2)
+                                     m+ be1
+                                     m- be)))
+                         (if (or (= e min-e)
+                                 (/= f (expt float-radix (1- float-digits))))
+                             (setf r (* f 2)
+                                   s (* (expt float-radix (- e)) 2)
+                                   m+ 1
+                                   m- 1)
+                             (setf r (* f float-radix 2)
+                                   s (* (expt float-radix (- 1 e)) 2)
+                                   m+ float-radix
+                                   m- 1)))
+                     (when position
+                       (when relativep
+                         (assert (> position 0))
+                         (do ((k 0 (1+ k))
+                              ;; running out of letters here
+                              (l 1 (* l print-base)))
+                             ((>= (* s l) (+ r m+))
+                              ;; k is now \hat{k}
+                              (if (< (+ r (* s (/ (expt print-base (- k position)) 2)))
+                                     (* s (expt print-base k)))
+                                  (setf position (- k position))
+                                  (setf position (- k position 1))))))
+                       (let ((low (max m- (/ (* s (expt print-base position)) 2)))
+                             (high (max m+ (/ (* s (expt print-base position)) 2))))
+                         (when (<= m- low)
+                           (setf m- low)
+                           (setf low-ok t))
+                         (when (<= m+ high)
+                           (setf m+ high)
+                           (setf high-ok t))))
+                     (values r s m+ m-))))
+          (multiple-value-bind (r s m+ m-) (initialize)
+            (scale r s m+ m-)))))))
 ;; EOF

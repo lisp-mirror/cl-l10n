@@ -58,7 +58,7 @@
                                          (locale-name *locale*)))
                              name)))))
 
-(defun gettext (name bundle &optional (loc *locale* ))
+(defun gettext (name bundle &optional (loc *locale*))
   (let ((*locale* (locale-des->locale loc)))
     (or (cdr (lookup-name bundle name))
         name)))

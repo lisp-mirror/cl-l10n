@@ -1,3 +1,34 @@
+2006-04-27 Sean Ross	<sross@common-lisp.net>
+	* parse-number.lisp: Changed parse-error to extend parser-error
+	* parse-time.lisp: Changed uses of eq to eql when using numbers
+	or characters.
+	* printers.lisp: Default length fraction digits to 0 if it can't 
+	be found in the current locale. Fixed printers of %R time format directive.
+	* load-locale.lisp: Search environment variable LANG before trying using 
+	POSIX locale when loading default locale.
+	Add shadowing-format which shadows format and formatter into the current package.
+	* package.lisp: Export load-default-locale
+	
+2006-04-15 Luís Oliveira  <loliveira@common-lisp.net>
+	* doc/cl-l10n.texi: Rename the Index node to Comprehensive Index in 
+	order to avoid a name clash with index.html on platforms with 
+	case-insensitive filesystems.  Prettify the copyright notice.
+	* doc/Makefile, doc/style.css, doc/gendocs.sh, doc/gendocs_template, doc/style.css: 
+	New files. 
+
+2006-04-15 Luís Oliveira  <loliveira@common-lisp.net>
+	* load-locale.lisp (load-locale): Specify an explicit 
+	external-format for CLISP
+	* test.lisp: Fix indentation of deftest forms.
+	(time.2): Obtain the o-with-diaeresis in a slightly more portable way. 
+	
+2006-03-20 Sean Ross	<sross@common-lisp.net>
+	* locale.lisp: Changed definition of *locale-path* to use
+	asdf:component-pathname of cl-l10n rather than the load path.
+	This resolves problems finding the locale files when fasl's are
+	not in the same directory as the source files.
+	Patch by Aycan iRiCAN
+	
 2005-05-25 Sean Ross	<sross@common-lisp.net>
 	* locales/ar_SA: revert.
 	* load-locale.lisp, printers.lisp: Added support for the .1 in the ar_SA locale.

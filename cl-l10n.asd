@@ -9,9 +9,9 @@
 
 (defsystem cl-l10n
   :name "CL-L10N"
-  :author "Sean Ross <sdr@jhb.ucs.co.za>"
-  :maintainer "Sean Ross <sdr@jhb.ucs.co.za>"
-  :version "0.3.4"
+  :author "Sean Ross <sross@common-lisp.net>"
+  :maintainer "Sean Ross <sross@common-lisp.net>"
+  :version "0.3.10"
   :description "Portable CL Locale Support"
   :long-description "Portable CL Package to support localization"
   :licence "MIT"
@@ -28,7 +28,6 @@
   :depends-on (:cl-ppcre :cl-fad :split-sequence))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-l10n))))
-  (funcall (find-symbol "LOAD-DEFAULT-LOCALE" "CL-L10N"))
   (provide 'cl-l10n))
 
 (defmethod perform ((op test-op) (sys (eql (find-system :cl-l10n))))
