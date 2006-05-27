@@ -38,7 +38,7 @@
   (loop for locale in (or *fallback-locales* (list *locale*)) do
         (let ((result (funcall '%lookup-resource locale name args)))
           (when result
-            (return-from lookup-resource-with-fallback result))))
+            (return-from lookup-resource-with-fallback (values result t)))))
   (resource-not-found name warn-if-missing fallback-to-name))
 
 (defun lookup-resource (locale name args &key (warn-if-missing t) (fallback-to-name t))
@@ -49,8 +49,9 @@
 (defun resource-not-found (name warn-if-missing fallback-to-name)
   (if warn-if-missing
       (signal 'resource-missing :name name))
-  (if fallback-to-name
-      (string-downcase (string name))))
+  (values (if fallback-to-name
+              (string-downcase (string name)))
+          nil))
 
 (defun locale-name-for-symbol (symbol)
   (let ((parts (split-sequence:split-sequence #\- (symbol-name symbol))))
@@ -91,7 +92,7 @@
     `(lookup-resource *locale* ,(read s) nil)))
 
 (defgeneric localize (object)
-  (:documentation "Override this generic method for various data types."))
+  (:documentation "Override this generic method for various data types. Return (values result foundp)."))
 
 (defmethod localize ((str string))
   (lookup-resource-with-fallback str nil))
