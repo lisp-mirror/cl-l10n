@@ -9,13 +9,14 @@
            #:get-category #:get-cat-val #:locale-value #:load-all-locales
            #:get-locale #:*locale* #:*locale-path* #:*locales* #:load-default-locale
            #:format-number #:print-number #:format-money #:print-money
-           #:format-time #:print-time #:add-resources #:bundle 
-           #:add-resource #:gettext #:parse-number #:*float-digits*
+           #:format-time #:print-time #:add-resources 
+           #:parse-number #:*float-digits*
            #:parse-time #:month #:day #:year #:hour #:minute #:second
            #:date-divider #:time-divider #:weekday #:noon-midn #:shadow-format
            #:secondp #:am-pm #:zone #:parser-error #:set-locale
            #:with-locale #:locale-for #:define-all-locales #:lookup-resource
            #:lookup-resource-with-fallback #:*fallback-locales* #:localize
-           #:missing-resource))
+           #:missing-resource #:defresources #:enable-sharpquote-reader
+           #:with-sharpquote-reader))
 
 

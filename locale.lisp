@@ -97,6 +97,10 @@
   #+clisp (ext:getenv word)
   #+ecl (si:getenv word))
 
+(eval-when (:load-toplevel)
+  (load-all-locales)
+  (values))
+
 ;; Getters
 (defmacro defgetter (key cat &key (wrap '#'identity))
   (let ((name (symb "LOCALE-" (substitute #\- #\_ (string-upcase key)))))

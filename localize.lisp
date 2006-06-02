@@ -26,7 +26,14 @@
   name)
 
 (defun %lookup-resource (locale name args)
-  (let ((resource (gethash (resource-key locale name) *resources*)))
+  (declare (type locale locale)
+           (type (or symbol string) name))
+  (let* ((key (resource-key locale name))
+         (resource (gethash key *resources*)))
+    (unless resource
+      ;; try again with the default locale for the language
+      (setf key (resource-key (canonical-locale-name-from (language locale)) name))
+      (setf resource (gethash key *resources*)))
     ;; dispatch on resource type
     (cond ((functionp resource)
            (apply resource args))
@@ -53,43 +60,85 @@
               (string-downcase (string name)))
           nil))
 
-(defun locale-name-for-symbol (symbol)
-  (let ((parts (split-sequence:split-sequence #\- (symbol-name symbol))))
-    (concatenate 'string (string-downcase (first parts)) "_" (second parts))))
+(defun canonical-locale-name-from (locale)
+  (if (typep locale 'locale)
+      (locale-name locale)
+      (let ((name locale))
+        (when (and (not (null name))
+                   (symbolp name))
+          (setf name (symbol-name name)))
+        (let* ((parts (split-sequence:split-sequence #\- name))
+               (count (list-length parts))
+               (first-length (length (first parts)))
+               (second-length (length (second parts))))
+          (when (> count 2)
+            (error "Locale variants are not yet supported"))
+          (when (or (> first-length 3)
+                    (< first-length 2)
+                    (and (> count 1)
+                         (or (> second-length 3)
+                             (< second-length 2))))
+            (error "~A is not a valid locale name (examples: en-gb, en-us, en)" locale))
+          (let ((language (string-downcase (first parts)))
+                (region (when (> count 1)
+                          (second parts))))
+            (if (> count 1)
+                (concatenate 'string language "_" region)
+                (aif (gethash language *language->default-locale-name*)
+                     it
+                     (concatenate 'string language "_" (string-upcase language)))))))))
+
+(defparameter *language->default-locale-name* (make-hash-table))
+
+(loop for (language locale) in
+      '((en en-us)) do
+      (setf (gethash (string-downcase (symbol-name language)) *language->default-locale-name*)
+            (canonical-locale-name-from locale)))
 
 (defun locale-for (symbol)
-  (get-locale (locale-name-for-symbol symbol)))
+  (get-locale (canonical-locale-name-from symbol)))
 
-(defmacro define-locale (name)
-  (let ((locale-name (locale-name-for-symbol name)))
-    `(progn
-       (defmacro ,name (&rest resources)
-         (cons 'progn
-               (loop for resource in resources
-                     if (= 2 (length resource))
-                     collect `(add-resource ,',locale-name
-                               ',(first resource) ,',() ',(cdr resource))
-                     else
-                     collect `(add-resource ,',locale-name
-                               ',(first resource) ',(second resource) ',(cddr resource)))))
-      (export ',name))))
+(defmacro defresources (locale &body resources)
+  (let ((locale-name (canonical-locale-name-from locale)))
+    (cons 'progn
+          (loop for resource in resources
+                if (= 2 (length resource))
+                collect `(add-resource ,locale-name
+                          ',(first resource) nil ',(cdr resource))
+                else
+                collect `(add-resource ,locale-name
+                          ',(first resource) ',(second resource) ',(cddr resource))))))
 
 (defmacro with-locale (name &body body)
   `(let ((*locale* (locale-for ,name)))
     ,@body))
 
-(eval-when (:load-toplevel)
-  (load-all-locales)
-  (eval '(define-locale en-GB))
-  (eval '(define-locale hu-HU)))
+(defmacro enable-sharpquote-reader ()
+  "Enable quote reader for the rest of the file (being loaded or compiled).
+#\"my i18n text\" parts will be replaced by a lookup-resource call for the string.
+Be careful when using in different situations, because it modifies *readtable*."
+  ;; The standard sais that *readtable* is restored after loading/compiling a file,
+  ;; so we make a copy and alter that. The effect is that it will be enabled
+  ;; for the rest of the file being processed.
+  `(eval-when (:compile-toplevel :execute)
+    (setf *readtable* (copy-readtable *readtable*))
+    (%enable-sharpquote-reader)))
 
-;;; reader macro for #"my i18n text"
-(set-dispatch-macro-character
- #\# #\"
- #'(lambda (s c1 c2)
-    (declare (ignore c2))
-    (unread-char c1 s)
-    `(lookup-resource *locale* ,(read s) nil)))
+(defun %enable-sharpquote-reader ()
+  (set-dispatch-macro-character
+   #\# #\"
+   #'(lambda (s c1 c2)
+       (declare (ignore c2))
+       (unread-char c1 s)
+       `(lookup-resource *locale* ,(read s) nil))))
+
+(defun with-sharpquote-syntax ()
+  "To be used with the curly reader from arnesi: {with-sharpquote-reader (foo #\"locale-specific\") }"
+  (lambda (handler)
+    (%enable-sharpquote-reader)
+    `(progn ,@(funcall handler))))
+
+
 
 (defgeneric localize (object)
   (:documentation "Override this generic method for various data types. Return (values result foundp)."))

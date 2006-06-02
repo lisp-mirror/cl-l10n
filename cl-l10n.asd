@@ -23,8 +23,7 @@
                (:file "printers" :depends-on ("load-locale"))
                (:file "parsers" :depends-on ("printers" "parse-number"))
                (:file "parse-time" :depends-on ("load-locale"))
-               (:file "i18n" :depends-on ("printers"))
-               (:file "localize" :depends-on ("locale")))
+               (:file "i18n" :depends-on ("printers")))
   :depends-on (:cl-ppcre :cl-fad :split-sequence))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-l10n))))
