@@ -57,7 +57,7 @@ implementation of that function
            resource)))))
 
 (defun lookup-resource-with-fallback (name args &key (warn-if-missing t) (fallback-to-name t))
-  (loop for locale in (or *fallback-locales* (list *locale*)) do
+  (loop for locale in (or *fallback-locales* (list *locale*)) do ; TODO unify these two
         (let ((result (funcall '%lookup-resource locale name args)))
           (when result
             (return-from lookup-resource-with-fallback (values result t)))))
@@ -99,7 +99,6 @@ implementation of that function
           (let ((language (string-downcase (first parts)))
                 (region (when (> count 1)
                           (second parts))))
-            (print language)
             (if (> count 1)
                 (concatenate 'string language "_" region)
                 (aif (gethash language *language->default-locale-name*)
@@ -114,7 +113,7 @@ implementation of that function
   (values))
 
 (defun locale-for (symbol)
-  (get-locale (canonical-locale-name-from symbol)))
+  (locale (canonical-locale-name-from symbol)))
 
 (defmacro defresources (locale &body resources)
   (let ((locale-name (canonical-locale-name-from locale)))

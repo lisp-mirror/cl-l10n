@@ -371,6 +371,7 @@ actual locale object."
       (locale (getenv "LANG") :errorp nil)
       (locale "POSIX" :errorp nil)))
 
-(load-default-locale)
+(eval-when (:load-toplevel :execute)
+  (load-default-locale))
 
 ;; EOF
