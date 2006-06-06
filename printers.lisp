@@ -21,8 +21,8 @@ determine the number of zero's to print")
         (princ "0" s)))))
 
 (defun format-number (stream arg no-dp no-ts
-                             &optional (locale *locale*))
-  (let ((locale (locale-des->locale locale))
+                             &optional (locale (current-locale)))
+  (let ((locale (locale locale))
         (float-part (float-part (coerce (abs arg) 'double-float))))
     (cl:format stream 
                (getf (printers locale)
@@ -35,7 +35,7 @@ determine the number of zero's to print")
     (values)))
 
 (defun print-number (number &key (stream *standard-output*)
-                            no-ts no-dp (locale *locale*))
+                            no-ts no-dp (locale (current-locale)))
   (format-number stream number no-dp no-ts locale)
   number)
 
@@ -60,8 +60,8 @@ determine the number of zero's to print")
           :money-p-no-ts
           :money-p-ts)))
 
-(defun format-money (stream arg use-int-sym no-ts &optional (locale *locale*))
-  (let* ((locale (locale-des->locale locale))
+(defun format-money (stream arg use-int-sym no-ts &optional (locale (current-locale)))
+  (let* ((locale (locale locale))
          (frac-digits (max (if use-int-sym
                                (locale-int-frac-digits locale)
                                (locale-frac-digits locale))
@@ -85,7 +85,7 @@ determine the number of zero's to print")
   (values))
 
 (defun print-money (num &key (stream *standard-output*) use-int-sym no-ts
-                        (locale *locale*))
+                        (locale (current-locale)))
   (format-money stream num use-int-sym no-ts locale)
   num)
 
@@ -119,15 +119,16 @@ determine the number of zero's to print")
 
 (defun princ-pad-val (val stream &optional (pad "0") (size 2))
   (declare (type stream stream) (optimize speed)
-           (type fixnum val))
+           (type fixnum val size))
   (assert (not (minusp val)) (val) "Value ~A cannot be smaller than 0." val)
   (cond ((zerop val)
          (dotimes (x (1- size))
            (princ pad stream))
          (princ 0 stream))
         (t       
-         (loop for x = (* val 10) then (* x 10)
-               until (>= x (expt 10 size)) do
+         (loop with stop-value = (expt 10 size)
+               for x integer = (* val 10) then (* x 10)
+               until (>= x stop-value) do
                (princ pad stream))
          (princ val stream))))
       
@@ -316,8 +317,8 @@ determine the number of zero's to print")
 
 (defvar *time-zone*)
 
-(defun format-time (stream ut show-date show-time &optional (locale *locale*) fmt time-zone)
-  (let ((locale (locale-des->locale (or locale *locale*)))
+(defun format-time (stream ut show-date show-time &optional (locale (current-locale)) fmt time-zone)
+  (let ((locale (locale locale))
         (*time-zone* (or time-zone (nth-value 8 (decode-universal-time ut)))))
     (print-time-string (or fmt (get-time-fmt-string locale 
                                                     show-date show-time))
@@ -348,7 +349,7 @@ determine the number of zero's to print")
                    (princ x stream)))))))
 
 (defun print-time (ut &key show-date show-time (stream *standard-output*)
-                      (locale *locale*) fmt time-zone)
+                      (locale (current-locale)) fmt time-zone)
   (format-time stream ut show-date show-time locale fmt time-zone)
   ut)
       
@@ -386,7 +387,7 @@ determine the number of zero's to print")
       string))
 
 (defun really-parse-fmt-string (string)
-  (declare (optimize speed) (type string string))
+  (declare (optimize speed) (type simple-string string))
   (with-output-to-string (fmt-string)
     (loop for char across string 
           with tilde = nil do

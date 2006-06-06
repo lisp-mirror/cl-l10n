@@ -600,7 +600,7 @@
     ;; patterns have not been explicitly specified so we try
     ;; to match against locale a specific date pattern first.
     ;; eg. 03/04/2005 is 3rd April in UK but 4 March in US.
-    (dolist (pattern (parsers *locale*))
+    (dolist (pattern (parsers (current-locale)))
       (let ((res (match-pattern pattern
                                 string-parts
                                 parts-length)))
@@ -620,7 +620,7 @@
 			       (default-hours nil) (default-day nil)
 			       (default-month nil) (default-year nil)
 			       (default-zone nil) (default-weekday nil)
-                               (locale *locale*))
+                               (locale (current-locale)))
   "Tries very hard to make sense out of the argument time-string using
    locale and returns a single integer representing the universal time if
    successful.  If not, it returns nil.  If the :error-on-mismatch
@@ -630,21 +630,21 @@
    keywords can be given a numeric value or the keyword :current
    to set them to the current value.  The default-default values
    are 00:00:00 on the current date, current time-zone."
-  (let* ((*error-on-mismatch* error-on-mismatch)
-         (*locale* (locale-des->locale locale))
-         (string-parts (decompose-string time-string :start start :end end))
-	 (parts-length (length string-parts))
-	 (string-form (get-matching-pattern patterns string-parts parts-length)))
-    (if string-form
-	(let ((parsed-values (make-default-time default-seconds default-minutes
-						default-hours default-day
-						default-month default-year
-						default-zone default-weekday)))
-	  (set-time-values string-form parsed-values)
-	  (convert-to-unitime parsed-values))
-	(if *error-on-mismatch*
-            (error 'parser-error :value time-string :reason "Not a recognized time/date format.")
-	  nil))))
+  (with-locale locale
+    (let* ((*error-on-mismatch* error-on-mismatch)
+           (string-parts (decompose-string time-string :start start :end end))
+           (parts-length (length string-parts))
+           (string-form (get-matching-pattern patterns string-parts parts-length)))
+      (if string-form
+          (let ((parsed-values (make-default-time default-seconds default-minutes
+                                                  default-hours default-day
+                                                  default-month default-year
+                                                  default-zone default-weekday)))
+            (set-time-values string-form parsed-values)
+            (convert-to-unitime parsed-values))
+          (if *error-on-mismatch*
+              (error 'parser-error :value time-string :reason "Not a recognized time/date format.")
+              nil)))))
 
 
 ; EOF

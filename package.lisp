@@ -7,15 +7,15 @@
   (:shadow cl:format cl:formatter)
   (:export #:locale-name #:category-name #:locale #:category #:locale-error
            #:get-category #:get-cat-val #:locale-value #:load-all-locales
-           #:get-locale #:*locale* #:*locale-path* #:*locales* #:load-default-locale
+           #:get-locale #:*locale-path* #:*locales* #:load-default-locale
            #:format-number #:print-number #:format-money #:print-money
            #:format-time #:print-time #:add-resources 
            #:parse-number #:*float-digits*
            #:parse-time #:month #:day #:year #:hour #:minute #:second
            #:date-divider #:time-divider #:weekday #:noon-midn #:shadow-format
            #:secondp #:am-pm #:zone #:parser-error #:set-locale
-           #:with-locale #:locale-for #:define-all-locales #:lookup-resource
-           #:lookup-resource-with-fallback #:*fallback-locales* #:localize
+           #:with-locale #:lookup-resource
+           #:lookup-resource-without-fallback #:localize
            #:missing-resource #:defresources #:enable-sharpquote-reader
            #:with-sharpquote-reader))
 

@@ -16,8 +16,6 @@ implementation of that function
 
 (defvar *resources* (make-hash-table :test 'equal))
 
-(defvar *fallback-locales* nil)
-
 (defun clear-resources ()
   (setf *resources* (make-hash-table :test 'equal)))
 
@@ -36,7 +34,7 @@ implementation of that function
             (first body)
             (eval `(lambda ,args ,@body))))
   ;; make a function 
-  (setf (symbol-function name) (eval `(lambda (&rest args) (lookup-resource-with-fallback ',name args))))
+  (setf (symbol-function name) (eval `(lambda (&rest args) (lookup-resource ',name args))))
   name)
 
 (defun %lookup-resource (locale name args)
@@ -56,14 +54,14 @@ implementation of that function
           ((not (null resource))
            resource)))))
 
-(defun lookup-resource-with-fallback (name args &key (warn-if-missing t) (fallback-to-name t))
-  (loop for locale in (or *fallback-locales* (list *locale*)) do ; TODO unify these two
+(defun lookup-resource (name args &key (warn-if-missing t) (fallback-to-name t))
+  (loop for locale in (if (consp *locale*) *locale* (list *locale*)) do
         (let ((result (funcall '%lookup-resource locale name args)))
           (when result
-            (return-from lookup-resource-with-fallback (values result t)))))
+            (return-from lookup-resource (values result t)))))
   (resource-not-found name warn-if-missing fallback-to-name))
 
-(defun lookup-resource (locale name args &key (warn-if-missing t) (fallback-to-name t))
+(defun lookup-resource-without-fallback (locale name args &key (warn-if-missing t) (fallback-to-name t))
   (aif (%lookup-resource locale name args)
        it
        (resource-not-found name warn-if-missing fallback-to-name)))
@@ -75,46 +73,6 @@ implementation of that function
               (string-downcase (string name)))
           nil))
 
-(defparameter *language->default-locale-name* (make-hash-table :test #'equal))
-
-(defun canonical-locale-name-from (locale)
-  (if (typep locale 'locale)
-      (locale-name locale)
-      (let ((name locale))
-        (when (and (not (null name))
-                   (symbolp name))
-          (setf name (symbol-name name)))
-        (let* ((parts (split-sequence #\- name))
-               (count (list-length parts))
-               (first-length (length (first parts)))
-               (second-length (length (second parts))))
-          (when (> count 2)
-            (error "Locale variants are not yet supported"))
-          (when (or (> first-length 3)
-                    (< first-length 2)
-                    (and (> count 1)
-                         (or (> second-length 3)
-                             (< second-length 2))))
-            (error "~A is not a valid locale name (examples: en-gb, en-us, en)" locale))
-          (let ((language (string-downcase (first parts)))
-                (region (when (> count 1)
-                          (second parts))))
-            (if (> count 1)
-                (concatenate 'string language "_" region)
-                (aif (gethash language *language->default-locale-name*)
-                     it
-                     (concatenate 'string language "_" (string-upcase language)))))))))
-
-(eval-when (:load-toplevel)
-  (loop for (language locale) in
-        '((en en-us)) do
-        (setf (gethash (string-downcase (symbol-name language)) *language->default-locale-name*)
-              (canonical-locale-name-from locale)))
-  (values))
-
-(defun locale-for (symbol)
-  (locale (canonical-locale-name-from symbol)))
-
 (defmacro defresources (locale &body resources)
   (let ((locale-name (canonical-locale-name-from locale)))
     (cons 'progn
@@ -125,10 +83,6 @@ implementation of that function
                 else
                 collect `(add-resource ,locale-name
                           ',(first resource) ',(second resource) ',(cddr resource))))))
-
-(defmacro with-locale (name &body body)
-  `(let ((*locale* (locale-for ,name)))
-    ,@body))
 
 (defmacro enable-sharpquote-reader ()
   "Enable quote reader for the rest of the file (being loaded or compiled).
@@ -147,7 +101,7 @@ Be careful when using in different situations, because it modifies *readtable*."
    #'(lambda (s c1 c2)
        (declare (ignore c2))
        (unread-char c1 s)
-       `(lookup-resource *locale* ,(read s) nil))))
+       `(lookup-resource ,(read s) nil))))
 
 (defun with-sharpquote-syntax ()
   "To be used with the curly reader from arnesi: {with-sharpquote-reader (foo #\"locale-specific\") }"
@@ -161,7 +115,7 @@ Be careful when using in different situations, because it modifies *readtable*."
   (:documentation "Override this generic method for various data types. Return (values result foundp)."))
 
 (defmethod localize ((str string))
-  (lookup-resource-with-fallback str nil))
+  (lookup-resource str nil))
 
 (defmethod localize ((str symbol))
-  (lookup-resource-with-fallback str nil))
+  (lookup-resource str nil))

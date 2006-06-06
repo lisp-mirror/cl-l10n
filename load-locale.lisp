@@ -5,41 +5,75 @@
 (defparameter *ignore-categories*
   (list "LC_CTYPE" "LC_COLLATE"))
 
+(defparameter *language->default-locale-name* (make-hash-table :test #'equal)
+  "This map specifies what is the default locale for locale specifications without a region (i.e. en_US for en)")
+
+(deftype locale-descriptor ()
+  `(or locale string symbol))
+
+(defun canonical-locale-name-from (locale)
+  (check-type locale locale-descriptor)
+  (if (typep locale 'locale)
+      (locale-name locale)
+      (let ((name locale))
+        (when (and (not (null name))
+                   (symbolp name))
+          (setf name (symbol-name name)))
+        (let* ((parts (split-sequence #\_ name))
+               (count (list-length parts))
+               (first-length (length (first parts)))
+               (second-length (length (second parts))))
+          (when (> count 2)
+            (error "Locale variants are not yet supported"))
+          (when (or (> first-length 3)
+                    (< first-length 2)
+                    (and (> count 1)
+                         (or (> second-length 3)
+                             (< second-length 2))))
+            (error "~A is not a valid locale name (examples: en_GB, en_US, en)" locale))
+          (let ((language (string-downcase (first parts)))
+                (region (when (> count 1)
+                          (second parts))))
+            (if (> count 1)
+                (concatenate 'string language "_" region)
+                (aif (gethash language *language->default-locale-name*)
+                     it
+                     (concatenate 'string language "_" (string-upcase language)))))))))
+
+;; set up the default region mappings while loading
+(eval-when (:load-toplevel :execute)
+  (loop for (language locale) in
+        '((en "en_US")) do
+        (setf (gethash (string-downcase (symbol-name language)) *language->default-locale-name*)
+              (canonical-locale-name-from locale)))
+  (values))
+
 ;; Add a restart here?
 (defun locale (loc-name &key (use-cache t) (errorp t) (loader nil))
-  "Find locale named by the string LOC-NAME. If USE-CACHE
+  "Find locale named by the specification LOC-NAME. If USE-CACHE
 is non-nil forcefully reload the locale from *locale-path* else
 the locale is first looked for in *locales*. If ERRORP is non-nil
 signal a warning rather than an error if the locale file cannot be found.
 If LOADER is non-nil skip everything and call loader with LOC-NAME."
-  (let ((name (aif (position #\. loc-name)
-                   (subseq loc-name 0 it)
-                   loc-name)))
-    (acond ((and (not name) (not errorp)) nil)
-           ((and use-cache (get-locale name)) it)
-           (loader (setf (get-locale name) (funcall loader name)))
-           ((probe-file (merge-pathnames *locale-path* name))
-            (setf (get-locale name) (load-locale name)))
-           (t (funcall (if errorp #'error #'warn)
-                       "Can't find locale ~A." name)))))
+  (if (typep loc-name 'locale)
+      loc-name
+      (let ((name (canonical-locale-name-from
+                   (aif (position #\. loc-name)
+                        (subseq loc-name 0 it)
+                        loc-name))))
+        (acond ((and (not name) (not errorp)) nil)
+               ((and use-cache (get-locale name)) it)
+               (loader (setf (get-locale name) (funcall loader name)))
+               ((probe-file (merge-pathnames *locale-path* name))
+                (setf (get-locale name) (load-locale name)))
+               (t (funcall (if errorp #'error #'warn)
+                           "Can't find locale ~A." name))))))
 
 (defvar *locale-type* 'locale
   "The class of loaded locales.")
 
 (defvar *category-type* 'category
   "The class of loaded categories")
-
-(deftype locale-descriptor ()
-  `(or locale string symbol))
-
-(defun locale-des->locale (loc)
-  "Turns a locale descriptor(a string, symbol or locale) into an
-actual locale object."
-  (check-type loc locale-descriptor)
-  (etypecase loc
-    (locale loc)
-    (string (locale loc))
-    (symbol (locale (string loc)))))
 
 (defun load-locale (name)
   (let ((path (merge-pathnames *locale-path* name))
@@ -360,16 +394,26 @@ actual locale object."
         (return-from next-header (trim line)))))
 
 (defun set-locale (locale-des)
-  (setf *locale* (locale-des->locale locale-des)))
+  (setf *locale* (if (listp locale-des)
+                     (loop for locale in locale-des
+                           collect (locale locale))
+                     (locale locale-des))))
+
+(defmacro with-locale (locale &body body)
+  `(let ((*locale* (locale ,locale)))
+    ,@body))
 
 (defun load-default-locale ()
-  (setf *locale* (get-default-locale)))
+  (set-locale (get-default-locale)))
 
 (defun get-default-locale () 
-  (or (locale (getenv "CL_LOCALE") :errorp nil)
-      (locale (getenv "LC_CTYPE") :errorp nil)
-      (locale (getenv "LANG") :errorp nil)
-      (locale "POSIX" :errorp nil)))
+  (macrolet ((try (name)
+               `(when-let (it (getenv ,name))
+                 (locale it :errorp nil))))
+    (or (try "CL_LOCALE")
+        (try "LC_CTYPE")
+        (try "LANG")
+        (locale "POSIX" :errorp nil))))
 
 (eval-when (:load-toplevel :execute)
   (load-default-locale))

@@ -16,7 +16,14 @@
   (merge-pathnames (make-pathname :directory '(:relative "locales"))
                    (asdf:component-pathname (asdf:find-system :cl-l10n))))
 
-(defvar *locale* nil)
+(defvar *locale* nil
+  "Either a locale or a list of locales in which case resources will be looked for in each locale in order.")
+
+(defun current-locale ()
+  (declare (inline current-locale))
+  (if (consp *locale*)
+      (car *locale*)
+      *locale*))
 
 (defvar *locales* (make-hash-table :test #'equal)
   "Hash table containing all loaded locales keyed on name (eg. \"af_ZA\")")
@@ -101,8 +108,8 @@
 (defmacro defgetter (key cat &key (wrap '#'identity))
   (let ((name (symb "LOCALE-" (substitute #\- #\_ (string-upcase key)))))
     `(progn 
-       (defun ,name (&optional (locale *locale*))
-         (let ((locale (locale-des->locale locale)))
+       (defun ,name (&optional (locale (current-locale)))
+         (let ((locale (locale locale)))
            (when locale
              (funcall ,wrap (locale-value locale ,cat ,key)))))
        (export ',name))))

@@ -1,7 +1,7 @@
 (in-package :cl-l10n)
 
-(defun parse-number (num &optional (locale *locale*))
-  (let ((locale (locale-des->locale locale)))
+(defun parse-number (num &optional (locale (current-locale)))
+  (let ((locale (locale locale)))
     (%parse-number (replace-dp (remove-ts num locale) locale))))
 
 (defun remove-ts (num locale)
