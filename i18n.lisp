@@ -84,7 +84,7 @@ implementation of that function
         (when (and (not (null name))
                    (symbolp name))
           (setf name (symbol-name name)))
-        (let* ((parts (split-sequence:split-sequence #\- name))
+        (let* ((parts (split-sequence #\- name))
                (count (list-length parts))
                (first-length (length (first parts)))
                (second-length (length (second parts))))
