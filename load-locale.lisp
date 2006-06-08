@@ -19,7 +19,7 @@
         (when (and (not (null name))
                    (symbolp name))
           (setf name (symbol-name name)))
-        (let* ((parts (split-sequence #\_ name))
+        (let* ((parts (split "_" name))
                (count (list-length parts))
                (first-length (length (first parts)))
                (second-length (length (second parts))))

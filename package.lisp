@@ -3,7 +3,7 @@
 (in-package #:cl-l10n.system)
 
 (defpackage #:cl-l10n 
-  (:use #:cl #:cl-ppcre #:cl-fad #:split-sequence)
+  (:use #:cl #:cl-ppcre #:cl-fad)
   (:shadow cl:format cl:formatter)
   (:export #:locale-name #:category-name #:locale #:category #:locale-error
            #:get-category #:get-cat-val #:locale-value #:load-all-locales

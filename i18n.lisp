@@ -45,7 +45,7 @@ implementation of that function
         (gethash key *resources*)
       (unless found
         ;; try again with the default locale for the language
-        (setf key (resource-key (canonical-locale-name-from (first (split-sequence #\_ (locale-name locale)))) name))
+        (setf key (resource-key (canonical-locale-name-from (first (split "_" (locale-name locale)))) name))
         (setf resource (gethash key *resources*)))
     ;; dispatch on resource type
     (cond ((functionp resource)
