@@ -29,6 +29,15 @@
 
 (defvar *whitespace* (list #\Space #\Tab))
 
+(defun strcat-separated-by (separator &rest args)
+  (iter (for el in args)
+        (unless el
+          (next-iteration))
+        (unless (first-time-p)
+          (collect separator into components))
+        (collect el into components)
+        (finally (return (apply #'strcat components)))))
+
 (defun trim (string &optional (bag *whitespace*))
   (string-trim bag string))
 
