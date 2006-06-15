@@ -106,8 +106,8 @@ When a resource key is a list, its elements will be concatenated separated by do
         (finally (return (with-unique-names (block fallback-tmp)
                            `(block ,block
                              (let ((,fallback-tmp ,fallback))
-                               (bind (((values resource foundp) (lookup-resource
-                                                                 ,fallback-tmp nil :warn-if-missing nil :fallback-to-name nil)))
+                               (multiple-value-bind (values resource foundp)
+                                   (lookup-resource ,fallback-tmp nil :warn-if-missing nil :fallback-to-name nil)
                                  (when foundp
                                    (return-from ,block (values resource t))))
                                ,@(iter (for lookup in lookups)
