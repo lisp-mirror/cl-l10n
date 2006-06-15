@@ -400,8 +400,11 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
                      (locale locale-des))))
 
 (defmacro with-locale (locale &body body)
-  `(let ((*locale* (locale ,locale)))
-    ,@body))
+  (rebinding (locale)
+    `(let ((*locale* (if (consp ,locale)
+                         ,locale
+                         (locale ,locale))))
+      ,@body)))
 
 (defun load-default-locale ()
   (set-locale (get-default-locale)))
