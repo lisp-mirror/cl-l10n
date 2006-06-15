@@ -24,7 +24,7 @@
                (:file "parsers" :depends-on ("printers" "parse-number"))
                (:file "parse-time" :depends-on ("load-locale"))
                (:file "i18n" :depends-on ("printers")))
-  :depends-on (:cl-ppcre :cl-fad))
+  :depends-on (:arnesi :iterate :cl-ppcre :cl-fad))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-l10n))))
   (provide 'cl-l10n))

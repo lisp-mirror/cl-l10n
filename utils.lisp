@@ -4,27 +4,6 @@
 
 ;;  Macros
 ;;;;;;;;;;;
-(defmacro aif (test then &optional else)
-  `(let ((it ,test))
-      (if it ,then ,else)))
-
-(defmacro acond (&rest options)
-  (if (cdr options)
-      `(aif ,(caar options)
-            (progn ,@(cdar options))
-            (acond ,@(cdr options)))
-      `(aif ,(caar options)
-            (progn ,@(cdar options)))))
-
-(defmacro when-let ((var form) &body body)
-  `(let ((,var ,form))
-     (when ,var
-       ,@body)))
-
-(defmacro with-gensyms (names &body body)
-  `(let ,(mapcar #'(lambda (x) `(,x (gensym))) names)
-    ,@body))
-
 
 ;; dont worry it's nothing like if*
 (defmacro or* (&rest vals)
@@ -42,21 +21,6 @@
 
 ;; Functions
 ;;;;;;;;;;;;;;
-(defun singlep (list)
-  (and (consp list) 
-       (not (cdr list))))
-
-(defun last1 (list)
-  (car (last list)))
-
-(defun mkstr (&rest args)
-  (with-output-to-string (s)
-    (dolist (x args)
-      (princ x s))))
-
-(defun symb (&rest args)
-  (values (intern (apply #'mkstr args))))
-
 (defun mappend (fn &rest lists)
   (apply #'append (apply #'mapcar fn lists)))
 
@@ -87,17 +51,6 @@
             (when (funcall test call res)
               (setf res call
                     val x)))))))
-
-(defun compose (&rest fns)
-  (if fns
-      (let ((last-fn (last1 fns))
-            (fns (butlast fns)))
-        #'(lambda (&rest args)
-            (reduce #'funcall
-                    fns
-                    :from-end t 
-                    :initial-value (apply last-fn args))))
-      #'identity))
 
 (defun float-part (float)
   (if (zerop float)

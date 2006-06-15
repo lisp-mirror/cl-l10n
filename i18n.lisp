@@ -84,6 +84,38 @@ implementation of that function
                 collect `(add-resource ,locale-name
                           ',(first resource) ',(second resource) ',(cddr resource))))))
 
+(defmacro lookup-first-matching-resource (&body specs)
+  "Try to look up the resource keys, return the first match, fallback to the first key.
+An example usage:
+  (lookup-first-matching-resource
+    ((awhen attribute (name-of it)) (name-of state))
+    ((name-of (state-machine-of state)) (name-of state))
+    (\"state-name\" (name-of state))
+    \"last-try\")
+When a resource key is a list, its elements will be concatenated separated by dots."
+  (iter (with fallback = nil)
+        (for spec in specs)
+        (for el = (if (or (and (consp spec)
+                               (symbolp (car spec)))
+                          (atom spec))
+                      spec
+                      `(strcat-separated-by "." ,@spec)))
+        (if (first-time-p)
+            (setf fallback el)
+            (collect `(lookup-resource ,el nil :warn-if-missing nil :fallback-to-name nil) into lookups))
+        (finally (return (with-unique-names (block fallback-tmp)
+                           `(block ,block
+                             (let ((,fallback-tmp ,fallback))
+                               (bind (((values resource foundp) (lookup-resource
+                                                                 ,fallback-tmp nil :warn-if-missing nil :fallback-to-name nil)))
+                                 (when foundp
+                                   (return-from ,block (values resource t))))
+                               ,@(iter (for lookup in lookups)
+                                       (collect `(bind (((values resource foundp) ,lookup))
+                                                  (when foundp
+                                                    (return-from ,block (values resource t))))))
+                               (return-from ,block (values ,fallback-tmp nil)))))))))
+
 (defmacro enable-sharpquote-reader ()
   "Enable quote reader for the rest of the file (being loaded or compiled).
 #\"my i18n text\" parts will be replaced by a lookup-resource call for the string.

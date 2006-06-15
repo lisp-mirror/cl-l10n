@@ -93,8 +93,8 @@
         new-val))
 
 (defun locale-value (locale cat key)
-  (when-let (cat (get-category locale cat))
-    (category-value cat key)))
+  (awhen (get-category locale cat)
+    (category-value it key)))
 
 (defun getenv (word)
   #+sbcl (sb-ext:posix-getenv word)
@@ -106,7 +106,7 @@
 
 ;; Getters
 (defmacro defgetter (key cat &key (wrap '#'identity))
-  (let ((name (symb "LOCALE-" (substitute #\- #\_ (string-upcase key)))))
+  (let ((name (intern-concat (list "LOCALE-" (substitute #\- #\_ (string-upcase key))))))
     `(progn 
        (defun ,name (&optional (locale (current-locale)))
          (let ((locale (locale locale)))

@@ -3,8 +3,10 @@
 (in-package #:cl-l10n.system)
 
 (defpackage #:cl-l10n 
-  (:use #:cl #:cl-ppcre #:cl-fad)
+  (:use #:cl #:cl-ppcre #:cl-fad #:arnesi #:iterate)
   (:shadow cl:format cl:formatter)
+  (:shadowing-import-from :cl-fad
+                          #:copy-stream #:copy-file)
   (:export #:locale-name #:category-name #:locale #:category #:locale-error
            #:get-category #:get-cat-val #:locale-value #:load-all-locales
            #:get-locale #:*locale-path* #:*locales* #:load-default-locale
@@ -17,6 +19,5 @@
            #:with-locale #:lookup-resource
            #:lookup-resource-without-fallback #:localize
            #:missing-resource #:defresources #:enable-sharpquote-reader
-           #:with-sharpquote-reader))
-
+           #:with-sharpquote-reader #:lookup-first-matching-resource))
 

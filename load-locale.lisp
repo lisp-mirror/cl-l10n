@@ -87,10 +87,10 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
         (multiple-value-bind (escape comment) (munge-headers stream)
           (loop for header = (next-header stream)
                 while header do
-            (when-let (cat (make-category locale header 
-                                          (parse-category header stream
-                                                          escape comment)))
-              (setf (get-category locale header) cat)))))
+                (when-bind cat (make-category locale header 
+                                              (parse-category header stream
+                                                              escape comment))
+                  (setf (get-category locale header) cat)))))
       (add-printers locale)
       (add-parsers locale)
       locale)))
@@ -251,8 +251,8 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
   (cdr (assoc name *category-loaders* :test #'string=)))
 
 (defun make-category (locale name vals)
-  (when-let (loader (get-loader name))
-    (funcall loader locale name vals)))
+  (awhen (get-loader name)
+    (funcall it locale name vals)))
 
 (defgeneric load-category (locale name vals)
   (:documentation "Load a category for LOCALE using VALS.")
@@ -297,7 +297,7 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
                                cat from c)))))
 
 (defun parse-category (name stream escape comment)
-  (let ((end (mkstr "END " name))
+  (let ((end (strcat "END " name))
         (ret nil))
     (loop for line = (read-line stream nil stream)
           until (eq line stream) do
@@ -408,7 +408,7 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
 
 (defun get-default-locale () 
   (macrolet ((try (name)
-               `(when-let (it (getenv ,name))
+               `(awhen (getenv ,name)
                  (locale it :errorp nil))))
     (or (try "CL_LOCALE")
         (try "LC_CTYPE")

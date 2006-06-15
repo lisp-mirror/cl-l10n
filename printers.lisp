@@ -104,7 +104,7 @@ determine the number of zero's to print")
 (defmacro def-formatter (sym &body body)
   "Creates a function with BODY which can be looked up using lookup-formatter
    using the character SYM." 
-  (let ((name (gensym (mkstr "FORMATTER-" sym))))
+  (let ((name (gensym (strcat "FORMATTER-" sym))))
     `(flet ((,name (stream locale ut sec min hour date month year day 
                            daylight-p zone)
               (declare (ignorable stream locale ut sec min hour date month 
