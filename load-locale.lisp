@@ -55,6 +55,8 @@ is non-nil forcefully reload the locale from *locale-path* else
 the locale is first looked for in *locales*. If ERRORP is non-nil
 signal a warning rather than an error if the locale file cannot be found.
 If LOADER is non-nil skip everything and call loader with LOC-NAME."
+  (unless loc-name
+    (return-from locale nil))
   (if (typep loc-name 'locale)
       loc-name
       (let ((name (canonical-locale-name-from
