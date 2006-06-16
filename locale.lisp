@@ -96,14 +96,6 @@
   (awhen (get-category locale cat)
     (category-value it key)))
 
-(defun getenv (word)
-  #+sbcl (sb-ext:posix-getenv word)
-  #+lispworks (lw:environment-variable word)
-  #+acl (sys:getenv word)
-  #+cmu (cdr (assoc (intern word :keyword) ext:*environment-list*))
-  #+clisp (ext:getenv word)
-  #+ecl (si:getenv word))
-
 ;; Getters
 (defmacro defgetter (key cat &key (wrap '#'identity))
   (let ((name (intern-concat (list "LOCALE-" (substitute #\- #\_ (string-upcase key))))))
