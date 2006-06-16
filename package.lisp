@@ -12,10 +12,15 @@
            #:get-locale #:*locale-path* #:*locales* #:load-default-locale
            #:format-number #:print-number #:format-money #:print-money
            #:format-time #:print-time #:add-resources 
-           #:parse-number #:*float-digits*
-           #:parse-time #:month #:day #:year #:hour #:minute #:second
-           #:date-divider #:time-divider #:weekday #:noon-midn #:shadow-format
-           #:secondp #:am-pm #:zone #:parser-error #:set-locale
+           #:parse-number #:*float-digits*  #:shadow-format
+           #:parse-time
+           ;; attila: these symbols are very frequent and cause a lot of headaches
+           ;; when integrating cl-l10n into other projects. they should
+           ;; be renamed to *p and *-p if we really want to export them
+           ;;#:month #:day #:year #:hour #:minute #:second
+           ;;#:date-divider #:time-divider #:weekday #:noon-midn
+           ;;#:secondp #:am-pm #:zone
+           #:parser-error #:set-locale
            #:with-locale #:lookup-resource
            #:lookup-resource-without-fallback #:localize
            #:missing-resource #:defresources #:enable-sharpquote-reader
