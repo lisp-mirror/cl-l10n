@@ -25,8 +25,7 @@
                (second-length (length (second parts))))
           (when (> count 2)
             (error "Locale variants are not yet supported"))
-          (when (or (> first-length 3)
-                    (< first-length 2)
+          (when (or (< first-length 2)
                     (and (> count 1)
                          (or (> second-length 3)
                              (< second-length 2))))
@@ -42,10 +41,11 @@
 
 ;; set up the default region mappings while loading
 (eval-when (:load-toplevel :execute)
-  (loop for (language locale) in
-        '((en "en_US")) do
-        (setf (gethash (string-downcase (symbol-name language)) *language->default-locale-name*)
+  (iter (for (language locale) in '(("en" "en_US")))
+        (setf (gethash language *language->default-locale-name*)
               (canonical-locale-name-from locale)))
+  (iter (for (language locale) in '(("posix" "POSIX")))
+        (setf (gethash language *language->default-locale-name*) locale))
   (values))
 
 ;; Add a restart here?
