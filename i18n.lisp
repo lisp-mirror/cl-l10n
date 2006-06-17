@@ -76,13 +76,15 @@ implementation of that function
 (defmacro defresources (locale &body resources)
   (let ((locale-name (canonical-locale-name-from locale)))
     (cons 'progn
-          (loop for resource in resources
-                if (= 2 (length resource))
-                collect `(add-resource ,locale-name
-                          ',(first resource) nil ',(cdr resource))
-                else
-                collect `(add-resource ,locale-name
-                          ',(first resource) ',(second resource) ',(cddr resource))))))
+          (iter (for resource in resources)
+                (for name = (first resource))
+                (if (= 2 (length resource))
+                    (collect `(add-resource ,locale-name
+                               ',name nil ',(cdr resource)))
+                    (collect `(add-resource ,locale-name
+                               ',name ',(second resource) ',(cddr resource))))
+                (unless (starts-with (symbol-name name) "%")
+                  (collect `(export ',name)))))))
 
 (defmacro lookup-first-matching-resource (&body specs)
   "Try to look up the resource keys, return the first match, fallback to the first key.

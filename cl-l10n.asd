@@ -23,7 +23,12 @@
                (:file "printers" :depends-on ("load-locale"))
                (:file "parsers" :depends-on ("printers" "parse-number"))
                (:file "parse-time" :depends-on ("load-locale"))
-               (:file "i18n" :depends-on ("printers")))
+               (:file "i18n" :depends-on ("printers"))
+               (:module :languages
+                        :components ((:file "common")
+                                     (:file "english" :depends-on ("common"))
+                                     (:file "hungarian" :depends-on ("common")))
+                        :depends-on ("package" "utils")))
   :depends-on (:arnesi :iterate :cl-ppcre :cl-fad))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-l10n))))
@@ -34,7 +39,7 @@
   (oos 'test-op :cl-l10n-tests))
 
 (defsystem cl-l10n-tests
-  :depends-on (rt cl-l10n)
+  :depends-on (#:rt #:cl-l10n)
   :components ((:file "tests")))
 
 (defmethod perform ((op test-op) (sys (eql (find-system :cl-l10n-tests))))

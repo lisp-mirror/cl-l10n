@@ -5,6 +5,27 @@
 (defparameter *ignore-categories*
   (list "LC_CTYPE" "LC_COLLATE"))
 
+(defvar *resource-package* nil
+  "Resource files will be loaded into this package. I suggest to create a package called 'lang'
+and set/bind this variable to it before calling cl-l10n. Then all the defined resources will be in
+this new package and you can refer to them with lang:resource-name so it's easy to search, etc.
+
+An example:
+
+(defpackage :lang
+    (:use
+      :cl
+      :arnesi
+      :bind
+      :iterate
+      :cl-l10n))")
+
+(defmacro with-resource-package (package &body body)
+  `(let ((*resource-package* (find-package ,package)))
+    ,@body))
+
+(defparameter *common-resource-file-loaded-p* nil)
+
 (defparameter *language->default-locale-name* (make-hash-table :test #'equal)
   "This map specifies what is the default locale for locale specifications without a region (i.e. en_US for en)")
 
@@ -67,7 +88,9 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
                ((and use-cache (get-locale name)) it)
                (loader (setf (get-locale name) (funcall loader name)))
                ((probe-file (merge-pathnames *locale-path* name))
-                (setf (get-locale name) (load-locale name)))
+                (prog1
+                    (setf (get-locale name) (load-locale name))
+                  (load-resource name)))
                (t (funcall (if errorp #'error #'warn)
                            "Can't find locale ~A." name))))))
 
@@ -78,14 +101,15 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
   "The class of loaded categories")
 
 (defun load-locale (name)
-  (let ((path (merge-pathnames *locale-path* name))
+  (l10n-logger.debug "Trying to load locale ~A" name)
+  (let ((locale-file (merge-pathnames *locale-path* name))
         (ef #+sbcl :iso-8859-1
             #+clisp (ext:make-encoding :charset 'charset:iso-8859-1
                                        :line-terminator :unix)
-            #-(or sbcl clisp) :default)) 
-    (cl:format *debug-io* "~&;; Loading locale from ~A.~%" path)
+            #-(or sbcl clisp) :default))
+    (l10n-logger.info "Loading locale from ~A" locale-file)
     (let ((locale (make-instance *locale-type* :name name)))
-      (with-open-file (stream path :external-format ef)
+      (with-open-file (stream locale-file :external-format ef)
         (multiple-value-bind (escape comment) (munge-headers stream)
           (loop for header = (next-header stream)
                 while header do
@@ -96,6 +120,33 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
       (add-printers locale)
       (add-parsers locale)
       locale)))
+
+(defun load-resource (name)
+  (l10n-logger.debug "Trying to load resource ~A" name)
+  (unless *common-resource-file-loaded-p*
+    (setf *common-resource-file-loaded-p* t)
+    (load-resource "common"))
+  (let ((resource-file (merge-pathnames (make-pathname :directory
+                                                       '(:relative :up "resources")
+                                                       :name name
+                                                       :type "lisp")
+                                        *locale-path*)))
+    (awhen (probe-file resource-file)
+      (when (pathname-name it)
+        (l10n-logger.debug "Resource found at ~A" it)
+        (if *resource-package*
+            (let ((*package* *resource-package*))
+              (l10n-logger.info "Loading resource ~A into ~A" it *resource-package*)
+              (load it))
+            (progn
+              (l10n-logger.debug "*resource-package* is not set, skipped loading ~A" it)
+              (warn "*resource-package* is not set, skipped loading resource file ~A" it)))))))
+
+(defun reload-resources ()
+  (when *common-resource-file-loaded-p*
+    (load-resource "common"))
+  (iter (for (name nil) :in-hashtable *locales*)
+        (load-resource name)))
 
 (defun load-all-locales (&key (path *locale-path*) (ignore-errors nil) (use-cache nil))
   "Load all locale found in pathname designator PATH."

@@ -2,6 +2,16 @@
 ;; See the file LICENCE for licence information.
 (in-package #:cl-l10n)
 
+(deflogger l10n-logger ()
+  :level +info+
+  :appender (make-instance 'brief-stream-log-appender :stream t))
+
+(defun l10n-logger.level ()
+  (log.level (get-logger 'l10n-logger)))
+
+(defun (setf l10n-logger.level) (level)
+  (setf (log.level (get-logger 'l10n-logger.level)) level))
+
 ;;  Macros
 ;;;;;;;;;;;
 
@@ -21,6 +31,43 @@
 
 ;; Functions
 ;;;;;;;;;;;;;;
+
+(defun read-key->value-text-file-into-hashtable (file)
+  (with-input-from-file (stream file :external-format :utf-8)
+    (iter (with result = (make-hash-table :test #'equal))
+          (for line in-stream stream :using (lambda (stream eof-error-p eof-value)
+                                              (let ((result (read-line stream eof-error-p eof-value)))
+                                                (if (eq result eof-value)
+                                                    eof-value
+                                                    (trim result)))))
+          (for line-number from 0)
+          (when (or (zerop (length line))
+                    (starts-with line ";"))
+            (next-iteration))
+          (for pieces = (split (load-time-value
+                                (create-scanner
+                                 (strcat "[ |" #\Tab "]")))
+                               line))
+          (for split-count = (length pieces))
+          (when (> split-count 2)
+            (warn "Syntax error at line ~A, too many pieces after split: ~A" line-number pieces))
+          (for singular = (elt pieces 0))
+          (for plural = (if (= split-count 1)
+                            singular
+                            (elt pieces 1)))
+          (setf (gethash singular result) plural)
+          (finally (return result)))))
+
+(defun capitalize-first-letter (str)
+  (if (and (> (length str) 0)
+           (not (upper-case-p (elt str 0))))
+      (capitalize-first-letter! (copy-seq str))
+      str))
+
+(defun capitalize-first-letter! (str)
+  (setf (aref str 0) (char-upcase (aref str 0)))
+  str)
+
 (defun mappend (fn &rest lists)
   (apply #'append (apply #'mapcar fn lists)))
 

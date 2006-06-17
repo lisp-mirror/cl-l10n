@@ -149,6 +149,8 @@
 
 ;;; i18n tests 
 
+#| TODO: obolete
+
 (defvar *my-bundle* (make-instance 'bundle))
 
 (add-resources (*my-bundle* "af_")
@@ -164,6 +166,8 @@
 (deftest i18n.2
     (gettext "howareyou" *my-bundle* "af_ZA")
   "Hoe lyk it")
+
+|#
 
 ;;; format
 
