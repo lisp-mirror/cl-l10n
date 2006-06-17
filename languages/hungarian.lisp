@@ -31,5 +31,5 @@
            (if (vowelp last-letter)
                (emit word "k")
                (when-bind last-vowel (last-vowel-of word)
-                 (emit word last-vowel "k")))
+                 (emit word (string last-vowel) "k")))
            (emit word "-k")))))
