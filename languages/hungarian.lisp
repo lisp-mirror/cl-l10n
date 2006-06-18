@@ -21,7 +21,9 @@
               (last-letter (char-downcase original-last-letter)))
          (unless uppercase-provided-p
            (setf uppercase (upper-case-p original-last-letter)))
-         (macrolet ((emit (body &rest pieces)
+         (macrolet ((all-but-last (&optional (count 1))
+                      `(subseq word 0 (- length ,count)))
+                    (emit (body &rest pieces)
                       `(return-from hungarian-plural-of
                         (concatenate 'string ,body
                          ,@(iter (for piece in pieces)
@@ -29,7 +31,14 @@
                                             (string-upcase ,piece)
                                             ,piece)))))))
            (if (vowelp last-letter)
-               (emit word "k")
+               (cond ((eq last-letter #\e) (emit (all-but-last) "ék"))
+                     ((eq last-letter #\a) (emit (all-but-last) "ák"))
+                     #+nil((and (eq last-letter #\i) (melleknev -i kepzovel)) (emit word "ek"))
+                     (t (emit word "k")))
                (when-bind last-vowel (last-vowel-of word)
-                 (emit word (string last-vowel) "k")))
+                 (if (eq #\k last-letter)
+                     (emit word "ok")
+                     (if (high-vowel-p last-vowel)
+                         (emit word "ek")
+                         (emit word "ak")))))
            (emit word "-k")))))

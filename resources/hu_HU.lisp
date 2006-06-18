@@ -4,5 +4,5 @@
   (no "nem")
   (indefinit-article-for (str)
                          "egy")
-  (plural (str)
-          (hungarian-plural-of str)))
+  (plural-of (str)
+             (hungarian-plural-of str)))
