@@ -33,8 +33,14 @@ implementation of that function
                  (stringp (first body)))
             (first body)
             (eval `(lambda ,args ,@body))))
-  ;; make a function 
-  (setf (symbol-function name) (eval `(lambda (&rest args) (lookup-resource ',name args))))
+  (when (and args (not (get name :cl-l10n)))
+    ;; define a function with this name that'll look at the *locale* list and call the first
+    ;; locale specific lambda it finds while walking the locales
+    (when (fboundp name)
+      (warn "Redefining function definiton of ~S while adding locale specific resource" name))
+    (setf (symbol-function name) (eval `(lambda (&rest args) (lookup-resource ',name args))))
+    ;; leave a mark that it's been defined by us
+    (setf (get name :cl-l10n) t))
   name)
 
 (defun %lookup-resource (locale name args)
