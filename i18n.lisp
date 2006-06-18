@@ -49,15 +49,15 @@ implementation of that function
         (setf resource (gethash key *resources*)))
     ;; dispatch on resource type
     (cond ((functionp resource)
-           (apply resource args))
+           (values (apply resource args) t))
           ;; literal
           ((not (null resource))
-           resource)))))
+           (values resource t))))))
 
 (defun lookup-resource (name args &key (warn-if-missing t) (fallback-to-name t))
   (loop for locale in (if (consp *locale*) *locale* (list *locale*)) do
-        (let ((result (funcall '%lookup-resource locale name args)))
-          (when result
+        (multiple-value-bind (result foundp) (funcall '%lookup-resource locale name args)
+          (when foundp
             (return-from lookup-resource (values result t)))))
   (resource-not-found name warn-if-missing fallback-to-name))
 
