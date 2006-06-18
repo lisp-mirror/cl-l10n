@@ -62,7 +62,8 @@ An example:
 
 ;; set up the default region mappings while loading
 (eval-when (:load-toplevel :execute)
-  (iter (for (language locale) in '(("en" "en_US")))
+  (iter (for (language locale) in '(("en" "en_US")
+                                    ("English" "en_US")))
         (setf (gethash language *language->default-locale-name*)
               (canonical-locale-name-from locale)))
   (iter (for (language locale) in '(("posix" "POSIX")))
@@ -452,11 +453,30 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
                            collect (locale locale))
                      (locale locale-des))))
 
+(defun normalize-locale-list (locales)
+  "Makes sure that the locale list contains the default locales. E.g. a single
+en_GB is quite useless when it only contains overrides based on the default locale of
+the en language (en_US). So we insert en_US after en_GB."
+  (macrolet ((collectedp (locale)
+               `(find ,locale result :test #'eq)))
+    (iter (for locale in locales)
+          (for index from 0)
+          (for default-locale = (locale (gethash (language locale) *language->default-locale-name*)))
+          (if default-locale
+              (unless (collectedp locale)
+                (collect locale :into result)
+                (unless (collectedp default-locale)
+                  (collect default-locale :into result)))
+              (unless (collectedp locale)
+                (collect locale :into result)))
+          (finally (return result)))))
+
 (defmacro with-locale (locale &body body)
   (rebinding (locale)
-    `(let ((*locale* (if (consp ,locale)
-                         ,locale
-                         (locale ,locale))))
+    `(let ((*locale* (normalize-locale-list
+                      (if (consp ,locale)
+                          ,locale
+                          (list (locale ,locale))))))
       ,@body)))
 
 (defun load-default-locale ()
