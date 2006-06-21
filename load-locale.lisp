@@ -452,7 +452,8 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
 (defun normalize-locale-list (locales)
   "Makes sure that the locale list contains the default locales. E.g. a single
 en_GB is quite useless when it only contains overrides based on the default locale of
-the en language (en_US). So we insert en_US after en_GB."
+the en language (which is en_US). So we insert en_US right after en_GB. Also
+removes duplicate locales."
   (macrolet ((collectedp (locale)
                `(find ,locale result :test #'eq)))
     (iter (for locale in locales)

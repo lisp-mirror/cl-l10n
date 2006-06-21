@@ -12,7 +12,8 @@
 
 (defun english-plural-of (word &optional (uppercase nil uppercase-provided-p))
   "Returns the english plural of the given word."
-  ;; TODO http://www.reference.com/browse/wiki/English_plural
+  ;; http://www.reference.com/browse/wiki/English_plural
+  ;; http://www.csse.monash.edu.au/~damian/papers/HTML/Plurals.html
   (declare (type (simple-array character) word)
            (optimize (speed 3) (debug 0)))
   (aif (gethash (string-downcase word) *english-plural-overrides*)
@@ -38,7 +39,8 @@
                    ((and (eq last-letter2 #\i) (eq last-letter #\s)) (emit (all-but-last 2) "es"))
                    ((and (eq last-letter2 #\i) (eq last-letter #\x)) (emit (all-but-last 2) "ices"))
                    ((eq last-letter #\s) (emit word "ses"))
-                   ((and (eq last-letter2 #\t) (eq last-letter #\y)) (emit (all-but-last) "ies"))))
+                   ((and (not (vowelp last-letter2))
+                         (eq last-letter #\y)) (emit (all-but-last) "ies"))))
            (emit word "s")))))
 
 (defun english-indefinit-article-for (word)
