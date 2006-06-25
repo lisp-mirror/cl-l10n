@@ -470,10 +470,9 @@ removes duplicate locales."
 
 (defmacro with-locale (locale &body body)
   (rebinding (locale)
-    `(let ((*locale* (normalize-locale-list
-                      (if (consp ,locale)
-                          ,locale
-                          (list (locale ,locale))))))
+    `(let ((*locale* (if (consp ,locale)
+                         ,locale
+                         (list (locale ,locale)))))
       ,@body)))
 
 (defun load-default-locale ()

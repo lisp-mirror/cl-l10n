@@ -15,6 +15,7 @@
            #:get-category
            #:locale-value
            #:load-all-locales
+           #:normalize-locale-list
            #:get-locale
            #:set-locale
            #:with-locale
