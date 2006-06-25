@@ -39,8 +39,8 @@
                    ((and (eq last-letter2 #\i) (eq last-letter #\s)) (emit (all-but-last 2) "es"))
                    ((and (eq last-letter2 #\i) (eq last-letter #\x)) (emit (all-but-last 2) "ices"))
                    ((eq last-letter #\s) (emit word "ses"))
-                   ((and (not (vowelp last-letter2))
-                         (eq last-letter #\y)) (emit (all-but-last) "ies"))))
+                   ((and (eq last-letter #\y)
+                         (not (vowelp last-letter2))) (emit (all-but-last) "ies"))))
            (emit word "s")))))
 
 (defun english-indefinit-article-for (word)
