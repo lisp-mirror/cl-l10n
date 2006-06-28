@@ -155,8 +155,8 @@ Be careful when using in different situations, because it modifies *readtable*."
 (defgeneric localize (object)
   (:documentation "Override this generic method for various data types. Return (values result foundp)."))
 
-(defmethod localize ((str string))
-  (lookup-resource str nil))
+(defmethod localize ((resource-name t))
+  "By default we look up everything as a constant or a function with zero args."
+  (lookup-resource resource-name nil))
 
-(defmethod localize ((str symbol))
-  (lookup-resource str nil))
+
