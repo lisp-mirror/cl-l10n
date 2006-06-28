@@ -120,9 +120,6 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
 
 (defun load-resource (name)
   (l10n-logger.debug "Trying to load resource ~A" name)
-  (unless *common-resource-file-loaded-p*
-    (setf *common-resource-file-loaded-p* t)
-    (load-resource "common"))
   (let ((resource-file (merge-pathnames (make-pathname :directory
                                                        '(:relative :up "resources")
                                                        :name name
@@ -137,13 +134,17 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
               (load it))
             (progn
               (l10n-logger.debug "*resource-package* is not set, skipped loading ~A" it)
-              (warn "*resource-package* is not set, skipped loading resource file ~A" it)))))))
+              (warn "*resource-package* is not set, skipped loading resource file ~A" it))))))
+  (unless *common-resource-file-loaded-p*
+    (setf *common-resource-file-loaded-p* t)
+    (load-resource "common")))
 
 (defun reload-resources ()
-  (when *common-resource-file-loaded-p*
-    (load-resource "common"))
-  (iter (for (name nil) :in-hashtable *locales*)
-        (load-resource name)))
+  (let ((common-was-loaded-p *common-resource-file-loaded-p*))
+    (iter (for (name nil) :in-hashtable *locales*)
+          (load-resource name))
+    (when common-was-loaded-p
+      (load-resource "common"))))
 
 (defun load-all-locales (&key (path *locale-path*) (ignore-errors nil) (use-cache nil))
   "Load all locale found in pathname designator PATH."
