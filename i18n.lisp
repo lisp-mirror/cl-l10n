@@ -26,14 +26,15 @@ implementation of that function
 (define-condition resource-missing (warning)
   ((name :accessor name-of :initarg :name)))
 
-(defun add-resource (locale name args body)
+(defun add-resource (locale name body &optional (args nil args-provided-p))
   ;; store in resouce map
   (setf (gethash (resource-key locale name) *resources*)
         (if (and (= (length body) 1)
                  (stringp (first body)))
             (first body)
             (eval `(lambda ,args ,@body))))
-  (when (and args (not (get name :cl-l10n)))
+  (when (and args-provided-p
+             (not (get name :cl-l10n)))
     ;; define a function with this name that'll look at the *locale* list and call the first
     ;; locale specific lambda it finds while walking the locales
     (when (fboundp name)
@@ -86,9 +87,9 @@ implementation of that function
                 (for name = (first resource))
                 (if (= 2 (length resource))
                     (collect `(add-resource ,locale-name
-                               ',name nil ',(cdr resource)))
+                               ',name ',(cdr resource)))
                     (collect `(add-resource ,locale-name
-                               ',name ',(second resource) ',(cddr resource))))
+                               ',name ',(cddr resource) ',(second resource))))
                 (unless (starts-with (symbol-name name) "%")
                   (collect `(export ',name)))))))
 
