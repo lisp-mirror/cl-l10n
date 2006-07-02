@@ -167,6 +167,9 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
       *default-thousands-sep*))
 
 (defun create-number-fmt-string (locale no-ts)
+  ;; TODO: Quick workaround for buggy format in openmcl which prints the
+  ;; commachar even when the : modifier is not present.
+  #+openmcl (when no-ts (return-from create-number-fmt-string "~A~D~{~A~}"))
   (cl:format nil "~~A~~,,'~A,~A~A~~{~~A~~}" 
              (thousands-sep-char (locale-thousands-sep locale))
              (if (minusp (locale-grouping locale)) 3 (locale-grouping locale))
@@ -198,10 +201,14 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
         (when prec
           (princ sym-sep stream))
         ;; Actual number
-        (cl:format stream "~~,,'~A,~A~A~~{~~A~~}" 
+        ;; TODO: workaround for buggy format in openmcl
+        ;; (see create-number-fmt-string above)
+        #+openmcl (when no-ts (write-string "~D~{~A~}" stream))
+        (unless #+openmcl no-ts #-openmcl nil
+          (cl:format stream "~~,,'~A,~A~A~~{~~A~~}"
                    (thousands-sep-char (locale-mon-thousands-sep locale))
                    (if (minusp (locale-mon-grouping locale)) 3 (locale-mon-grouping locale))
-                   (if no-ts "D" ":D"))
+                   (if no-ts "D" ":D")))
         (unless prec
           (princ sym-sep stream))
         (princ "~A" stream)

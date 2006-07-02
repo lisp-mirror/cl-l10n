@@ -246,6 +246,17 @@
 	  (setf (decoded-time-dotw default-time) dotw))
       default-time)))
 
+;;; TODO: Taken from SBCL, delete when openmcl is fixed.
+#+openmcl
+(defun pick-obvious-year (year)
+  (declare (type (mod 100) year))
+  (let* ((current-year (nth-value 5 (get-decoded-time)))
+         (guess (+ year (* (truncate (- current-year 50) 100) 100))))
+    (declare (type (integer 1900 9999) current-year guess))
+    (if (> (- current-year guess) 50)
+        (+ guess 100)
+        guess)))
+
 ;;; Converts the values in the decoded-time structure to universal time
 ;;; by calling encode-universal-time.
 ;;; If zone is in numerical form, tweeks it appropriately.
@@ -253,18 +264,23 @@
 (defun convert-to-unitime (parsed-values)
   (let ((zone (decoded-time-zone parsed-values)))
     (encode-universal-time (decoded-time-second parsed-values)
-			   (decoded-time-minute parsed-values)
-			   (decoded-time-hour parsed-values)
-			   (decoded-time-day parsed-values)
-			   (decoded-time-month parsed-values)
-			   (decoded-time-year parsed-values)
-			   (if (or (> zone 24) (< zone -24))
-			       (let ((new-zone (/ zone 100)))
-				 (cond ((minusp new-zone) (- new-zone))
-				       ((plusp new-zone) (- new-zone))
-				       ;; must be zero (GMT)
-				       (t new-zone)))
-			       zone))))
+                           (decoded-time-minute parsed-values)
+                           (decoded-time-hour parsed-values)
+                           (decoded-time-day parsed-values)
+                           (decoded-time-month parsed-values)
+                           ;; TODO: workaround for openmcl
+                           #+openmcl (let ((year (decoded-time-year parsed-values)))
+                                       (if (< year 100)
+                                           (pick-obvious-year year)
+                                           year))
+                           #-openmcl (decoded-time-year parsed-values) 
+                           (if (or (> zone 24) (< zone -24))
+                               (let ((new-zone (/ zone 100)))
+                                 (cond ((minusp new-zone) (- new-zone))
+                                       ((plusp new-zone) (- new-zone))
+                                       ;; must be zero (GMT)
+                                       (t new-zone)))
+                               zone))))
 
 ;;; Sets the current values for the time and/or date parts of the 
 ;;; decoded time structure.
