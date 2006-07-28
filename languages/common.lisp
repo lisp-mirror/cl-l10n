@@ -1,5 +1,6 @@
 ;;; -*- Mode: LISP; Syntax: ANSI-Common-Lisp; Base: 10; encoding: utf-8 -*-
 ;; See the file LICENCE for licence information.
+
 (in-package #:cl-l10n)
 
 (defparameter *consonants* (iter (with result = (make-hash-table :test #'eq))
@@ -17,18 +18,17 @@
 
 (defparameter *vowels*
   (let ((result (make-hash-table :test #'eq)))
-    ;; low vowels
     (flet ((make-entry (entry)
              (make-vowel-entry :low-p (first entry)
                                :normal-variant (second entry)
                                :acute-variant (third entry)
                                :double-acute-variant (fourth entry))))
       (iter (for entry in
-                 '((t #\a #\LATIN_SMALL_LETTER_A_WITH_ACUTE)
-                   (t #\o #\LATIN_SMALL_LETTER_O_WITH_ACUTE #\LATIN_SMALL_LETTER_O_WITH_DOUBLE_ACUTE)
-                   (t #\u #\LATIN_SMALL_LETTER_U_WITH_ACUTE #\LATIN_SMALL_LETTER_U_WITH_DOUBLE_ACUTE)
-                   (nil #\e #\LATIN_SMALL_LETTER_E_WITH_ACUTE)
-                   (nil #\i #\LATIN_SMALL_LETTER_I_WITH_ACUTE)
+                 '((t #\a #.(code-char 225))
+                   (t #\o #.(code-char 243) #.(code-char 337))
+                   (t #\u #.(code-char 250) #.(code-char 369))
+                   (nil #\e #.(code-char 233))
+                   (nil #\i #.(code-char 237))
                    ))
             (for char = (second entry))
             (setf (gethash char result) (make-entry entry))
@@ -45,36 +45,35 @@
 (defun vowel-entry-for (char)
   (declare (type character char)
            (optimize (speed 3) (debug 0))
-           (inline vowel-entry-for))
+           (inline))
   (gethash (char-downcase char) *vowels*))
 
-(iter (for char in (list #\LATIN_SMALL_LETTER_O_WITH_ACUTE #\LATIN_SMALL_LETTER_O_WITH_DOUBLE_ACUTE
-                         #\LATIN_SMALL_LETTER_U_WITH_ACUTE #\LATIN_SMALL_LETTER_U_WITH_DOUBLE_ACUTE))
+(iter (for char in (list #.(code-char 243) #.(code-char 337) #.(code-char 250) #.(code-char 369)))
       (setf (vowel-low-p (vowel-entry-for char)) t))
 
 (defun consonantp (char)
   (declare (type character char)
            (optimize (speed 3) (debug 0))
-           (inline consonantp))
+           (inline))
   (gethash (char-downcase char) *consonants*))
 
 (defun vowelp (char)
   (declare (type character char)
            (optimize (speed 3) (debug 0))
-           (inline vowelp))
+           (inline))
   (vowel-entry-for char))
 
 (defun high-vowel-p (char)
   (declare (type character char)
            (optimize (speed 3) (debug 0))
-           (inline vowelp))
+           (inline))
   (aif (vowel-entry-for char)
        (not (vowel-low-p it))))
 
 (defun low-vowel-p (char)
   (declare (type character char)
            (optimize (speed 3) (debug 0))
-           (inline vowelp))
+           (inline))
   (aif (vowel-entry-for char)
        (vowel-low-p it)))
 
@@ -98,14 +97,14 @@
 (defun starts-with-consonant-p (str)
   (declare (type (simple-array character) str)
            (optimize (speed 3) (debug 0))
-           (inline starts-with-consonant-p))
+           (inline))
   (unless (zerop (length str))
     (consonantp (elt str 0))))
 
 (defun starts-with-vowel-p (str)
   (declare (type (simple-array character) str)
            (optimize (speed 3) (debug 0))
-           (inline starts-with-vowel-p))
+           (inline))
   (unless (zerop (length str))
     (vowelp (elt str 0))))
 
