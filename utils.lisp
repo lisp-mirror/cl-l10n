@@ -46,7 +46,7 @@
             (next-iteration))
           (for pieces = (split (load-time-value
                                 (create-scanner
-                                 (strcat "[ |" #\Tab "]")))
+                                 (strcat "[ |" #\Tab "]+")))
                                line))
           (for split-count = (length pieces))
           (when (> split-count 2)
