@@ -6,7 +6,7 @@
 (defparameter *english-plural-overrides*
   (read-key->value-text-file-into-hashtable
    (merge-pathnames (make-pathname :directory '(:relative "languages")
-                                   :name "english-plural-overrites"
+                                   :name "english-plural-overrides"
                                    :type "text")
                     (asdf:component-pathname (asdf:find-system :cl-l10n)))))
 

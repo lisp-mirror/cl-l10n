@@ -5,7 +5,7 @@
 (defparameter *hungarian-plural-overrides*
   (read-key->value-text-file-into-hashtable
    (merge-pathnames (make-pathname :directory '(:relative "languages")
-                                   :name "hungarian-plural-overrites"
+                                   :name "hungarian-plural-overrides"
                                    :type "text")
                     (asdf:component-pathname (asdf:find-system :cl-l10n)))))
 
