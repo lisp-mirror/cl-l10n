@@ -48,18 +48,14 @@ implementation of that function
   (declare (type locale locale)
            (type (or symbol string) name))
   (let* ((key (resource-key locale name)))
-    (multiple-value-bind (resource found)
+    (multiple-value-bind (resource foundp)
         (gethash key *resources*)
-      (unless found
-        ;; try again with the default locale for the language
-        (setf key (resource-key (canonical-locale-name-from (first (split "_" (locale-name locale)))) name))
-        (setf resource (gethash key *resources*)))
-    ;; dispatch on resource type
-    (cond ((functionp resource)
-           (values (apply resource args) t))
-          ;; literal
-          ((not (null resource))
-           (values resource t))))))
+      (if foundp
+          ;; dispatch on resource type
+          (if (functionp resource)
+              (values (apply resource args) t)
+              (values resource t))      ; a simple literal
+          (values nil nil)))))
 
 (defun lookup-resource (name args &key (warn-if-missing t) (fallback-to-name t))
   (loop for locale in (if (consp *locale*) *locale* (list *locale*)) do
