@@ -16,32 +16,34 @@
   ;; http://www.csse.monash.edu.au/~damian/papers/HTML/Plurals.html
   (declare (type (simple-array character) word)
            (optimize (speed 3) (debug 0)))
-  (aif (gethash (string-downcase word) *english-plural-overrides*)
-       (return-from english-plural-of it)
-       (let* ((length (length word))
-              (original-last-letter (elt word (1- length)))
-              (last-letter (char-downcase original-last-letter))
-              (last-letter2 (char-downcase (elt word (- length 2)))))
-         (unless uppercase-provided-p
-           (setf uppercase (upper-case-p original-last-letter)))
-         (macrolet ((all-but-last (&optional (count 1))
-                      `(subseq word 0 (- length ,count)))
-                    (emit (body postfix)
-                      `(return-from english-plural-of
-                        (concatenate 'string ,body
-                         (if uppercase
-                             (string-upcase ,postfix)
-                             ,postfix)))))
-           (when (>= length 2)
-             (cond ((or (and (eq last-letter2 #\s) (eq last-letter #\s))
-                        (and (eq last-letter2 #\e) (eq last-letter #\x)))
-                    (emit word "es"))
-                   ((and (eq last-letter2 #\i) (eq last-letter #\s)) (emit (all-but-last 2) "es"))
-                   ((and (eq last-letter2 #\i) (eq last-letter #\x)) (emit (all-but-last 2) "ices"))
-                   ((eq last-letter #\s) (emit word "ses"))
-                   ((and (eq last-letter #\y)
-                         (not (vowelp last-letter2))) (emit (all-but-last) "ies"))))
-           (emit word "s")))))
+  (let ((length (length word)))
+    (when (< length 2)
+      (error "There's no English word with less then two letters"))
+    (aif (gethash (string-downcase word) *english-plural-overrides*)
+         (return-from english-plural-of it)
+         (let* ((original-last-letter (elt word (1- length)))
+                (last-letter (char-downcase original-last-letter))
+                (last-letter2 (char-downcase (elt word (- length 2)))))
+           (unless uppercase-provided-p
+             (setf uppercase (upper-case-p original-last-letter)))
+           (macrolet ((all-but-last (&optional (count 1))
+                        `(subseq word 0 (- length ,count)))
+                      (emit (body postfix)
+                        `(return-from english-plural-of
+                          (concatenate 'string ,body
+                           (if uppercase
+                               (string-upcase ,postfix)
+                               ,postfix)))))
+             (when (>= length 2)
+               (cond ((or (and (eq last-letter2 #\s) (eq last-letter #\s))
+                          (and (eq last-letter2 #\e) (eq last-letter #\x)))
+                      (emit word "es"))
+                     ((and (eq last-letter2 #\i) (eq last-letter #\s)) (emit (all-but-last 2) "es"))
+                     ((and (eq last-letter2 #\i) (eq last-letter #\x)) (emit (all-but-last 2) "ices"))
+                     ((eq last-letter #\s) (emit word "ses"))
+                     ((and (eq last-letter #\y)
+                           (not (vowelp last-letter2))) (emit (all-but-last) "ies"))))
+             (emit word "s"))))))
 
 (defun english-indefinit-article-for (word)
   "Returns a/an for the given word."

@@ -12,9 +12,11 @@
   (low-p nil :type boolean)
   (acute-p nil :type boolean)
   (double-acute-p nil :type boolean)
+  (diaresis-p nil :type boolean)
   (normal-variant #\x :type character)
   (acute-variant nil :type (or null character))
-  (double-acute-variant nil :type (or null character)))
+  (double-acute-variant nil :type (or null character))
+  (diaresis-variant nil :type (or null character)))
 
 (defparameter *vowels*
   (let ((result (make-hash-table :test #'eq)))
@@ -22,11 +24,13 @@
              (make-vowel-entry :low-p (first entry)
                                :normal-variant (second entry)
                                :acute-variant (third entry)
-                               :double-acute-variant (fourth entry))))
+                               :double-acute-variant (fourth entry)
+                               :diaresis-variant (fifth entry))))
       (iter (for entry in
+                 ;; low-p char acute double-acute diaresis
                  '((t #\a #.(code-char 225))
-                   (t #\o #.(code-char 243) #.(code-char 337))
-                   (t #\u #.(code-char 250) #.(code-char 369))
+                   (t #\o #.(code-char 243) #.(code-char 337) #.(code-char 246))
+                   (t #\u #.(code-char 250) #.(code-char 369) #.(code-char 252))
                    (nil #\e #.(code-char 233))
                    (nil #\i #.(code-char 237))
                    ))
@@ -39,7 +43,11 @@
             (awhen (fourth entry)
               (let ((double-acute-entry (make-entry entry)))
                 (setf (vowel-double-acute-p double-acute-entry) t)
-                (setf (gethash it result) double-acute-entry)))))
+                (setf (gethash it result) double-acute-entry)))
+            (awhen (fifth entry)
+              (let ((diaresis-entry (make-entry entry)))
+                (setf (vowel-diaresis-p diaresis-entry) t)
+                (setf (gethash it result) diaresis-entry)))))
     result))
 
 (defun vowel-entry-for (char)
@@ -48,8 +56,9 @@
            (inline))
   (gethash (char-downcase char) *vowels*))
 
-(iter (for char in (list #.(code-char 243) #.(code-char 337) #.(code-char 250) #.(code-char 369)))
-      (setf (vowel-low-p (vowel-entry-for char)) t))
+(iter (for char in (list #.(code-char 243) #.(code-char 337) #.(code-char 246) #.(code-char 250) #.(code-char 369)
+                         #.(code-char 252)))
+      (setf (vowel-low-p (vowel-entry-for char)) nil))
 
 (defun consonantp (char)
   (declare (type character char)
