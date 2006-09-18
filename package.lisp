@@ -10,6 +10,7 @@
   (:export #:locale-name
            #:category-name
            #:locale
+           #:current-locale
            #:category
            #:locale-error
            #:get-category
