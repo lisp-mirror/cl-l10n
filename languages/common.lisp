@@ -18,6 +18,11 @@
   (double-acute-variant nil :type (or null character))
   (diaresis-variant nil :type (or null character)))
 
+(eval-always
+  (defun unicode-char-or-nil (code)
+    (when (< code char-code-limit)
+      (code-char code))))
+
 (defparameter *vowels*
   (let ((result (make-hash-table :test #'eq)))
     (flet ((make-entry (entry)
@@ -28,11 +33,11 @@
                                :diaresis-variant (fifth entry))))
       (iter (for entry in
                  ;; low-p char acute double-acute diaresis
-                 '((t #\a #.(code-char 225))
-                   (t #\o #.(code-char 243) #.(code-char 337) #.(code-char 246))
-                   (t #\u #.(code-char 250) #.(code-char 369) #.(code-char 252))
-                   (nil #\e #.(code-char 233))
-                   (nil #\i #.(code-char 237))
+                 '((t #\a (code-char 225))
+                   (t #\o (code-char 243) #.(unicode-char-or-nil 337) (code-char 246))
+                   (t #\u (code-char 250) #.(unicode-char-or-nil 369) (code-char 252))
+                   (nil #\e (code-char 233))
+                   (nil #\i (code-char 237))
                    ))
             (for char = (second entry))
             (setf (gethash char result) (make-entry entry))
@@ -56,8 +61,8 @@
            (inline))
   (gethash (char-downcase char) *vowels*))
 
-(iter (for char in (list #.(code-char 243) #.(code-char 337) #.(code-char 246) #.(code-char 250) #.(code-char 369)
-                         #.(code-char 252)))
+(iter (for char in (append (list (code-char 243) (code-char 246) (code-char 250) (code-char 252))
+                           #+unicode(list (code-char 337) (code-char 369))))
       (setf (vowel-low-p (vowel-entry-for char)) nil))
 
 (defun consonantp (char)
