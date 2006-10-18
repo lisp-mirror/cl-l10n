@@ -43,6 +43,6 @@
   :components ((:file "tests")))
 
 (defmethod perform ((op test-op) (sys (eql (find-system :cl-l10n-tests))))
-  (funcall (find-symbol "DO-TESTS" "REGRESSION-TEST")))
+  (eval (read-from-string "(regression-test:do-tests)")))
 
 ;; EOF
