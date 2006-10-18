@@ -40,6 +40,7 @@
                    (nil #\i (code-char 237))
                    ))
             (for char = (second entry))
+            (setf entry (mapcar #'eval entry))
             (setf (gethash char result) (make-entry entry))
             (awhen (third entry)
               (let ((acute-entry (make-entry entry)))
