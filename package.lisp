@@ -47,7 +47,7 @@
            #:lookup-resource
            #:lookup-resource-without-fallback
            #:localize
-           #:missing-resource
+           #:resource-missing
            #:defresources
            #:enable-sharpquote-reader
            #:with-sharpquote-reader

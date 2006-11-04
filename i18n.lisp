@@ -71,7 +71,7 @@ implementation of that function
 
 (defun resource-not-found (name warn-if-missing fallback-to-name)
   (if warn-if-missing
-      (signal 'resource-missing :name name))
+      (warn 'resource-missing :name name))
   (values (if fallback-to-name
               (string-downcase (string name)))
           nil))
