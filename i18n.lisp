@@ -17,31 +17,34 @@ implementation of that function
 (defvar *resources* (make-hash-table :test 'equal))
 
 (defun clear-resources ()
-  (setf *resources* (make-hash-table :test 'equal)))
+  (clrhash *resources*))
 
 (defun resource-key (locale name)
+  (declare (type (or string symbol) name)
+           (type (or string locale) locale))
   (list (if (stringp locale) locale (locale-name locale))
         (if (stringp name) (string-downcase name) (string-downcase (symbol-name name)))))
 
 (define-condition resource-missing (warning)
   ((name :accessor name-of :initarg :name)))
 
-(defun add-resource (locale name body &optional (args nil args-provided-p))
-  ;; store in resouce map
-  (setf (gethash (resource-key locale name) *resources*)
-        (if (and (= (length body) 1)
-                 (stringp (first body)))
-            (first body)
-            (eval `(lambda ,args ,@body))))
-  (when (and args-provided-p
-             (not (get name :cl-l10n)))
+(defun add-resource (locale name resource)
+  "Store the RESOURCE in the resource map at the given locale. When RESOURCE
+is functionp then define a function on NAME that will dispatch on *locale* when called
+and call the lambda resource registered for the current locale."
+  (declare (type (or string symbol) name)
+           (type (or string locale) locale))
+  (setf (gethash (resource-key locale name) *resources*) resource)
+  (when (and (functionp resource)
+             (not (get name 'cl-l10n-entry-function)))
     ;; define a function with this name that'll look at the *locale* list and call the first
     ;; locale specific lambda it finds while walking the locales
     (when (fboundp name)
       (warn "Redefining function definiton of ~S while adding locale specific resource" name))
-    (setf (symbol-function name) (eval `(lambda (&rest args) (lookup-resource ',name args))))
+    (setf (symbol-function name) (lambda (&rest args)
+                                   (lookup-resource name args)))
     ;; leave a mark that it's been defined by us
-    (setf (get name :cl-l10n) t))
+    (setf (get name 'cl-l10n-entry-function) t))
   name)
 
 (defun %lookup-resource (locale name args)
@@ -83,9 +86,10 @@ implementation of that function
                 (for name = (first resource))
                 (if (= 2 (length resource))
                     (collect `(add-resource ,locale-name
-                               ',name ',(cdr resource)))
+                               ',name ',(second resource)))
                     (collect `(add-resource ,locale-name
-                               ',name ',(cddr resource) ',(second resource))))
+                               ',name (lambda ,(second resource)
+                                        ,@(cddr resource)))))
                 (unless (starts-with (symbol-name name) "%")
                   (collect `(export ',name)))))))
 
