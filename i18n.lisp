@@ -28,6 +28,18 @@ implementation of that function
 (define-condition resource-missing (warning)
   ((name :accessor name-of :initarg :name)))
 
+(defun set-resource-lookup-function (name)
+  (unless (get name 'cl-l10n-entry-function)
+    ;; define a function with this name that'll look at the *locale* list and call the first
+    ;; locale specific lambda it finds while walking the locales
+    (when (fboundp name)
+      (warn "Redefining function definiton of ~S while adding locale specific resource" name))
+    (setf (symbol-function name)
+          (lambda (&rest args)
+            (lookup-resource name args)))
+    ;; leave a mark that it's been defined by us
+    (setf (get name 'cl-l10n-entry-function) t)))
+
 (defun add-resource (locale name resource)
   "Store the RESOURCE in the resource map at the given locale. When RESOURCE
 is functionp then define a function on NAME that will dispatch on *locale* when called
@@ -35,16 +47,8 @@ and call the lambda resource registered for the current locale."
   (declare (type (or string symbol) name)
            (type (or string locale) locale))
   (setf (gethash (resource-key locale name) *resources*) resource)
-  (when (and (functionp resource)
-             (not (get name 'cl-l10n-entry-function)))
-    ;; define a function with this name that'll look at the *locale* list and call the first
-    ;; locale specific lambda it finds while walking the locales
-    (when (fboundp name)
-      (warn "Redefining function definiton of ~S while adding locale specific resource" name))
-    (setf (symbol-function name) (lambda (&rest args)
-                                   (lookup-resource name args)))
-    ;; leave a mark that it's been defined by us
-    (setf (get name 'cl-l10n-entry-function) t))
+  (when (functionp resource)
+    (set-resource-lookup-function name))
   name)
 
 (defun %lookup-resource (locale name args)
@@ -81,8 +85,14 @@ and call the lambda resource registered for the current locale."
 
 (defmacro defresources (locale &body resources)
   (let ((locale-name (canonical-locale-name-from locale)))
-    (cons 'progn
-          (iter (for resource in resources)
+    `(progn
+      (eval-when (:compile-toplevel)
+        ,@(iter (for resource in resources)
+                (for name = (first resource))
+                (unless (= 2 (length resource))
+                  (collect `(set-resource-lookup-function ',name)))))
+      (eval-when (:load-toplevel :execute)
+        ,@(iter (for resource in resources)
                 (for name = (first resource))
                 (if (= 2 (length resource))
                     (collect `(add-resource ,locale-name
@@ -91,7 +101,7 @@ and call the lambda resource registered for the current locale."
                                ',name (lambda ,(second resource)
                                         ,@(cddr resource)))))
                 (unless (starts-with (symbol-name name) "%")
-                  (collect `(export ',name)))))))
+                  (collect `(export ',name))))))))
 
 (defmacro lookup-first-matching-resource (&body specs)
   "Try to look up the resource keys, return the first match, fallback to the first key.
