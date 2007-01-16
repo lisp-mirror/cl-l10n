@@ -127,7 +127,7 @@ determine the number of zero's to print")
          (princ 0 stream))
         (t       
          (loop with stop-value = (expt 10 size)
-               for x integer = (* val 10) then (* x 10)
+               for x of-type integer = (* val 10) then (* x 10)
                until (>= x stop-value) do
                (princ pad stream))
          (princ val stream))))
