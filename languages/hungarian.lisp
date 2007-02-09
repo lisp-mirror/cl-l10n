@@ -46,8 +46,6 @@
                   #+nil((and (eq last-letter #\i) (melleknev -i kepzovel)) (emit word "ek"))
                   (t (emit word "k")))
             (when-bind last-vowel (last-vowel-of word)
-              (when (eq #\k last-letter)
-                (emit word "ok"))
               ;; handle -zat,-zet,-zás,-zés
               (when (and (eq #\z last-letter3)
                          (or (and (or (eq #\a last-letter2)
@@ -60,15 +58,15 @@
                                    (eq #.(code-char 225) last-letter2))
                                "ok"
                                "ek")))
-              ;; handle -at
-              (when (and (eq #\a last-letter2)
-                         (eq #\t last-letter))
+              ;; handle -at, -um
+              (when (or (and (eq #\a last-letter2)
+                             (eq #\t last-letter))
+                        (and (eq #\u last-letter2)
+                             (eq #\m last-letter)))
                 (emit word "ok"))
               (if (high-vowel-p last-vowel)
                   (cond ((eq last-vowel #.(code-char 246))
                          (emit word "ök"))
                         (t (emit word "ek")))
-                  (cond ((eq last-vowel #\o)
-                         (emit word "ok"))
-                        (t (emit word "ak"))))))
+                  (emit word "ok"))))
         (emit word "-k")))))
