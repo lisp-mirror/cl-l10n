@@ -100,7 +100,7 @@ and call the lambda resource registered for the current locale."
                     (collect `(add-resource ,locale-name
                                ',name (lambda ,(second resource)
                                         ,@(cddr resource)))))
-                (unless (starts-with (symbol-name name) "%")
+                (unless (eql (aref (symbol-name name) 0) #\%)
                   (collect `(export ',name))))))))
 
 (defmacro lookup-first-matching-resource (&body specs)

@@ -105,24 +105,25 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
   "The class of loaded categories")
 
 (defun load-locale (name)
-  (l10n-logger.debug "Trying to load locale ~A" name)
+  ;;(l10n-logger.debug "Trying to load locale ~A" name)
   (let ((locale-file (merge-pathnames *locale-path* name)))
-    (l10n-logger.info "Loading locale from ~A" locale-file)
+    ;;(l10n-logger.info "Loading locale from ~A" locale-file)
     (let ((locale (make-instance *locale-type* :name name)))
-      (with-input-from-file (stream locale-file :external-format (encoding-keyword-to-native :us-ascii))
-        (multiple-value-bind (escape comment) (munge-headers stream)
-          (loop for header = (next-header stream)
-                while header do
-                (when-bind cat (make-category locale header 
-                                              (parse-category header stream
-                                                              escape comment))
-                  (setf (get-category locale header) cat)))))
+      (with-open-file (file-stream locale-file :element-type '(unsigned-byte 8))
+        (let ((stream (make-flexi-stream file-stream :external-format :us-ascii)))
+          (multiple-value-bind (escape comment) (munge-headers stream)
+            (loop for header = (next-header stream)
+                  while header do
+                  (when-bind cat (make-category locale header
+                                                (parse-category header stream
+                                                                escape comment))
+                    (setf (get-category locale header) cat))))))
       (add-printers locale)
       (add-parsers locale)
       locale)))
 
 (defun load-resource (name)
-  (l10n-logger.debug "Trying to load resource ~A" name)
+  ;;(l10n-logger.debug "Trying to load resource ~A" name)
   (let ((resource-file (merge-pathnames (make-pathname :directory
                                                        '(:relative :up "resources")
                                                        :name name
@@ -130,13 +131,13 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
                                         *locale-path*)))
     (awhen (probe-file resource-file)
       (when (pathname-name it)
-        (l10n-logger.debug "Resource found at ~A" it)
+        ;;(l10n-logger.debug "Resource found at ~A" it)
         (if *resource-package*
             (let ((*package* *resource-package*))
-              (l10n-logger.info "Loading resource ~A into ~A" it *resource-package*)
+              ;;(l10n-logger.info "Loading resource ~A into ~A" it *resource-package*)
               (load it))
             (progn
-              (l10n-logger.debug "*resource-package* is not set, skipped loading ~A" it)
+              ;;(l10n-logger.debug "*resource-package* is not set, skipped loading ~A" it)
               (warn "*resource-package* is not set, skipped loading resource file ~A" it))))))
   (unless *common-resource-file-loaded-p*
     (setf *common-resource-file-loaded-p* t)

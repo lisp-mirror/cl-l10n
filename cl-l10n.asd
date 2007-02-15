@@ -29,7 +29,7 @@
                                      (:file "english" :depends-on ("common"))
                                      (:file "hungarian" :depends-on ("common")))
                         :depends-on ("package" "utils")))
-  :depends-on (:arnesi :iterate :cl-ppcre :cl-fad))
+  :depends-on (:iterate :cl-ppcre :cl-fad :flexi-streams))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-l10n))))
   (provide 'cl-l10n))

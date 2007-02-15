@@ -18,7 +18,7 @@
   (double-acute-variant nil :type (or null character))
   (diaresis-variant nil :type (or null character)))
 
-(eval-always
+(eval-when (:compile-toplevel :load-toplevel :execute)
   (defun unicode-char-or-nil (code)
     (when (< code char-code-limit)
       (code-char code))))
@@ -100,11 +100,11 @@
         (finding char :such-that (vowelp char))))
 
 (macrolet ((define (variant)
-               `(defun ,(intern-concat (list "VOWEL-" variant "-VARIANT-OF")) (char)
+               `(defun ,(concatenate-symbol "VOWEL-" variant "-VARIANT-OF") (char)
                  (declare (type character char)
                   (optimize (speed 3) (debug 0)))
                  (awhen (vowel-entry-for char)
-                   (,(intern-concat (list "VOWEL-" variant "-VARIANT")) it)))))
+                   (,(concatenate-symbol "VOWEL-" variant "-VARIANT") it)))))
   (define normal)
   (define acute)
   (define double-acute))

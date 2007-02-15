@@ -2,16 +2,6 @@
 ;; See the file LICENCE for licence information.
 (in-package #:cl-l10n)
 
-(deflogger l10n-logger ()
-  :level +info+
-  :appender (make-instance 'brief-stream-log-appender :stream t))
-
-(defun l10n-logger.level ()
-  (log.level (get-logger 'l10n-logger)))
-
-(defun (setf l10n-logger.level) (level)
-  (setf (log.level (get-logger 'l10n-logger.level)) level))
-
 ;;  Macros
 ;;;;;;;;;;;
 
@@ -33,30 +23,31 @@
 ;;;;;;;;;;;;;;
 
 (defun read-key->value-text-file-into-hashtable (file)
-  (with-input-from-file (stream file :external-format :utf-8)
-    (iter (with result = (make-hash-table :test #'equal))
-          (for line in-stream stream :using (lambda (stream eof-error-p eof-value)
-                                              (let ((result (read-line stream eof-error-p eof-value)))
-                                                (if (eq result eof-value)
-                                                    eof-value
-                                                    (trim result)))))
-          (for line-number from 0)
-          (when (or (zerop (length line))
-                    (starts-with line ";"))
-            (next-iteration))
-          (for pieces = (split (load-time-value
-                                (create-scanner
-                                 (strcat "[ |" #\Tab "]+")))
-                               line))
-          (for split-count = (length pieces))
-          (when (> split-count 2)
-            (warn "Syntax error at line ~A, too many pieces after split: ~A" line-number pieces))
-          (for singular = (elt pieces 0))
-          (for plural = (if (= split-count 1)
-                            singular
-                            (elt pieces 1)))
-          (setf (gethash singular result) plural)
-          (finally (return result)))))
+  (with-open-file (file-stream file :element-type '(unsigned-byte 8))
+    (let ((stream (make-flexi-stream file-stream :external-format :utf-8)))
+      (iter (with result = (make-hash-table :test #'equal))
+            (for line in-stream stream :using (lambda (stream eof-error-p eof-value)
+                                                (let ((result (read-line stream eof-error-p eof-value)))
+                                                  (if (eq result eof-value)
+                                                      eof-value
+                                                      (trim result)))))
+            (for line-number from 0)
+            (when (or (zerop (length line))
+                      (eql (aref line 0) #\;))
+              (next-iteration))
+            (for pieces = (split (load-time-value
+                                  (create-scanner
+                                   (concatenate 'string "[ |" (list #\Tab) "]+")))
+                                 line))
+            (for split-count = (length pieces))
+            (when (> split-count 2)
+              (warn "Syntax error at line ~A, too many pieces after split: ~A" line-number pieces))
+            (for singular = (elt pieces 0))
+            (for plural = (if (= split-count 1)
+                              singular
+                              (elt pieces 1)))
+            (setf (gethash singular result) plural)
+            (finally (return result))))))
 
 (defun capitalize-first-letter (str)
   (if (and (> (length str) 0)
@@ -292,4 +283,179 @@
                      (values r s m+ m-))))
           (multiple-value-bind (r s m+ m-) (initialize)
             (scale r s m+ m-)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; some duplicates copied from various other libs to lower the number of dependencies
+
+(defmacro with-unique-names ((&rest bindings) &body body)
+  "Evaluate BODY with BINDINGS bound to fresh unique symbols.
+
+Syntax: WITH-UNIQUE-NAMES ( [ var | (var x) ]* ) declaration* form*
+
+Executes a series of forms with each VAR bound to a fresh,
+uninterned symbol. The uninterned symbol is as if returned by a call
+to GENSYM with the string denoted by X - or, if X is not supplied, the
+string denoted by VAR - as argument.
+
+The variable bindings created are lexical unless special declarations
+are specified. The scopes of the name bindings and declarations do not
+include the Xs.
+
+The forms are evaluated in order, and the values of all but the last
+are discarded \(that is, the body is an implicit PROGN)."
+  ;; reference implementation posted to comp.lang.lisp as
+  ;; <cy3bshuf30f.fsf@ljosa.com> by Vebjorn Ljosa - see also
+  ;; <http://www.cliki.net/Common%20Lisp%20Utilities>
+  `(let ,(mapcar (lambda (binding)
+                   (check-type binding (or cons symbol))
+                   (destructuring-bind (var &optional (prefix (symbol-name var)))
+                       (if (consp binding) binding (list binding))
+                     (check-type var symbol)
+                     `(,var (gensym ,(concatenate 'string prefix "-")))))
+                 bindings)
+    ,@body))
+
+(defmacro rebinding (bindings &body body)
+  "Bind each var in BINDINGS to a gensym, bind the gensym to
+var's value via a let, return BODY's value wrapped in this let.
+
+Evaluates a series of forms in the lexical environment that is
+formed by adding the binding of each VAR to a fresh, uninterned
+symbol, and the binding of that fresh, uninterned symbol to VAR's
+original value, i.e., its value in the current lexical
+environment.
+
+The uninterned symbol is created as if by a call to GENSYM with the
+string denoted by PREFIX - or, if PREFIX is not supplied, the string
+denoted by VAR - as argument.
+
+The forms are evaluated in order, and the values of all but the last
+are discarded \(that is, the body is an implicit PROGN)."
+  ;; reference implementation posted to comp.lang.lisp as
+  ;; <cy3wv0fya0p.fsf@ljosa.com> by Vebjorn Ljosa - see also
+  ;; <http://www.cliki.net/Common%20Lisp%20Utilities>
+  (loop for binding in bindings
+        for var = (car (if (consp binding) binding (list binding)))
+        for name = (gensym)
+        collect `(,name ,var) into renames
+        collect ``(,,var ,,name) into temps
+        finally (return `(let* ,renames
+                          (with-unique-names ,bindings
+                            `(let (,,@temps)
+                               ,,@body))))))
+
+(defmacro dotree ((name tree &optional ret-val) &body body)
+  "Evaluate BODY with NAME bound to every element in TREE. Return RET-VAL."
+  (with-unique-names (traverser list list-element)
+    `(progn
+      (labels ((,traverser (,list)
+                 (dolist (,list-element ,list)
+                   (if (consp ,list-element)
+                       (,traverser ,list-element)
+                       (let ((,name ,list-element))
+                         ,@body)))))
+        (,traverser ,tree)
+        ,ret-val))))
+
+(defun strcat (&rest items)
+  "Returns a fresh string consisting of ITEMS concat'd together."
+  (strcat* items))
+  
+(defun strcat* (string-designators)
+  "Concatenate all the strings in STRING-DESIGNATORS."
+  (with-output-to-string (strcat)
+    (dotree (s string-designators)
+      (when s (princ s strcat)))))
+
+(defun singlep (list)
+  (and (consp list) (not (cdr list))))
+
+(defun concatenate-symbol (&rest args)
+  "DWIM symbol concatenate, see CONCATENATE-SYMBOL* for details."
+  (concatenate-symbol* args))
+
+(defun concatenate-symbol* (symbol-parts &key when-exists)
+  "DWIM symbol concatenate: SYMBOL-PARTS will be converted to string and be concatenated
+to form the resulting symbol with one exception: when a package is encountered then
+it is stored as the target package to use at intern. If there was no package
+among the args then the symbol-package of the first symbol encountered will be
+used. If there are neither packages nor symbols among the args then the result will
+be interned into the current package at the time of calling."
+  (let* ((package nil) ; by intention
+         (symbol-name (string-upcase
+                       (with-output-to-string (str)
+                         (dolist (part symbol-parts)
+                           (typecase part
+                             (string (write-string part str))
+                             (package (setf package part))
+                             (symbol (unless package
+                                       (setf package (symbol-package part)))
+                                     (write-string (symbol-name part) str))
+                             (integer (write-string (princ-to-string part) str))
+                             (character (write-char part) str)
+                             (t (error "Cannot convert argument ~S to symbol" part))))))))
+    (setf package (or package *package*))
+    (when (find-symbol symbol-name package)
+      (when when-exists
+        (case when-exists
+          ((:error :warn) (funcall (if (eq when-exists :error) 'error 'warn)
+                                   "Symbol ~S already exists in package ~A" symbol-name package))
+          (t (return-from concatenate-symbol* (funcall when-exists symbol-name package))))))
+    (intern symbol-name package)))
+
+(defmacro if-bind (var test &body then/else)
+  "Anaphoric IF control structure.
+
+VAR (a symbol) will be bound to the primary value of TEST. If
+TEST returns a true value then THEN will be executed, otherwise
+ELSE will be executed."
+  (assert (first then/else)
+          (then/else)
+          "IF-BIND missing THEN clause.")
+  (destructuring-bind (then &optional else)
+      then/else
+    `(let ((,var ,test))
+       (if ,var ,then ,else))))
+
+(defmacro aif (test then &optional else)
+  "Just like IF-BIND but the var is always IT."
+  `(if-bind it ,test ,then ,else))
+
+(defmacro when-bind (var test &body body)
+  "Just like when except VAR will be bound to the
+  result of TEST in BODY."
+  `(if-bind ,var ,test (progn ,@body)))
+
+(defmacro awhen (test &body body)
+  "Just like when expect the symbol IT will be
+  bound to the result of TEST in BODY."
+  `(when-bind it ,test ,@body))
+
+(defmacro cond-bind (var &body clauses)
+  "Just like COND but VAR will be bound to the result of the
+  condition in the clause when executing the body of the clause."
+  (if clauses
+      (destructuring-bind ((test &rest body) &rest others)
+          clauses
+        `(if-bind ,var ,test
+          (progn ,@(if body body (list var)))
+          (cond-bind ,var ,@others)))
+      nil))
+
+(defmacro acond (&rest clauses)
+  "Just like cond-bind except the var is automatically IT."
+  `(cond-bind it ,@clauses))
+
+(defun getenv (var)
+  #+allegro (sys:getenv var)
+  #+clisp (ext:getenv var)
+  #+cmu
+  (cdr (assoc var ext:*environment-list* :test #'string=))
+  #+lispworks (lw:environment-variable var)
+  #+openmcl (ccl::getenv var)
+  #+sbcl (sb-ext:posix-getenv var)
+
+  #-(or allegro clisp cmu lispworks openmcl openmcl sbcl)
+  (error "Could not define `getenv'."))
+
 ;; EOF

@@ -98,7 +98,7 @@
 
 ;; Getters
 (defmacro defgetter (key cat &key (wrap '#'identity))
-  (let ((name (intern-concat (list "LOCALE-" (substitute #\- #\_ (string-upcase key))))))
+  (let ((name (concatenate-symbol "LOCALE-" (substitute #\- #\_ (string-upcase key)))))
     `(progn 
        (defun ,name (&optional (locale (current-locale)))
          (let ((locale (locale locale)))
