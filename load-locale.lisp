@@ -110,7 +110,7 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
     ;;(l10n-logger.info "Loading locale from ~A" locale-file)
     (let ((locale (make-instance *locale-type* :name name)))
       (with-open-file (file-stream locale-file :element-type '(unsigned-byte 8))
-        (let ((stream (make-flexi-stream file-stream :external-format :us-ascii)))
+        (let ((stream (make-flexi-stream file-stream :external-format :iso-8859-1)))
           (multiple-value-bind (escape comment) (munge-headers stream)
             (loop for header = (next-header stream)
                   while header do
