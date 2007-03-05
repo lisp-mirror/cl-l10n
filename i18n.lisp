@@ -90,7 +90,11 @@ and call the lambda resource registered for the current locale."
         ,@(iter (for resource in resources)
                 (for name = (first resource))
                 (unless (= 2 (length resource))
-                  (collect `(set-resource-lookup-function ',name)))))
+                  (collect `(progn
+                             (unless (get ',name 'cl-l10n-entry-function)
+                               (defun ,name (&rest args)
+                                 (lookup-resource ',name args))
+                               (setf (get ',name 'cl-l10n-entry-function) t)))))))
       (eval-when (:load-toplevel :execute)
         ,@(iter (for resource in resources)
                 (for name = (first resource))
