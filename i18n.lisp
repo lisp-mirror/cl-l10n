@@ -28,7 +28,7 @@ implementation of that function
 (define-condition resource-missing (warning)
   ((name :accessor name-of :initarg :name)))
 
-(defun set-resource-lookup-function (name)
+(defun ensure-resource-lookup-function (name)
   (unless (get name 'cl-l10n-entry-function)
     ;; define a function with this name that'll look at the *locale* list and call the first
     ;; locale specific lambda it finds while walking the locales
@@ -48,7 +48,7 @@ and call the lambda resource registered for the current locale."
            (type (or string locale) locale))
   (setf (gethash (resource-key locale name) *resources*) resource)
   (when (functionp resource)
-    (set-resource-lookup-function name))
+    (ensure-resource-lookup-function name))
   name)
 
 (defun %lookup-resource (locale name args)
