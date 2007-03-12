@@ -108,34 +108,48 @@ and call the lambda resource registered for the current locale."
 
 (defmacro lookup-first-matching-resource (&body specs)
   "Try to look up the resource keys, return the first match, fallback to the first key.
+When a resource key is a list, its elements will be concatenated separated by dots and
+components evaluating to NIL are excluded from the constructed key.
 An example usage:
   (lookup-first-matching-resource
     ((awhen attribute (name-of it)) (name-of state))
-    ((name-of (state-machine-of state)) (name-of state))
+    (when some-random-condition
+      (name-of (state-machine-of state)) (name-of state))
     (\"state-name\" (name-of state))
-    \"last-try\")
-When a resource key is a list, its elements will be concatenated separated by dots."
-  (iter (with fallback = nil)
-        (for spec in specs)
-        (for el = (if (or (and (consp spec)
-                               (symbolp (car spec)))
-                          (atom spec))
-                      spec
-                      `(strcat-separated-by "." ,@spec)))
-        (if (first-time-p)
-            (setf fallback el)
-            (collect `(lookup-resource ,el nil :warn-if-missing nil :fallback-to-name nil) into lookups))
-        (finally (return (with-unique-names (block fallback-tmp)
-                           `(block ,block
+    \"last-try\")"
+  (with-unique-names (fallback-tmp block resource foundp)
+    (iter (with fallback = nil)
+          (for spec :in specs)
+          (for wrapper = '())
+          (when (and (consp spec)
+                     (member (first spec) '(when unless)))
+            (assert (not (first-iteration-p)) () "Conditionals are not supported for the first entry in lookup-first-matching-resource, because that one is the default fallback")
+            (setf wrapper (list (first spec) (second spec)))
+            (setf spec (rest (rest spec))))
+          (for key = (cond ((atom spec)
+                            spec)
+                           ((and (listp spec)
+                                 (= (length spec) 1))
+                            (first spec))
+                           (t `(strcat-separated-by "." ,@spec))))
+          (if (first-iteration-p)
+              (setf fallback key)
+              (let ((lookup-entry `(multiple-value-bind (,resource ,foundp)
+                                        (lookup-resource ,key nil :warn-if-missing nil :fallback-to-name nil)
+                                      (when ,foundp
+                                        (return-from ,block (values ,resource t))))))
+                (collect (if wrapper
+                             `(,@wrapper ,lookup-entry)
+                             lookup-entry)
+                  :into lookups)))
+          (finally (return `(block ,block
+                             ;; the first lookup must be treated differently to avoid double evaluation of the key
                              (let ((,fallback-tmp ,fallback))
-                               (multiple-value-bind (resource foundp)
+                               (multiple-value-bind (,resource ,foundp)
                                    (lookup-resource ,fallback-tmp nil :warn-if-missing nil :fallback-to-name nil)
-                                 (when foundp
-                                   (return-from ,block (values resource t))))
-                               ,@(iter (for lookup in lookups)
-                                       (collect `(multiple-value-bind (resource foundp) ,lookup
-                                                  (when foundp
-                                                    (return-from ,block (values resource t))))))
+                                 (when ,foundp
+                                   (return-from ,block (values ,resource t))))
+                               ,@lookups
                                (return-from ,block (values ,fallback-tmp nil)))))))))
 
 (defmacro enable-sharpquote-reader ()
