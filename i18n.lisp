@@ -88,7 +88,7 @@ and call the lambda resource registered for the current locale."
     `(progn
       ,@(iter (for resource in resources)
               (for name = (first resource))
-              (unless (= 2 (length resource))
+              (when (> (length resource) 2)
                 (collect `(unless (and (get ',name 'cl-l10n-entry-function)
                                    (fboundp ',name))
                            (defun ,name (&rest args)
