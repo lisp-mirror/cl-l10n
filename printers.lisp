@@ -14,11 +14,12 @@ determine the number of zero's to print")
 
 (defun fix-float-string (string size)
   "Pads the string with trailing zero's if it is smaller than size"
-  (with-output-to-string (s)
-    (princ string s)
-    (when (< (length string) size)
-      (dotimes (x (- size (length string)))
-        (princ "0" s)))))
+  (with-output-to-string (stream)
+    (let ((length (length string)))
+      (write-string string stream :end (min size length))
+      (when (< length size)
+        (dotimes (x (- size length))
+          (write-char #\0 stream))))))
 
 (defun format-number (stream arg no-dp no-ts
                              &optional (locale (current-locale)))
