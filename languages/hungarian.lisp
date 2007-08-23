@@ -71,3 +71,33 @@
                         (t (emit word "ek")))
                   (emit word "ok"))))
         (emit word "-k")))))
+
+#+sbcl
+(progn
+  (defun jelző-képző-rag-egész-számokhoz (number)
+    (declare (optimize (speed 3)))
+    (declare (type integer number))
+    (setf number (abs number))
+    (let ((number-of-leading-zeros
+           (if (zerop number)
+               0
+               (iter (for (values i remainder) :first (floor number 10) :then (floor i 10))
+                     (while (zerop remainder))
+                     (counting t)))))
+      (cond
+        ((zerop number-of-leading-zeros)
+         ;; 0-9
+         (aref #.(coerce '("ás" "es" "es" "as" "es" "ös" "os" "es" "as" "es") '(simple-vector 10))
+               (mod number 10)))
+        ((= 1 number-of-leading-zeros)
+         ;; 10-90
+         (aref #.(coerce '(nil "es" "as" "as" "es" "es" "as" "es" "as" "es") '(simple-vector 10))
+               (/ (mod number 100) 10)))
+        ((= 2 number-of-leading-zeros)
+         ;; 100
+         "as")
+        (t
+         ;; 1000-10000-100000...
+         (aref #.(coerce '(nil "es" "ós" "os" "ós" "os") '(simple-vector 6))
+               (floor number-of-leading-zeros 3))))))
+  (export 'jelző-képző-rag-egész-számokhoz))
