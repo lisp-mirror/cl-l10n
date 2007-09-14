@@ -4,12 +4,12 @@
 
 #|
 (defresources en
-  (indefinit-article-for (str)
+  (indefinite-article-for (str)
                          ;; calculate "a"/"an" here
                          )
   (foo.bar "some constant"))
 
-then writing (indefinit-article-for "asdf") will call the locale-specific
+then writing (indefinite-article-for "asdf") will call the locale-specific
 implementation of that function
 
 |#

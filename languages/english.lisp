@@ -45,7 +45,7 @@
                            (not (vowelp last-letter2))) (emit (all-but-last) "ies"))))
              (emit word "s"))))))
 
-(defun english-indefinit-article-for (word)
+(defun english-indefinite-article-for (word)
   "Returns a/an for the given word."
   (declare (type (simple-array character) word)
            (optimize (speed 3) (debug 0)))

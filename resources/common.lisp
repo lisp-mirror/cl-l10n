@@ -1,10 +1,16 @@
 
-(defun with-indefinit-article (str &key capitalize-first-letter)
-  (let ((article (indefinit-article-for str)))
+(export '(with-indefinite-article with-definite-article))
+
+(defun with-indefinite-article (str &key capitalize-first-letter)
+  (let ((article (indefinite-article-for str)))
     (strcat (if capitalize-first-letter
                 (capitalize-first-letter article)
                 article)
             #\Space str)))
 
-(export 'with-indefinit-article)
-
+(defun with-definite-article (str &key capitalize-first-letter)
+  (let ((article (definite-article-for str)))
+    (strcat (if capitalize-first-letter
+                (capitalize-first-letter article)
+                article)
+            #\Space str)))

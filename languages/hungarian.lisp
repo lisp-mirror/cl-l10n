@@ -72,6 +72,16 @@
                   (emit word "ok"))))
         (emit word "-k")))))
 
+(defun hungarian-definite-article-for (word)
+  "Returns a/az for the given word."
+  (declare (type (simple-array character) word)
+           (optimize (speed 3) (debug 0)))
+  (if (> (length word) 1)
+      (if (vowelp (elt word 0))
+          "az"
+          "a")
+      word))
+
 #+sbcl
 (progn
   (defun jelző-képző-rag-egész-számokhoz (number)

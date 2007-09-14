@@ -62,7 +62,8 @@
            #:starts-with-vowel-p
            
            #:english-plural-of
-           #:english-indefinit-article-for
+           #:english-indefinite-article-for
+           #:hungarian-definite-article-for
            #:hungarian-plural-of
            ))
 
