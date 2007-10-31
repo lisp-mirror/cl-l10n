@@ -26,7 +26,12 @@ implementation of that function
         (if (stringp name) (string-downcase name) (string-downcase (symbol-name name)))))
 
 (define-condition resource-missing (warning)
-  ((name :accessor name-of :initarg :name)))
+  ((locale :accessor locale-of :initarg :locale)
+   (name :accessor name-of :initarg :name))
+  (:report
+   (lambda (condition stream)
+     (format stream "The resource ~S is missing for ~A"
+             (name-of condition) (locale-of condition)))))
 
 (defun ensure-resource-lookup-function (name)
   (unless (get name 'cl-l10n-entry-function)
@@ -78,7 +83,7 @@ and call the lambda resource registered for the current locale."
 
 (defun resource-not-found (name warn-if-missing fallback-to-name)
   (if warn-if-missing
-      (warn 'resource-missing :name name))
+      (warn 'resource-missing :locale *locale* :name name))
   (values (if fallback-to-name
               (string-downcase (string name)))
           nil))
