@@ -7,6 +7,9 @@
   (definite-article-for (str)
                         (declare (ignore str))
                         "the")
+  (today "today")
+  (yesterday "yesterday")
+  (tomorrow "tomorrow")
   (plural-of (str)
              (english-plural-of str)))
 
