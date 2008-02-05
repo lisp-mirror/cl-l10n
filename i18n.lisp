@@ -64,9 +64,12 @@ and call the lambda resource registered for the current locale."
         (gethash key *resources*)
       (if foundp
           ;; dispatch on resource type
-          (if (functionp resource)
-              (values (apply resource args) t)
-              (values resource t))      ; a simple literal
+          (cond ((functionp resource)
+                 (values (apply resource args) t))
+                (args
+                 (values (apply #'format nil resource args) t))
+                (t
+                 (values resource t)))  ; a simple literal
           (values nil nil)))))
 
 (defun lookup-resource (name args &key (warn-if-missing t) (fallback-to-name t))
