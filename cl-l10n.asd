@@ -11,7 +11,7 @@
   :name "CL-L10N"
   :author "Sean Ross <sross@common-lisp.net>"
   :maintainer "Sean Ross <sross@common-lisp.net>"
-  :version "0.3.10"
+  :version "0.4"
   :description "Portable CL Locale Support"
   :long-description "Portable CL Package to support localization"
   :licence "MIT"
