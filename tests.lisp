@@ -42,7 +42,7 @@
 
 (deftest number.7
     (format nil "~v:/cl-l10n:format-number/" "en_GB" 100.12312d0)
-  "100.12312")
+  "100.12")
 
 ;;; Money tests
 
