@@ -1,5 +1,14 @@
 
-(defresources en_gb
-  ;; override resources from the default en locale which is en_US
-  )
-
+(defresources en-GB
+  (yes "yes")
+  (no "no")
+  (indefinite-article-for (str)
+                          (english-indefinite-article-for str))
+  (definite-article-for (str)
+                        (declare (ignore str))
+                        "the")
+  (today "today")
+  (yesterday "yesterday")
+  (tomorrow "tomorrow")
+  (plural-of (str)
+             (english-plural-of str)))
