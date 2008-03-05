@@ -178,7 +178,7 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
   #+openmcl (when no-ts (return-from create-number-fmt-string "~A~D~{~A~}"))
   (cl:format nil "~~A~~,,'~A,~A~A~~{~~A~~}" 
              (thousands-sep-char (locale-thousands-sep locale))
-             (if (minusp (locale-grouping locale)) 3 (locale-grouping locale))
+             (if (minusp (locale-grouping locale)) 3 (max 1 (locale-grouping locale)))
              (if no-ts "D" ":D")))
 
 (defun get-descriptors (minusp locale)
