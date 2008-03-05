@@ -21,18 +21,18 @@ determine the number of zero's to print")
         (dotimes (x (- size length))
           (write-char #\0 stream))))))
 
-(defun format-number (stream arg no-dp no-ts
-                             &optional (locale (current-locale)))
+(defun format-number (stream arg no-dp no-ts &optional (locale (current-locale)))
   (let ((locale (locale locale))
         (float-part (float-part (coerce (abs arg) 'double-float))))
-    (cl:format stream 
-               (getf (printers locale)
-                     (if no-ts :number-no-ts :number-ts))
+    (cl:format stream
+               (getf (printers locale) (if no-ts :number-no-ts :number-ts))
                (get-sign arg locale)
                (truncate (abs arg))
                (unless (and (string= "" float-part) no-dp)
                  (list (locale-decimal-point locale)
-                       (fix-float-string float-part *float-digits*))))
+                       (if *float-digits*
+                           (fix-float-string float-part *float-digits*)
+                           float-part))))
     (values)))
 
 (defun print-number (number &key (stream *standard-output*)
