@@ -40,27 +40,26 @@ An example:
         (when (and (not (null name))
                    (symbolp name))
           (setf name (symbol-name name)))
-        (let* ((parts (split "_" name))
+        (let* ((parts (split "(_| |-)" name))
                (count (list-length parts))
                (first-length (length (first parts)))
                (second-length (length (second parts))))
           (when (> count 2)
-            (funcall signal-fn "Locale variants are not yet supported")
+            (funcall signal-fn
+                     "Can't parse locale name ~S (locale variants are not yet supported)"
+                     name)
             (return-from canonical-locale-name-from nil))
           (when (or (< first-length 2)
                     (and (> count 1)
                          (or (> second-length 3)
                              (< second-length 2))))
-            (funcall signal-fn "~A is not a valid locale name (examples: en_GB, en_US, en)" locale)
+            (funcall signal-fn "~A is not a valid locale name (examples: en_GB, en US, en-us, en)" locale)
             (return-from canonical-locale-name-from nil))
-          (let ((language (string-downcase (first parts)))
-                (region (when (> count 1)
-                          (second parts))))
+          (let ((language (string-downcase (first parts))))
             (if (> count 1)
-                (concatenate 'string language "_" region)
-                (aif (gethash language *language->default-locale-name*)
-                     it
-                     (concatenate 'string language "_" (string-upcase language)))))))))
+                (concatenate 'string language "_" (string-upcase (second parts)))
+                (or (gethash language *language->default-locale-name*)
+                    (concatenate 'string language "_" (string-upcase language)))))))))
 
 ;; set up the default region mappings while loading
 (eval-when (:load-toplevel :execute)
@@ -84,7 +83,8 @@ If LOADER is non-nil skip everything and call loader with LOC-NAME."
   (if (typep loc-name 'locale)
       loc-name
       (let ((name (canonical-locale-name-from
-                   (aif (position #\. loc-name)
+                   (aif (and (stringp loc-name)
+                             (position #\. loc-name))
                         (subseq loc-name 0 it)
                         loc-name)
                    #'warn)))
