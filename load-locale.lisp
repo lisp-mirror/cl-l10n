@@ -63,10 +63,12 @@ An example:
 
 ;; set up the default region mappings while loading
 (eval-when (:load-toplevel :execute)
-  (iter (for (language locale) in '(("en" "en_US")
-                                    ("English" "en_US")))
+  ;; some mappings that go through CANONICAL-LOCALE-NAME-FROM
+  (iter (for (language locale) in '(("en" "en-GB")
+                                    ("English" "en-GB")))
         (setf (gethash language *language->default-locale-name*)
               (canonical-locale-name-from locale)))
+  ;; some unconditional mappings
   (iter (for (language locale) in '(("posix" "POSIX")))
         (setf (gethash language *language->default-locale-name*) locale))
   (values))
