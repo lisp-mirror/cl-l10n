@@ -10,14 +10,17 @@
    #:children-of
    #:attributes-of
    #:root-of
-   #:find-node-by-id
-   #:first-child-with-type
-   #:first-child-with-local-name
    #:class-name-for-node-name
    #:class-for-node-name
    #:local-name-of
    #:cross-referenced-node
    #:cross-referenced-nodes
+
+   ;; some useful helpers
+   #:find-node-by-id
+   #:first-child-with-type
+   #:first-child-with-local-name
+   #:string-content-of
    ))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -103,28 +106,6 @@
   (unless (symbolp slot)
     (setf slot (closer-mop:slot-definition-name slot)))
   (error "Referenced node with id ~S in slot ~S of node ~A was not found" id slot node))
-
-(defun first-child-with-type (node type)
-  (loop for child :across (children-of node) do
-       (when (typep child type)
-         (return-from first-child-with-type child))))
-
-(defun first-child-with-local-name (node name)
-  (loop for child :across (children-of node) do
-       (when (string= (local-name-of child) name)
-         (return-from first-child-with-local-name child))))
-
-(defgeneric find-node-by-id (id builder &key otherwise)
-  (:method ((id string) (builder flexml-builder) &key (otherwise :error))
-    (let ((result (gethash id (id->node-of builder))))
-      (unless result
-        (case otherwise
-          (:error (error "No XML node found with id ~S" id))
-          (:warn (warn "No XML node found with id ~S" id))
-          (t (if (functionp otherwise)
-                 (funcall otherwise)
-                 otherwise))))
-      result)))
 
 (defmethod sax:end-document ((builder flexml-builder))
   (loop
@@ -269,3 +250,37 @@
     (if (stringp previous)
         (setf (car (children-of parent)) (concatenate 'string previous data))
         (push data (children-of parent)))))
+
+;;;
+;;; some useful helpers
+;;;
+(defun string-content-of (node)
+  (unless (= 1 (length (children-of node)))
+    (error "Node ~A has more then one children while expecting a single string content" node))
+  (let ((value (elt (children-of node) 0)))
+    (unless (stringp value)
+      (error "Single child ~S of node ~A is not a string" value node))
+    value))
+
+(defun first-child-with-type (node type)
+  (loop for child :across (children-of node) do
+       (when (typep child type)
+         (return-from first-child-with-type child))))
+
+(defun first-child-with-local-name (node name)
+  (loop for child :across (children-of node) do
+       (when (string= (local-name-of child) name)
+         (return-from first-child-with-local-name child))))
+
+(defgeneric find-node-by-id (id builder &key otherwise)
+  (:method ((id string) (builder flexml-builder) &key (otherwise :error))
+    (let ((result (gethash id (id->node-of builder))))
+      (unless result
+        (case otherwise
+          (:error (error "No XML node found with id ~S" id))
+          (:warn (warn "No XML node found with id ~S" id))
+          (t (if (functionp otherwise)
+                 (funcall otherwise)
+                 otherwise))))
+      result)))
+
