@@ -2,16 +2,10 @@
 ;; See the file LICENCE for licence information.
 (in-package :cl-l10n)
 
-(defparameter *resources* (make-hash-table :test 'equal))
+(declaim (inline resource-key))
 
-(defun clear-resources ()
-  (clrhash *resources*))
-
-(defun resource-key (locale name)
-  (declare (type (or string symbol) name)
-           (type (or string locale) locale))
-  (list (if (stringp locale) locale (locale-name locale))
-        (if (stringp name) (string-downcase name) (string-downcase (symbol-name name)))))
+(defun resource-key (name)
+  (string-downcase name))
 
 (define-condition resource-missing (warning)
   ((locale :accessor locale-of :initarg :locale)
@@ -37,19 +31,19 @@
   "Store RESOURCE in the resource map at the given locale. When RESOURCE
 is functionp then define a function on NAME that will dispatch on *locale* when called
 and funcall the resource registered for the current locale."
-  (declare (type (or string symbol) name)
-           (type (or string locale) locale))
-  (setf (gethash (resource-key locale name) *resources*) resource)
+  (check-type name (or string symbol))
+  (check-type locale locale)
+  (setf (gethash (resource-key name) (resources-of locale)) resource)
   (when (functionp resource)
     (ensure-resource-lookup-function name))
   name)
 
 (defun %lookup-resource (locale name args)
-  (declare (type locale locale)
-           (type (or symbol string) name))
-  (let* ((key (resource-key locale name)))
+  (check-type name (or symbol string))
+  (check-type locale locale)
+  (let* ((key (resource-key name)))
     (multiple-value-bind (resource foundp)
-        (gethash key *resources*)
+        (gethash key (resources-of locale))
       (if foundp
           ;; dispatch on resource type
           (cond ((functionp resource)

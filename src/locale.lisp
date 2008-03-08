@@ -36,6 +36,7 @@
    (territory :initform nil :initarg :territory :accessor territory-of)
    (variant :initform nil :initarg :variant :accessor variant-of)
    (version-info :initform nil :initarg :version-info :accessor version-info-of)
+   (resources :initform (make-hash-table :test #'equal) :accessor resources-of)
 
    #+nil(locale-name :accessor locale-name :initarg :name 
                 :initform (required-arg :name))
