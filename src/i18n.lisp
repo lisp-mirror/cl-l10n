@@ -8,12 +8,19 @@
   (string-downcase name))
 
 (define-condition resource-missing (warning)
-  ((locale :accessor locale-of :initarg :locale)
+  ((locale :initform *locale* :accessor locale-of :initarg :locale)
    (name :accessor name-of :initarg :name))
   (:report
    (lambda (condition stream)
      (format stream "The resource ~S is missing for ~A"
              (name-of condition) (locale-of condition)))))
+
+(defun resource-missing (name &optional (warn-if-missing t) (fallback-to-name nil))
+  (when warn-if-missing
+    (warn 'resource-missing :name name))
+  (values (when fallback-to-name
+            (string-downcase (string name)))
+          nil))
 
 (defun ensure-resource-lookup-function (name)
   (unless (get name 'cl-l10n-entry-function)
@@ -60,17 +67,10 @@ and funcall the resource registered for the current locale."
           (multiple-value-bind (result foundp) (funcall '%lookup-resource locale name arguments)
             (when foundp
               (return-from lookup-resource (values result t))))))
-  (resource-not-found name warn-if-missing fallback-to-name))
+  (resource-missing name warn-if-missing fallback-to-name))
 
 (defun (setf lookup-resource) (value name)
   (%set-resource *locale* name value))
-
-(defun resource-not-found (name warn-if-missing fallback-to-name)
-  (if warn-if-missing
-      (warn 'resource-missing :locale *locale* :name name))
-  (values (if fallback-to-name
-              (string-downcase (string name)))
-          nil))
 
 (defmacro defresources (locale &body resources)
   (let ((locale-name (canonical-locale-name-from locale)))
