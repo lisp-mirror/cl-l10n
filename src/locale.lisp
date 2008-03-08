@@ -12,21 +12,14 @@
 
 (in-package :cl-l10n )
 
-(defvar *locale-path* 
-  (merge-pathnames (make-pathname :directory '(:relative "locales"))
-                   (asdf:component-pathname (asdf:find-system :cl-l10n))))
+;; A list of locales in which case resources will be looked for in each locale in order.
+(defvar *locale*)
 
-(defvar *locale* nil
-  "Either a locale or a list of locales in which case resources will be looked for in each locale in order.")
+;; The root locale found in cldr/main/root.xml. Contains definitions with their default values for all locales.
+(defvar *root-locale*)
 
-(defun current-locale ()
-  (declare (inline current-locale))
-  (if (consp *locale*)
-      (car *locale*)
-      *locale*))
-
-(defvar *locales* (make-hash-table :test #'equal)
-  "Hash table containing all loaded locales keyed on name (eg. \"af_ZA\")")
+(defparameter *locale-cache* (make-hash-table :test #'equal)
+  "Hash table containing all loaded locales keyed on LOCALE-NAME (eg. \"af_ZA\")")
 
 ;; Conditions
 (define-condition locale-error (error)
@@ -38,22 +31,69 @@
 
 ;; Classes
 (defclass locale ()
-  ((locale-name :accessor locale-name :initarg :name 
+  ((language :initform (required-arg :language) :initarg :language :accessor language-of)
+   (script :initform nil :initarg :script :accessor script-of)
+   (territory :initform nil :initarg :territory :accessor territory-of)
+   (variant :initform nil :initarg :variant :accessor variant-of)
+   (version-info :initform nil :initarg :version-info :accessor version-info-of)
+
+   #+nil(locale-name :accessor locale-name :initarg :name 
                 :initform (required-arg :name))
    (title :accessor title :initarg :title :initform nil)
    (printers :accessor printers :initarg :printers :initform nil)
    (parsers :accessor parsers :initarg :parsers :initform nil)
    (source :accessor source :initarg :source :initform nil)
-   (language :accessor language :initarg :language :initform nil)
-   (territory :accessor territory :initarg :territory :initform nil)
-   (revision :accessor revision :initarg :revision :initform nil)
-   (date :accessor date :initarg :date :initform nil)
+   ;;(language :accessor language :initarg :language :initform nil)
+   ;;(territory :accessor territory :initarg :territory :initform nil)
+   ;;(revision :accessor revision :initarg :revision :initform nil)
+   ;;(date :accessor date :initarg :date :initform nil)
    (categories :accessor categories :initarg :categories
                :initform (make-hash-table :test #'equal))))
+
+(defgeneric locale-name (locale &key ignore-script ignore-territory ignore-variant)
+  (:method ((locale locale) &key ignore-variant ignore-territory ignore-script)
+    (let ((*print-pretty* nil))
+      (with-output-to-string (*standard-output*)
+        (write-string (language-of locale))
+        (unless ignore-script
+          (awhen (script-of locale)
+            (write-char #\_)
+            (write-string it)))
+        (unless ignore-territory
+          (awhen (territory-of locale)
+            (write-char #\_)
+            (write-string it)))
+        (unless ignore-variant
+          (awhen (variant-of locale)
+            (write-char #\_)
+            (write-string it)))))))
 
 (defmethod print-object ((obj locale) stream)
   (print-unreadable-object (obj stream :type t :identity t)
     (princ (locale-name obj) stream)))
+
+(defun precedence-list-for (locale)
+  (let ((result (list locale)))
+    (flet ((try (locale-name)
+             (awhen (locale locale-name :errorp nil)
+               (push it result))))
+      (when (variant-of locale)
+        (try (locale-name locale
+                          :ignore-variant t)))
+      (when (territory-of locale)
+        (try (locale-name locale
+                          :ignore-territory t
+                          :ignore-variant t)))
+      (when (script-of locale)
+        (try (locale-name locale
+                          :ignore-script t
+                          :ignore-territory t
+                          :ignore-variant t))))
+    (push *root-locale* result)
+    (nreverse result)))
+
+
+
 
 (defclass category ()
   ((category-name :accessor category-name :initform (required-arg :name) 
@@ -66,12 +106,16 @@
     (princ (category-name obj) stream)))
 
 
-(declaim (inline get-locale))
-(defun get-locale (name)
-  (gethash name *locales*))
+(declaim (inline clear-locale-cache get-cached-locale (setf get-cached-locale)))
 
-(defun (setf get-locale) (new-val name)
-  (setf (gethash name *locales*)
+(defun clear-locale-cache ()
+  (clrhash *locale-cache*))
+
+(defun get-cached-locale (name)
+  (gethash name *locale-cache*))
+
+(defun (setf get-cached-locale) (new-val name)
+  (setf (gethash name *locale-cache*)
         new-val))
 
 (defgeneric get-category (locale name)

@@ -15,34 +15,46 @@
   :description "Portable CL Locale Support"
   :long-description "Portable CL Package to support localization"
   :licence "MIT"
-  :components ((:file "package")
-               (:file "parse-number" :depends-on ("package"))
-               (:file "utils" :depends-on ("package"))
-               (:file "locale" :depends-on ("utils"))
-               (:file "load-locale" :depends-on ("locale"))
-               (:file "printers" :depends-on ("load-locale"))
-               (:file "parsers" :depends-on ("printers" "parse-number"))
-               (:file "parse-time" :depends-on ("load-locale"))
-               (:file "i18n" :depends-on ("printers"))
-               (:module :languages
-                        :components ((:file "common")
-                                     (:file "english" :depends-on ("common"))
-                                     (:file "hungarian" :depends-on ("common")))
-                        :depends-on ("package" "utils")))
-  :depends-on (:iterate :cl-ppcre :cl-fad :flexi-streams))
+  :components ((:file "flexml")
+               (:module :src
+                        :components ((:file "package")
+                                     (:file "utils" :depends-on ("package"))
+                                     (:file "cldr-parsing" :depends-on ("package" "utils" "locale" "i18n"))
+                                     (:file "parse-number" :depends-on ("package"))
+                                     (:file "locale" :depends-on ("utils"))
+                                     (:file "load-locale" :depends-on ("locale" "cldr-parsing"))
+                                     (:file "printers" :depends-on ("load-locale"))
+                                     (:file "parsers" :depends-on ("printers" "parse-number"))
+                                     (:file "parse-time" :depends-on ("load-locale"))
+                                     (:file "i18n" :depends-on ("locale"))
+                                     (:module :languages
+                                              :components ((:file "common")
+                                                           (:file "english" :depends-on ("common"))
+                                                           (:file "hungarian" :depends-on ("common")))
+                                              :depends-on ("package" "utils")))
+                        :depends-on ("flexml")))
+  :depends-on (:alexandria :iterate :cl-ppcre :cl-fad :flexi-streams))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-l10n))))
   (provide 'cl-l10n))
 
+(defsystem :cl-l10n.test
+  :depends-on (:cl-l10n :stefil)
+  :components
+  ((:module "test"
+            :components
+            ((:file "package")
+             (:file "tests" :depends-on ("package"))))))
+
 (defmethod perform ((op test-op) (sys (eql (find-system :cl-l10n))))
-  (oos 'load-op :cl-l10n-tests)
-  (oos 'test-op :cl-l10n-tests))
+  (oos 'load-op :cl-l10n.test)
+  (in-package :cl-l10n.test)
+  (pushnew :debug *features*)
+  (declaim (optimize (debug 3)))
+  (warn "Issued a (declaim (optimize (debug 3))) and changed *package* for C-cC-c/REPL convenience")
+  (eval (read-from-string "(stefil:funcall-test-with-feedback-message 'cl-l10n.test::test)")))
 
-(defsystem cl-l10n-tests
-  :depends-on (#:rt #:cl-l10n)
-  :components ((:file "tests")))
-
-(defmethod perform ((op test-op) (sys (eql (find-system :cl-l10n-tests))))
-  (eval (read-from-string "(regression-test:do-tests)")))
+(defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-l10n))))
+  nil)
 
 ;; EOF

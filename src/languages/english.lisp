@@ -5,10 +5,9 @@
 
 (defparameter *english-plural-overrides*
   (read-key->value-text-file-into-hashtable
-   (merge-pathnames (make-pathname :directory '(:relative "languages")
-                                   :name "english-plural-overrides"
-                                   :type "text")
-                    (asdf:component-pathname (asdf:find-system :cl-l10n)))))
+   (project-relative-pathname (make-pathname :directory '(:relative "src" "languages")
+                                             :name "english-plural-overrides"
+                                             :type "text"))))
 
 (defun english-plural-of (word &optional (uppercase nil uppercase-provided-p))
   "Returns the english plural of the given word."

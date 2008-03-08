@@ -1,14 +1,41 @@
 ;;; -*- Mode: LISP; Syntax: ANSI-Common-Lisp; Base: 10 -*-
 ;; See the file LICENCE for licence information.
 
-(defpackage :cl-l10n-tests
-  (:shadowing-import-from :cl-l10n format formatter)
-  (:use :cl :regression-test :cl-l10n))
+(in-package :cl-l10n.test)
 
-(in-package :cl-l10n-tests)
+(defmacro def-symbol-test (name locale &body body)
+  `(deftest ,name ()
+     (with-locale ,locale
+       ,@(iter (for (symbol value) :in body)
+               (collect `(is (string= (lookup-resource ',symbol)
+                                      ,value)))))))
+(defsuite (symbols :in test))
 
-(rem-all-tests)
+(in-suite symbols)
 
+(def-symbol-test test/symbols/posix "en_US_POSIX"
+  (symbol/per-mille "0/00")
+  (symbol/infinity "INF"))
+
+(def-symbol-test test/symbols/en_US "en_US"
+  (symbol/decimal ".")
+  (symbol/group ",")
+  (symbol/list ";")
+  (symbol/percent-sign "%")
+  (symbol/native-zero-digit "0")
+  (symbol/pattern-digit "#")
+  (symbol/plus-sign "+")
+  (symbol/minus-sign "-")
+  (symbol/exponential "E")
+  (symbol/per-mille "‰")
+  (symbol/infinity "∞")
+  (symbol/nan "NaN"))
+
+#+nil
+(
+
+;; TODO revive stuff here
+ 
 (deftest load-locs
     (progn (locale "en_ZA") (locale "sv_SE") (locale "en_GB")
            (locale "en_US") (locale "af_ZA") t)
@@ -267,8 +294,4 @@
       (= time (parse-time (format nil "~:@U" time))))
   t)
 
-
-         
-
-
-;; EOF
+)

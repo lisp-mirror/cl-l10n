@@ -22,6 +22,13 @@
 ;; Functions
 ;;;;;;;;;;;;;;
 
+(defun slot-value-unless-nil (instance slot-name)
+  (when instance
+    (slot-value instance slot-name)))
+
+(defun project-relative-pathname (file)
+  (asdf:system-relative-pathname :cl-l10n file))
+
 (defun read-key->value-text-file-into-hashtable (file)
   (with-open-file (file-stream file :element-type '(unsigned-byte 8))
     (let ((stream (make-flexi-stream file-stream :external-format :utf-8)))
@@ -58,9 +65,6 @@
 (defun capitalize-first-letter! (str)
   (setf (aref str 0) (char-upcase (aref str 0)))
   str)
-
-(defun mappend (fn &rest lists)
-  (apply #'append (apply #'mapcar fn lists)))
 
 (defun required-arg (name)
   (error "~A is a required argument" name))
@@ -287,33 +291,33 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; some duplicates copied from various other libs to lower the number of dependencies
 
-(defmacro with-unique-names ((&rest bindings) &body body)
-  "Evaluate BODY with BINDINGS bound to fresh unique symbols.
-
-Syntax: WITH-UNIQUE-NAMES ( [ var | (var x) ]* ) declaration* form*
-
-Executes a series of forms with each VAR bound to a fresh,
-uninterned symbol. The uninterned symbol is as if returned by a call
-to GENSYM with the string denoted by X - or, if X is not supplied, the
-string denoted by VAR - as argument.
-
-The variable bindings created are lexical unless special declarations
-are specified. The scopes of the name bindings and declarations do not
-include the Xs.
-
-The forms are evaluated in order, and the values of all but the last
-are discarded \(that is, the body is an implicit PROGN)."
-  ;; reference implementation posted to comp.lang.lisp as
-  ;; <cy3bshuf30f.fsf@ljosa.com> by Vebjorn Ljosa - see also
-  ;; <http://www.cliki.net/Common%20Lisp%20Utilities>
-  `(let ,(mapcar (lambda (binding)
-                   (check-type binding (or cons symbol))
-                   (destructuring-bind (var &optional (prefix (symbol-name var)))
-                       (if (consp binding) binding (list binding))
-                     (check-type var symbol)
-                     `(,var (gensym ,(concatenate 'string prefix "-")))))
-                 bindings)
-    ,@body))
+;; from verrazano
+(defun camel-case-to-hyphened (input)
+  (if (> (length input) 0)
+      (string-downcase
+       (with-output-to-string (*standard-output*)
+         (iter (with in-uppercase? = (upper-case-p (elt input 0)))
+               (for run-length :upfrom 0)
+               (for hyphen-distance :upfrom 0)
+               (for char :in-vector input)
+               (for previous-char :previous char :initially #\ )
+               (let ((new-in-uppercase? (if (alpha-char-p char)
+                                            (upper-case-p char)
+                                            (if (alpha-char-p previous-char)
+                                                (not in-uppercase?)
+                                                in-uppercase?))))
+                 (unless (eq in-uppercase? new-in-uppercase?)
+                   ;;(break "~A ~A ~A ~A" previous-char char run-length hyphen-distance)
+                   (when (and (alphanumericp char)
+                              (alphanumericp previous-char)
+                              (or (> run-length 1)
+                                  (> hyphen-distance 1)))
+                     (write-char #\-)
+                     (setf hyphen-distance 0))
+                   (setf run-length 0)
+                   (setf in-uppercase? new-in-uppercase?)))
+               (write-char char))))
+      input))
 
 (defmacro rebinding (bindings &body body)
   "Bind each var in BINDINGS to a gensym, bind the gensym to

@@ -2,19 +2,7 @@
 ;; See the file LICENCE for licence information.
 (in-package :cl-l10n)
 
-#|
-(defresources en
-  (indefinite-article-for (str)
-                         ;; calculate "a"/"an" here
-                         )
-  (foo.bar "some constant"))
-
-then writing (indefinite-article-for "asdf") will call the locale-specific
-implementation of that function
-
-|#
-
-(defvar *resources* (make-hash-table :test 'equal))
+(defparameter *resources* (make-hash-table :test 'equal))
 
 (defun clear-resources ()
   (clrhash *resources*))
@@ -41,14 +29,14 @@ implementation of that function
       (warn "Redefining function definiton of ~S while adding locale specific resource" name))
     (setf (symbol-function name)
           (lambda (&rest args)
-            (lookup-resource name args)))
+            (lookup-resource name :arguments args)))
     ;; leave a mark that it's been defined by us
     (setf (get name 'cl-l10n-entry-function) t)))
 
-(defun add-resource (locale name resource)
-  "Store the RESOURCE in the resource map at the given locale. When RESOURCE
+(defun %set-resource (locale name resource)
+  "Store RESOURCE in the resource map at the given locale. When RESOURCE
 is functionp then define a function on NAME that will dispatch on *locale* when called
-and call the lambda resource registered for the current locale."
+and funcall the resource registered for the current locale."
   (declare (type (or string symbol) name)
            (type (or string locale) locale))
   (setf (gethash (resource-key locale name) *resources*) resource)
@@ -72,17 +60,16 @@ and call the lambda resource registered for the current locale."
                  (values resource t)))  ; a simple literal
           (values nil nil)))))
 
-(defun lookup-resource (name args &key (warn-if-missing t) (fallback-to-name t))
-  (loop for locale in (if (consp *locale*) *locale* (list *locale*)) do
-        (multiple-value-bind (result foundp) (funcall '%lookup-resource locale name args)
-          (when foundp
-            (return-from lookup-resource (values result t)))))
+(defun lookup-resource (name &key arguments (warn-if-missing t) (fallback-to-name t))
+  (loop for locale :in *locale* do
+        (dolist (locale (precedence-list-for locale))
+          (multiple-value-bind (result foundp) (funcall '%lookup-resource locale name arguments)
+            (when foundp
+              (return-from lookup-resource (values result t))))))
   (resource-not-found name warn-if-missing fallback-to-name))
 
-(defun lookup-resource-without-fallback (locale name args &key (warn-if-missing t) (fallback-to-name t))
-  (aif (%lookup-resource locale name args)
-       it
-       (resource-not-found name warn-if-missing fallback-to-name)))
+(defun (setf lookup-resource) (value name)
+  (%set-resource *locale* name value))
 
 (defun resource-not-found (name warn-if-missing fallback-to-name)
   (if warn-if-missing
@@ -94,21 +81,22 @@ and call the lambda resource registered for the current locale."
 (defmacro defresources (locale &body resources)
   (let ((locale-name (canonical-locale-name-from locale)))
     `(progn
+       ;; TODO think, cleanup. this defun may be superfluous in the current setup
       ,@(iter (for resource in resources)
               (for name = (first resource))
               (when (> (length resource) 2)
                 (collect `(unless (and (get ',name 'cl-l10n-entry-function)
                                    (fboundp ',name))
                            (defun ,name (&rest args)
-                             (lookup-resource ',name args))
+                             (lookup-resource ',name :arguments args))
                            (setf (get ',name 'cl-l10n-entry-function) t)))))
       (eval-when (:load-toplevel :execute)
         ,@(iter (for resource in resources)
                 (for name = (first resource))
                 (if (= 2 (length resource))
-                    (collect `(add-resource ,locale-name
+                    (collect `(%set-resource ,locale-name
                                ',name ',(second resource)))
-                    (collect `(add-resource ,locale-name
+                    (collect `(%set-resource ,locale-name
                                ',name (lambda ,(second resource)
                                         ,@(cddr resource)))))
                 (when (and (symbolp name)
@@ -144,7 +132,7 @@ An example usage:
           (if (first-iteration-p)
               (setf fallback key)
               (let ((lookup-entry `(multiple-value-bind (,resource ,foundp)
-                                        (lookup-resource ,key nil :warn-if-missing nil :fallback-to-name nil)
+                                        (lookup-resource ,key :warn-if-missing nil :fallback-to-name nil)
                                       (when ,foundp
                                         (return-from ,block (values ,resource t))))))
                 (collect (if wrapper
@@ -155,7 +143,7 @@ An example usage:
                              ;; the first lookup must be treated differently to avoid double evaluation of the key
                              (let ((,fallback-tmp ,fallback))
                                (multiple-value-bind (,resource ,foundp)
-                                   (lookup-resource ,fallback-tmp nil :warn-if-missing nil :fallback-to-name nil)
+                                   (lookup-resource ,fallback-tmp :warn-if-missing nil :fallback-to-name nil)
                                  (when ,foundp
                                    (return-from ,block (values ,resource t))))
                                ,@lookups
@@ -178,7 +166,7 @@ Be careful when using in different situations, because it modifies *readtable*."
    #'(lambda (s c1 c2)
        (declare (ignore c2))
        (unread-char c1 s)
-       `(lookup-resource ,(read s) nil))))
+       `(lookup-resource ,(read s)))))
 
 (defun with-sharpquote-syntax ()
   "To be used with the curly reader from arnesi: {with-sharpquote-reader (foo #\"locale-specific\") }"
@@ -187,12 +175,11 @@ Be careful when using in different situations, because it modifies *readtable*."
     `(progn ,@(funcall handler))))
 
 
-
 (defgeneric localize (object)
   (:documentation "Override this generic method for various data types. Return (values result foundp)."))
 
 (defmethod localize ((resource-name t))
   "By default we look up everything as a constant or a function with zero args."
-  (lookup-resource resource-name nil))
+  (lookup-resource resource-name))
 
 

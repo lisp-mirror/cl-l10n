@@ -4,10 +4,9 @@
 
 (defparameter *hungarian-plural-overrides*
   (read-key->value-text-file-into-hashtable
-   (merge-pathnames (make-pathname :directory '(:relative "languages")
-                                   :name "hungarian-plural-overrides"
-                                   :type "text")
-                    (asdf:component-pathname (asdf:find-system :cl-l10n)))))
+   (project-relative-pathname (make-pathname :directory '(:relative "src" "languages")
+                                             :name "hungarian-plural-overrides"
+                                             :type "text"))))
 
 
 (defun hungarian-plural-of (word &optional (uppercase nil uppercase-provided-p))
