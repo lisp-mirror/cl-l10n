@@ -7,15 +7,22 @@ CLDR: http://unicode.org/cldr/
 
 *** About
 
-cl-l10n is a localization package for common-lisp. It is meant 
-to be serve the same purpose as Allegro Common Lisp's
-various locale functions. It currently runs on 
-CMUCL, SBCL, CLISP, ECL, Lispworks and Allegro CL although porting 
-to a new implementation should be trivial.
-It is distributed under an MIT style license although the locale
-files themselves are distributed under the LGPL.
+cl-l10n is a localization package for common-lisp. It is meant to be
+serve the same purpose as Allegro Common Lisp's various locale
+functions. It currently runs on CMUCL, SBCL, CLISP, ECL, Lispworks and
+Allegro CL although porting to a new implementation should be trivial.
+It is distributed under an MIT style license although the locale files
+themselves are distributed under the LGPL.
 
 There is also i18n support, read on for details.
+
+*** Install
+
+You need to download the CLDR data files from http://unicode.org/cldr/
+(core.zip) and extract it into "cl-l10n/cldr/". There's a script that
+does that:
+
+cl-l10n/bin/update-cldr.sh
 
 *** API
 
@@ -50,8 +57,8 @@ Resource lookup can fall back to less preferred languages when
 *** Testing
 
 Run (asdf:oos 'asdf:test-op :cl-l10n) to test the package.
-If any tests fail please drop me a line at the mailing lists
-or at (sross <at> common-lisp.net).
+If you have unexpected failures, drop a mail to the mailing
+list.
 
-Enjoy 
+Enjoy
   Sean.
