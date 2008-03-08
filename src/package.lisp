@@ -58,18 +58,25 @@
 
 (defpackage #:cl-l10n.lang
   (:export
-   #:symbol/decimal
-   #:symbol/group
-   #:symbol/list
-   #:symbol/percent-sign
-   #:symbol/native-zero-digit
-   #:symbol/pattern-digit
-   #:symbol/plus-sign
-   #:symbol/minus-sign
-   #:symbol/exponential
-   #:symbol/per-mille
-   #:symbol/infinity
-   #:symbol/nan
+
+   ;; <numbers> / <symbols>
+   #:number-symbol
+
+   #:decimal
+   #:group
+   #:list
+   #:percent-sign
+   #:native-zero-digit
+   #:pattern-digit
+   #:plus-sign
+   #:minus-sign
+   #:exponential
+   #:per-mille
+   #:infinity
+   #:nan
+
+   #:currency-symbol
+   #:currency-display-name
    ))
 
 (defpackage #:cl-l10n.ldml
@@ -85,6 +92,9 @@
    #:variant
    #:numbers
    #:symbols
+   #:currencies
+   #:currency
+   #:display-name
 #|
    #:locale-display-names
    #:layout

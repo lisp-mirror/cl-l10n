@@ -31,12 +31,35 @@
 
 ;; Classes
 (defclass locale ()
-  ((language :initform (required-arg :language) :initarg :language :accessor language-of)
-   (script :initform nil :initarg :script :accessor script-of)
-   (territory :initform nil :initarg :territory :accessor territory-of)
-   (variant :initform nil :initarg :variant :accessor variant-of)
-   (version-info :initform nil :initarg :version-info :accessor version-info-of)
-   (resources :initform (make-hash-table :test #'equal) :accessor resources-of)
+  ((language
+    :initform (required-arg :language)
+    :initarg :language
+    :accessor language-of)
+   (script
+    :initform nil
+    :initarg :script
+    :accessor script-of)
+   (territory
+    :initform nil
+    :initarg :territory
+    :accessor territory-of)
+   (variant
+    :initform nil
+    :initarg :variant
+    :accessor variant-of)
+   (version-info
+    :initform nil
+    :initarg :version-info
+    :accessor version-info-of)
+   (number-symbols
+    :initform (list)
+    :accessor number-symbols-of)
+   (currencies
+    :initform (make-hash-table :test #'eq)
+    :accessor currencies-of)
+   (resources
+    :initform (make-hash-table :test #'equal)
+    :accessor resources-of)
 
    #+nil(locale-name :accessor locale-name :initarg :name 
                 :initform (required-arg :name))
@@ -73,7 +96,7 @@
   (print-unreadable-object (obj stream :type t :identity t)
     (princ (locale-name obj) stream)))
 
-(defun precedence-list-for (locale)
+(defun locale-precedence-list (locale)
   (let ((result (list locale)))
     (flet ((try (locale-name)
              (awhen (locale locale-name :errorp nil)
@@ -93,6 +116,12 @@
     (push *root-locale* result)
     (nreverse result)))
 
+(defmacro do-locales (var &rest body)
+  "Iterate all locales in *locale* and all their base locales."
+  (with-unique-names (locale)
+    `(dolist (,locale *locale*)
+       (dolist (,var (locale-precedence-list ,locale))
+         ,@body))))
 
 
 

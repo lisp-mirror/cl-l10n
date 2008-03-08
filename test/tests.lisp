@@ -3,33 +3,33 @@
 
 (in-package :cl-l10n.test)
 
-(defmacro def-symbol-test (name locale &body body)
+(defmacro def-symbol-test (name (locale accessor) &body body)
   `(deftest ,name ()
      (with-locale ,locale
        ,@(iter (for (symbol value) :in body)
-               (collect `(is (string= (lookup-resource ',symbol)
+               (collect `(is (string= (,accessor ,symbol)
                                       ,value)))))))
 (defsuite (symbols :in test))
 
 (in-suite symbols)
 
-(def-symbol-test test/symbols/posix "en_US_POSIX"
-  (symbol/per-mille "0/00")
-  (symbol/infinity "INF"))
+(def-symbol-test test/symbols/posix ("en_US_POSIX" cl-l10n.lang:number-symbol)
+  (per-mille "0/00")
+  (infinity "INF"))
 
-(def-symbol-test test/symbols/en_US "en_US"
-  (symbol/decimal ".")
-  (symbol/group ",")
-  (symbol/list ";")
-  (symbol/percent-sign "%")
-  (symbol/native-zero-digit "0")
-  (symbol/pattern-digit "#")
-  (symbol/plus-sign "+")
-  (symbol/minus-sign "-")
-  (symbol/exponential "E")
-  (symbol/per-mille "‰")
-  (symbol/infinity "∞")
-  (symbol/nan "NaN"))
+(def-symbol-test test/symbols/en_US ("en_US" cl-l10n.lang:number-symbol)
+  (decimal ".")
+  (group ",")
+  (list ";")
+  (percent-sign "%")
+  (native-zero-digit "0")
+  (pattern-digit "#")
+  (plus-sign "+")
+  (minus-sign "-")
+  (exponential "E")
+  (per-mille "‰")
+  (infinity "∞")
+  (nan "NaN"))
 
 #+nil
 (

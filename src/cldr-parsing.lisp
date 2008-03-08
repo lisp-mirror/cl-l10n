@@ -60,7 +60,11 @@
    ldml:territory
    ldml:variant
    ldml:numbers
-   ldml:symbols))
+   ldml:symbols
+   ldml:currencies
+   ldml:currency
+   ldml:display-name
+   ))
 
 (defmethod sax:characters ((parser cldr-parser) data)
   (unless (every (lambda (char)
@@ -110,12 +114,22 @@
 
   (:method ((parent ldml:numbers) (node ldml:symbols))
     (iter (for symbol-node :in-sequence (flexml:children-of node))
-          (assert (= (length (flexml:children-of symbol-node)) 1))
-          (for value = (elt (flexml:children-of symbol-node) 0))
-          (for name = (intern (concatenate 'string
-                                           "SYMBOL/"
-                                           (string-upcase
-                                            (camel-case-to-hyphened
-                                             (flexml:local-name-of symbol-node))))
+          (for value = (flexml:string-content-of symbol-node))
+          (for name = (intern (string-upcase
+                               (camel-case-to-hyphened
+                                (flexml:local-name-of symbol-node)))
                               :cl-l10n.lang))
-          (setf (lookup-resource name) value))))
+          (push (cons name value) (number-symbols-of *locale*))))
+
+  (:method ((parent ldml:currencies) (node ldml:currency))
+    (let* ((name (slot-value node 'ldml::type)))
+      (assert (every #'upper-case-p name))
+      (setf name (intern name :cl-l10n.lang))
+      (let* ((display-name (flexml:string-content-of
+                            (flexml:first-child-with-local-name node "displayName")))
+             (symbol (awhen (flexml:first-child-with-local-name node "symbol")
+                       (flexml:string-content-of it)))
+             (entry (list* display-name
+                           (when symbol
+                             (list symbol)))))
+        (setf (gethash name (currencies-of *locale*)) entry)))))

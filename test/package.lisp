@@ -3,7 +3,6 @@
 (defpackage :cl-l10n.test
   (:use :common-lisp
         :cl-l10n
-        :cl-l10n.lang
         :alexandria
         :iter
         :stefil
@@ -13,7 +12,7 @@
    #:formatter
    #:*locale-cache*
    #:*locale*
-   #:*resources*
+   #:locale-precedence-list
    ))
 
 (in-package #:cl-l10n.test)

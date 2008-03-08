@@ -63,7 +63,7 @@ and funcall the resource registered for the current locale."
 
 (defun lookup-resource (name &key arguments (warn-if-missing t) (fallback-to-name t))
   (loop for locale :in *locale* do
-        (dolist (locale (precedence-list-for locale))
+        (dolist (locale (locale-precedence-list locale))
           (multiple-value-bind (result foundp) (funcall '%lookup-resource locale name arguments)
             (when foundp
               (return-from lookup-resource (values result t))))))
@@ -176,4 +176,46 @@ Be careful when using in different situations, because it modifies *readtable*."
   "By default we look up everything as a constant or a function with zero args."
   (lookup-resource resource-name))
 
+;;;
+;;; some custom accessors
+;;;
+(defun language-symbol-p (name)
+  (and (symbolp name)
+       (eq (symbol-package name)
+           (load-time-value (find-package :cl-l10n.lang)))))
 
+(defun ensure-language-symbol (name)
+  (intern (string name) :cl-l10n.lang))
+
+
+(defun number-symbol (name)
+  (assert (language-symbol-p name))
+  (do-locales locale
+    (awhen (assoc name (number-symbols-of locale) :test #'eq)
+      (return-from number-symbol (cdr it))))
+  (resource-missing name))
+
+(defmacro cl-l10n.lang:number-symbol (name)
+  `(number-symbol ',(ensure-language-symbol name)))
+
+
+(defun currency-symbol (name)
+  (assert (language-symbol-p name))
+  (do-locales locale
+    (awhen (gethash name (currencies-of locale))
+      (return-from currency-symbol (second it))))
+  (resource-missing name))
+
+(defmacro cl-l10n.lang:currency-symbol (name)
+  `(currency-symbol ',(ensure-language-symbol name)))
+
+
+(defun currency-display-name (name)
+  (assert (language-symbol-p name))
+  (do-locales locale
+    (awhen (gethash name (currencies-of locale))
+      (return-from currency-display-name (first it))))
+  (resource-missing name))
+
+(defmacro cl-l10n.lang:currency-display-name (name)
+  `(currency-display-name ',(ensure-language-symbol name)))
