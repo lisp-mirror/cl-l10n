@@ -34,6 +34,7 @@ else
   exit 2
 fi
 
+wget http://www.unicode.org/cldr/dtd/1.5/ldml.dtd
 wget http://unicode.org/Public/cldr/1.5.1/core.zip
 unzip core.zip
 rm core.zip
