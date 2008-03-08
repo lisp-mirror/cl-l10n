@@ -3,21 +3,28 @@
 
 (in-package :cl-l10n.test)
 
-(defmacro def-symbol-test (name (locale accessor) &body body)
+(defmacro def-symbol-test (name (locales &rest accessors) &body body)
   `(deftest ,name ()
-     (with-locale ,locale
-       ,@(iter (for (symbol value) :in body)
-               (collect `(is (string= (,accessor ,symbol)
-                                      ,value)))))))
-(defsuite (symbols :in test))
+     (flet ((one-pass ()
+              ,@(iter (for (symbol . values) :in body)
+                      (collect `(progn
+                                  ,@(iter (for value :in values)
+                                          (for accessor :in accessors)
+                                          (collect `(is (string= (,accessor ,symbol)
+                                                                 ,value)))))))))
+       ,@(iter (for locale :in (ensure-list locales))
+               (collect `(with-locale ,locale
+                           (one-pass)))))))
 
+(defsuite (symbols :in test))
 (in-suite symbols)
 
 (def-symbol-test test/symbols/posix ("en_US_POSIX" cl-l10n.lang:number-symbol)
   (per-mille "0/00")
   (infinity "INF"))
 
-(def-symbol-test test/symbols/en_US ("en_US" cl-l10n.lang:number-symbol)
+(def-symbol-test test/symbols/en (("en_US" "en_GB" "en")
+                                  cl-l10n.lang:number-symbol)
   (decimal ".")
   (group ",")
   (list ";")
@@ -30,6 +37,27 @@
   (per-mille "‰")
   (infinity "∞")
   (nan "NaN"))
+
+(defsuite (currencies :in test))
+(in-suite currencies)
+
+(def-symbol-test test/currencies/en (("en_US_POSIX" "en_US" "en_GB" "en")
+                                     cl-l10n.lang:currency-display-name
+                                     cl-l10n.lang:currency-symbol)
+  (usd   "US Dollar"              "$")
+  ("USN" "US Dollar (Next day)"   nil)
+  (uak   "Ukrainian Karbovanetz"  nil)
+  (huf   "Hungarian Forint"       "Ft")
+  ("GBP" "British Pound Sterling" "£"))
+
+(def-symbol-test test/currencies/hu (("hu_HU" "hu")
+                                     cl-l10n.lang:currency-display-name
+                                     cl-l10n.lang:currency-symbol)
+  (usd   "USA dollár"                  "USD")
+  ("USN" "USA dollár (következő napi)" nil)
+  (uak   "Ukrán karbovanec"            nil)
+  (huf   "Magyar forint"               "Ft")
+  ("GBP" "Brit font sterling"          "GBP"))
 
 #+nil
 (
