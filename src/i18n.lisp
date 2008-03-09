@@ -48,18 +48,17 @@ and funcall the resource registered for the current locale."
 (defun %lookup-resource (locale name args)
   (check-type name (or symbol string))
   (check-type locale locale)
-  (let* ((key (resource-key name)))
-    (multiple-value-bind (resource foundp)
-        (gethash key (resources-of locale))
-      (if foundp
-          ;; dispatch on resource type
-          (cond ((functionp resource)
-                 (values (apply resource args) t))
-                (args
-                 (values (apply #'format nil resource args) t))
-                (t
-                 (values resource t)))  ; a simple literal
-          (values nil nil)))))
+  (bind ((key (resource-key name))
+         ((:values resource foundp) (gethash key (resources-of locale))))
+    (if foundp
+        ;; dispatch on resource type
+        (cond ((functionp resource)
+               (values (apply resource args) t))
+              (args
+               (values (apply #'format nil resource args) t))
+              (t
+               (values resource t)))    ; a simple literal
+        (values nil nil))))
 
 (defun lookup-resource (name &key arguments (warn-if-missing t) (fallback-to-name t))
   (loop for toplevel-locale :in *locale* do

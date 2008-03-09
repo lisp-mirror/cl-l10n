@@ -20,7 +20,7 @@
        (when (and (not (null name))
                   (symbolp name))
          (setf name (symbol-name name)))
-       (let* ((parts (cl-ppcre:split "_" name))
+       (bind ((parts (cl-ppcre:split "_" name))
               (count (length parts)))
          (unless (<= 1 count 3)
            (error "Can't parse locale name ~S" name))

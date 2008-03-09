@@ -3,7 +3,14 @@
 (in-package #:cl-l10n.system)
 
 (defpackage #:cl-l10n 
-  (:use #:cl :alexandria :cl-ppcre :flexi-streams :cl-fad :iterate)
+  (:use
+   :common-lisp
+   :metabang-bind
+   :alexandria
+   :cl-ppcre
+   :flexi-streams
+   :cl-fad
+   :iterate)
   (:shadow cl:format cl:formatter)
   (:shadowing-import-from :cl-fad
                           #:copy-stream #:copy-file)
