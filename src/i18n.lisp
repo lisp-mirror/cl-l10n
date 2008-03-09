@@ -188,7 +188,7 @@ Be careful when using in different situations, because it modifies *readtable*."
        t))
 
 (defun ensure-language-symbol (name)
-  (intern (string name) :cl-l10n.lang))
+  (intern (string-upcase (string name)) :cl-l10n.lang))
 
 
 (defun number-symbol (name)
@@ -222,3 +222,48 @@ Be careful when using in different situations, because it modifies *readtable*."
 
 (defmacro cl-l10n.lang:currency-display-name (name)
   `(currency-display-name ',(ensure-language-symbol name)))
+
+
+(defun language (name)
+  (assert (language-symbol-p name))
+  (do-locales locale
+    (awhen (gethash name (languages-of locale))
+      (return-from language it)))
+  (resource-missing name))
+
+(defmacro cl-l10n.lang:language (name)
+  `(language ',(ensure-language-symbol name)))
+
+
+(defun script (name)
+  (assert (language-symbol-p name))
+  (do-locales locale
+    (awhen (gethash name (scripts-of locale))
+      (return-from script it)))
+  (resource-missing name))
+
+(defmacro cl-l10n.lang:script (name)
+  `(script ',(ensure-language-symbol name)))
+
+
+(defun territory (name)
+  (assert (language-symbol-p name))
+  (do-locales locale
+    (awhen (gethash name (territories-of locale))
+      (return-from territory it)))
+  (resource-missing name))
+
+(defmacro cl-l10n.lang:territory (name)
+  `(territory ',(ensure-language-symbol name)))
+
+
+(defun variant (name)
+  (assert (language-symbol-p name))
+  (do-locales locale
+    (awhen (gethash name (variants-of locale))
+      (return-from variant it)))
+  (resource-missing name))
+
+(defmacro cl-l10n.lang:variant (name)
+  `(variant ',(ensure-language-symbol name)))
+

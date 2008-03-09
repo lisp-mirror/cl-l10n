@@ -80,6 +80,10 @@
 
    #:currency-symbol
    #:currency-display-name
+   #:language
+   #:script
+   #:territory
+   #:variant
    ))
 
 (defpackage #:cl-l10n.ldml
@@ -90,6 +94,7 @@
    #:ldml
    #:identity
    #:language
+   #:languages
    #:script
    #:territory
    #:variant
@@ -98,6 +103,12 @@
    #:currencies
    #:currency
    #:display-name
+   #:script
+   #:scripts
+   #:territories
+   #:territory
+   #:variants
+   #:variant
 #|
    #:locale-display-names
    #:layout

@@ -52,6 +52,18 @@
    (currencies
     :initform (make-hash-table :test #'eq)
     :accessor currencies-of)
+   (languages
+    :initform (make-hash-table :test #'eq)
+    :accessor languages-of)
+   (scripts
+    :initform (make-hash-table :test #'eq)
+    :accessor scripts-of)
+   (territories
+    :initform (make-hash-table :test #'eq)
+    :accessor territories-of)
+   (variants
+    :initform (make-hash-table :test #'eq)
+    :accessor variants-of)
    (resources
     :initform (make-hash-table :test #'equal)
     :accessor resources-of)))

@@ -56,9 +56,13 @@
    ldml:ldml
    ldml:identity
    ldml:language
+   ldml:languages
    ldml:script
+   ldml:scripts
    ldml:territory
+   ldml:territories
    ldml:variant
+   ldml:variants
    ldml:numbers
    ldml:symbols
    ldml:currencies
@@ -132,4 +136,22 @@
              (entry (list* display-name
                            (when symbol
                              (list symbol)))))
-        (setf (gethash name (currencies-of *locale*)) entry)))))
+        (setf (gethash name (currencies-of *locale*)) entry))))
+
+  (:method ((parent ldml:languages) (node ldml:language))
+    (process-langauge-list-like-ldml-node node 'languages-of))
+
+  (:method ((parent ldml:scripts) (node ldml:script))
+    (process-langauge-list-like-ldml-node node 'scripts-of))
+
+  (:method ((parent ldml:territories) (node ldml:territory))
+    (process-langauge-list-like-ldml-node node 'territories-of))
+
+  (:method ((parent ldml:variants) (node ldml:variant))
+    (process-langauge-list-like-ldml-node node 'variants-of)))
+
+(defun process-langauge-list-like-ldml-node (node accessor)
+  (let* ((name (string-upcase (slot-value node 'ldml::type))))
+    (setf name (intern name :cl-l10n.lang))
+    (let* ((display-name (flexml:string-content-of node)))
+      (setf (gethash name (funcall accessor *locale*)) display-name))))
