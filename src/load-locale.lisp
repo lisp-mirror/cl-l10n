@@ -2,25 +2,6 @@
 ;; See the file LICENCE for licence information.
 (in-package :cl-l10n)
 
-(defvar *resource-package* nil
-  "Resource files will be loaded into this package. I suggest to create a package called 'lang'
-and set/bind this variable to it before calling cl-l10n. Then all the defined resources will be in
-this new package and you can refer to them with lang:resource-name so it's easy to search, etc.
-
-An example:
-
-\(defpackage :some-project.lang
-  \(:nicknames :lang)
-  \(:use
-   :common-lisp
-   :cl-l10n))")
-
-(defmacro with-resource-package (package &body body)
-  `(let ((*resource-package* (find-package ,package)))
-    ,@body))
-
-(defparameter *common-resource-file-is-loaded-p* nil)
-
 (deftype locale-designator ()
   `(or locale string symbol))
 
@@ -84,7 +65,7 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
                     (cached-locale name))
           (return-from locale it))
         (let ((file (cldr-pathname-for name)))
-          (if file
+          (if (probe-file file)
               (let ((locale (parse-cldr-file name)))
                 (setf (cached-locale name) locale)
                 (load-resource name)
@@ -96,29 +77,19 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
   ;;(l10n-logger.debug "Trying to load resource ~A" name)
   (let ((resource-file (project-relative-pathname
                         (make-pathname :directory
-                                       '(:relative "resources")
+                                       '(:relative "src" "resources")
                                        :name name
                                        :type "lisp"))))
     (awhen (probe-file resource-file)
       (when (pathname-name it)
         ;;(l10n-logger.debug "Resource found at ~A" it)
-        (if *resource-package*
-            (let ((*package* *resource-package*))
-              ;;(l10n-logger.info "Loading resource ~A into ~A" it *resource-package*)
-              (load it))
-            (progn
-              ;;(l10n-logger.debug "*resource-package* is not set, skipped loading ~A" it)
-              (warn "*resource-package* is not set, skipped loading resource file ~A" it))))))
-  (unless *common-resource-file-is-loaded-p*
-    (setf *common-resource-file-is-loaded-p* t)
-    (load-resource "common")))
+        (load it)))))
 
 (defun reload-resources ()
-  (let ((common-was-already-loaded? *common-resource-file-is-loaded-p*))
-    (iter (for (name nil) :in-hashtable *locale-cache*)
-          (load-resource name))
-    (when common-was-already-loaded?
-      (load-resource "common"))))
+  (load-resource "common")
+  (iter (for (name nil) :in-hashtable *locale-cache*)
+        (load-resource name)))
+
 #+nil
 (defun load-all-locales (&key (path *locale-path*) (ignore-errors nil) (use-cache nil))
   "Load all locale found in pathname designator PATH."

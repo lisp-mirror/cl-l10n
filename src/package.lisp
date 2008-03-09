@@ -27,10 +27,8 @@
    #:shadow-format
    #:parse-time
 
-   #:*resource-package*
-   #:with-resource-package
    #:reload-resources
-           
+
    #:capitalize-first-letter
    #:capitalize-first-letter!
 
@@ -57,6 +55,11 @@
    ))
 
 (defpackage #:cl-l10n.lang
+  (:use :common-lisp :cl-l10n)
+
+  (:shadowing-import-from :cl-l10n
+   #:defresources)
+
   (:export
 
    ;; <numbers> / <symbols>

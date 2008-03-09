@@ -31,7 +31,10 @@
                                               :components ((:file "common")
                                                            (:file "english" :depends-on ("common"))
                                                            (:file "hungarian" :depends-on ("common")))
-                                              :depends-on ("package" "utils")))
+                                              :depends-on ("package" "utils"))
+                                     (:module :resources
+                                              :components ((:file "common"))
+                                              :depends-on ("package" "utils" "load-locale")))
                         :depends-on ("flexml")))
   :depends-on (:alexandria :iterate :cl-ppcre :cl-fad :flexi-streams))
 

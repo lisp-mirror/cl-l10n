@@ -72,30 +72,30 @@ and funcall the resource registered for the current locale."
 (defun (setf lookup-resource) (value name)
   (%set-resource *locale* name value))
 
-(defmacro defresources (locale &body resources)
-  (let ((locale-name (canonical-locale-name-from locale)))
+(defmacro defresources (locale-designator &body resources)
+  (with-unique-names (locale)
     `(progn
        ;; TODO think, cleanup. this defun may be superfluous in the current setup
-      ,@(iter (for resource in resources)
-              (for name = (first resource))
-              (when (> (length resource) 2)
-                (collect `(unless (and (get ',name 'cl-l10n-entry-function)
-                                   (fboundp ',name))
-                           (defun ,name (&rest args)
-                             (lookup-resource ',name :arguments args))
-                           (setf (get ',name 'cl-l10n-entry-function) t)))))
-      (eval-when (:load-toplevel :execute)
-        ,@(iter (for resource in resources)
-                (for name = (first resource))
-                (if (= 2 (length resource))
-                    (collect `(%set-resource ,locale-name
-                               ',name ',(second resource)))
-                    (collect `(%set-resource ,locale-name
-                               ',name (lambda ,(second resource)
-                                        ,@(cddr resource)))))
-                (when (and (symbolp name)
-                           (not (char= (aref (symbol-name name) 0) #\%)))
-                  (collect `(export ',name))))))))
+       ;; TODO what about 'cl-l10n-entry-function, is it really needed/useful?
+       ,@(iter (for resource in resources)
+               (for name = (first resource))
+               (when (> (length resource) 2)
+                 (collect `(unless (and (get ',name 'cl-l10n-entry-function)
+                                        (fboundp ',name))
+                             (defun ,name (&rest args)
+                               (lookup-resource ',name :arguments args))
+                             (setf (get ',name 'cl-l10n-entry-function) t)))))
+       (eval-when (:load-toplevel :execute)
+         (let ((,locale (locale ,(canonical-locale-name-from locale-designator))))
+           ,@(iter (for resource in resources)
+                   (for name = (first resource))
+                   (if (= 2 (length resource))
+                       (collect `(%set-resource ,locale ',name ',(second resource)))
+                       (collect `(%set-resource ,locale ',name (lambda ,(second resource)
+                                                                 ,@(cddr resource)))))
+                   (when (and (symbolp name)
+                              (not (char= (aref (symbol-name name) 0) #\%)))
+                     (collect `(export ',name)))))))))
 
 (defmacro lookup-first-matching-resource (&body specs)
   "Try to look up the resource keys, return the first match, fallback to the first key.
@@ -181,8 +181,10 @@ Be careful when using in different situations, because it modifies *readtable*."
 ;;;
 (defun language-symbol-p (name)
   (and (symbolp name)
-       (eq (symbol-package name)
-           (load-time-value (find-package :cl-l10n.lang)))))
+       (find-symbol (symbol-name name)
+                    (load-time-value
+                     (find-package :cl-l10n.lang)))
+       t))
 
 (defun ensure-language-symbol (name)
   (intern (string name) :cl-l10n.lang))
