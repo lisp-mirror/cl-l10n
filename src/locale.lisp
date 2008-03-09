@@ -22,12 +22,11 @@
   "Hash table containing all loaded locales keyed on LOCALE-NAME (eg. \"af_ZA\")")
 
 ;; Conditions
-(define-condition locale-error (error)
-  ((mesg :accessor mesg :initarg :mesg :initform "Unknown."))
-  (:report (lambda (obj stream) (cl:format stream "~A" (mesg obj)))))
+(define-condition locale-error (simple-error)
+  ())
 
-(defun locale-error (string &rest args)
-  (error 'locale-error :mesg (apply #'cl:format nil string args)))
+(defun locale-error (message &rest args)
+  (error 'locale-error :format-control message :format-arguments args))
 
 ;; Classes
 (defclass locale ()
