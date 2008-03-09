@@ -43,6 +43,11 @@
 (defclass ldml:node (flexml:flexml-node)
   ())
 
+(defmethod print-object ((self ldml:node) stream)
+  (let ((*print-circle* nil))
+    (print-unreadable-object (self stream :type t :identity t)
+      (princ (flexml::local-name-of self) stream))))
+
 (macrolet ((define (&body entries)
              `(progn
                 ,@(iter (for entry :in entries)
