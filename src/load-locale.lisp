@@ -2,9 +2,6 @@
 ;; See the file LICENCE for licence information.
 (in-package :cl-l10n)
 
-(defparameter *ignore-categories*
-  (list "LC_CTYPE" "LC_COLLATE"))
-
 (defvar *resource-package* nil
   "Resource files will be loaded into this package. I suggest to create a package called 'lang'
 and set/bind this variable to it before calling cl-l10n. Then all the defined resources will be in
@@ -84,12 +81,12 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
       locale-designator
       (let ((name (canonical-locale-name-from locale-designator)))
         (awhen (and use-cache
-                    (get-cached-locale name))
+                    (cached-locale name))
           (return-from locale it))
         (let ((file (cldr-pathname-for name)))
           (if file
               (let ((locale (parse-cldr-file name)))
-                (setf (get-cached-locale name) locale)
+                (setf (cached-locale name) locale)
                 (load-resource name)
                 locale)
               (when errorp
