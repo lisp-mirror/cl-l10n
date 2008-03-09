@@ -113,3 +113,12 @@
    #:calendars
 |#
    ))
+
+(block check-lisp-source-file-encoding
+  (map nil (lambda (a b)
+             (unless (eql a (char-code b))
+               (cerror "try it anyway"
+                       "Your lisp seems to be reading .lisp files in something else then UTF-8. The source files of cl-l10n contain literal strings with unicode characters and failing to properly read them in UTF-8 will cause problems.")
+               (return-from check-lisp-source-file-encoding)))
+       #(233 225 250 337 243 246 369 237)
+       "éáúőóöűí"))

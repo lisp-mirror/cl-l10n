@@ -83,17 +83,6 @@
 
 #+(and sbcl sb-unicode)
 (progn
-  ;; TODO find out how to deal with this situation in the entire lib.
-  ;; at the time of writing this requirement is only local to this piece of code...
-  (block check-lisp-source-file-encoding
-    (map nil (lambda (a b)
-               (unless (eql a (char-code b))
-                 (cerror "try it anyway"
-                         "Your lisp seems to be reading .lisp files in something else then UTF-8. Some of the source files of cl-l10n contains unicode text and it may cause problems...")
-                 (return-from check-lisp-source-file-encoding)))
-         #(233 225 250 337 243 246 369 237)
-         "éáúőóöűí"))
-
   (defun jelző-képző-rag-egész-számokhoz (number)
     (declare (optimize (speed 3)))
     (declare (type integer number))
