@@ -16,15 +16,18 @@
                (collect `(with-locale ,locale
                            (one-pass)))))))
 
-(defsuite (symbols :in test))
+(defsuite (cldr :in test))
+(in-suite cldr)
+
+(defsuite (symbols :in cldr))
 (in-suite symbols)
 
-(def-symbol-test test/symbols/posix ("en_US_POSIX" cl-l10n.lang:number-symbol)
+(def-symbol-test test/cldr/symbols/posix ("en_US_POSIX" cl-l10n.lang:number-symbol)
   (per-mille "0/00")
   (infinity "INF"))
 
-(def-symbol-test test/symbols/en (("en_US" "en_GB" "en")
-                                  cl-l10n.lang:number-symbol)
+(def-symbol-test test/cldr/symbols/en (("en_US" "en_GB" "en")
+                                       cl-l10n.lang:number-symbol)
   (decimal ".")
   (group ",")
   (list ";")
@@ -38,7 +41,7 @@
   (infinity "∞")
   (nan "NaN"))
 
-(defsuite (currencies :in test))
+(defsuite (currencies :in cldr))
 (in-suite currencies)
 
 (def-symbol-test test/currencies/en (("en_US_POSIX" "en_US" "en_GB" "en")

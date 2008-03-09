@@ -87,6 +87,7 @@ and funcall the resource registered for the current locale."
                              (setf (get ',name 'cl-l10n-entry-function) t)))))
        (eval-when (:load-toplevel :execute)
          (let ((,locale (locale ,(canonical-locale-name-from locale-designator))))
+           (declare (ignorable ,locale))
            ,@(iter (for resource in resources)
                    (for name = (first resource))
                    (if (= 2 (length resource))

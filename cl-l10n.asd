@@ -47,7 +47,8 @@
   ((:module "test"
             :components
             ((:file "package")
-             (:file "tests" :depends-on ("package"))))))
+             (:file "cldr" :depends-on ("package"))
+             (:file "resources" :depends-on ("package" "cldr"))))))
 
 (defmethod perform ((op test-op) (sys (eql (find-system :cl-l10n))))
   (oos 'load-op :cl-l10n.test)
