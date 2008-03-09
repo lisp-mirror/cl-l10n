@@ -73,6 +73,16 @@
    ldml:currencies
    ldml:currency
    ldml:display-name
+   ldml:calendar
+   ldml:calendars
+   ldml:month-width
+   ldml:month
+   ldml:day-width
+   ldml:day
+   ldml:quarter-width
+   ldml:quarter
+   ldml:am
+   ldml:pm
    ))
 
 (defmethod sax:characters ((parser cldr-parser) data)
@@ -153,7 +163,14 @@
     (process-langauge-list-like-ldml-node node 'territories-of))
 
   (:method ((parent ldml:variants) (node ldml:variant))
-    (process-langauge-list-like-ldml-node node 'variants-of)))
+    (process-langauge-list-like-ldml-node node 'variants-of))
+
+  (:method ((parent ldml:calendars) (node ldml:calendar))
+    (if (string= (slot-value node 'ldml::type) "gregorian")
+        (progn
+          (setf (gregorian-calendar-of *locale*) (make-instance 'gregorian-calendar))
+          (process-ldml-gregorian-calendar-node parent node))
+        (call-next-method))))
 
 (defun process-langauge-list-like-ldml-node (node accessor)
   (let* ((name (string-upcase (slot-value node 'ldml::type))))
@@ -162,3 +179,47 @@
          (setf name (intern name :cl-l10n.lang)))
     (let* ((display-name (flexml:string-content-of node)))
       (setf (gethash name (funcall accessor *locale*)) display-name))))
+
+(defgeneric process-ldml-gregorian-calendar-node (prent node)
+  (:method (parent (node flexml:flexml-node))
+    (iter (for child :in-sequence (flexml:children-of node))
+          (process-ldml-gregorian-calendar-node node child)))
+
+  (:method ((parent flexml:flexml-node) (node string))
+    ;; nop
+    )
+
+  (:method ((parent ldml:calendar) (node ldml:am))
+    (setf (am-of (gregorian-calendar-of *locale*)) (flexml:string-content-of node)))
+
+  (:method ((parent ldml:calendar) (node ldml:pm))
+    (setf (pm-of (gregorian-calendar-of *locale*)) (flexml:string-content-of node)))
+
+  (:method ((parent ldml:month-width) (node ldml:month))
+    (process-month-list-like-ldml-node
+     parent node 12 '(("abbreviated" . abbreviated-month-names-of)
+                      ("wide"        . month-names-of))))
+
+  (:method ((parent ldml:day-width) (node ldml:day))
+    (process-month-list-like-ldml-node
+     parent node 7 '(("abbreviated" . abbreviated-day-names-of)
+                      ("wide"        . day-names-of))
+     '("sun" "mon" "tue" "wed" "thu" "fri" "sat")))
+
+  (:method ((parent ldml:quarter-width) (node ldml:quarter))
+    (process-month-list-like-ldml-node
+     parent node 4 '(("abbreviated" . abbreviated-quarter-names-of)
+                     ("wide"        . quarter-names-of)))))
+
+(defun process-month-list-like-ldml-node (parent node max-count accessor-map &optional index-designators)
+  (let* ((calendar (gregorian-calendar-of *locale*))
+         (accessor (awhen (assoc (slot-value parent 'ldml::type) accessor-map :test #'string=)
+                     (cdr it)))
+         (index-designator (slot-value node 'ldml::type))
+         (index (aif (parse-integer index-designator :junk-allowed t)
+                     (1- it)
+                     (position index-designator index-designators :test #'string=))))
+    (assert (<= 0 index (1- max-count)))
+    (when accessor
+      (let ((vector (funcall accessor calendar)))
+        (setf (aref vector index) (flexml:string-content-of node))))))

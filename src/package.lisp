@@ -109,6 +109,16 @@
    #:territory
    #:variants
    #:variant
+   #:calendars
+   #:calendar
+   #:month-width
+   #:month
+   #:day-width
+   #:day
+   #:quarter-width
+   #:quarter
+   #:am
+   #:pm
 #|
    #:locale-display-names
    #:layout

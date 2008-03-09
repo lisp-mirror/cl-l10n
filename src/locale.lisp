@@ -64,6 +64,9 @@
    (variants
     :initform (make-hash-table :test #'eq)
     :accessor variants-of)
+   (gregorian-calendar
+    :initarg :gregorian-calendar
+    :accessor gregorian-calendar-of)
    (resources
     :initform (make-hash-table :test #'equal)
     :accessor resources-of)))
