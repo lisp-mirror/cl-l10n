@@ -79,7 +79,7 @@
    #:nan
 
    #:currency-symbol
-   #:currency-display-name
+   #:currency-name
    #:language
    #:script
    #:territory

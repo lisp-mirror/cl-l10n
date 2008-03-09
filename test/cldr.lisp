@@ -47,7 +47,7 @@
 (defsuite (currencies :in cldr))
 (in-suite currencies)
 
-(def-symbol-test test/currencies (cl-l10n.lang:currency-display-name cl-l10n.lang:currency-symbol)
+(def-symbol-test test/currencies (cl-l10n.lang:currency-name cl-l10n.lang:currency-symbol)
   (("en_US_POSIX" "en_US" "en_GB" "en")
 
    (usd   "US Dollar"              "$")

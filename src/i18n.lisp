@@ -216,15 +216,15 @@ Be careful when using in different situations, because it modifies *readtable*."
   `(currency-symbol ',(ensure-language-symbol name)))
 
 
-(defun currency-display-name (name)
+(defun currency-name (name)
   (assert (language-symbol-p name))
   (do-locales locale
     (awhen (gethash name (currencies-of locale))
-      (return-from currency-display-name (first it))))
+      (return-from currency-name (first it))))
   (resource-missing name))
 
-(defmacro cl-l10n.lang:currency-display-name (name)
-  `(currency-display-name ',(ensure-language-symbol name)))
+(defmacro cl-l10n.lang:currency-name (name)
+  `(currency-name ',(ensure-language-symbol name)))
 
 
 (defun language (name)
