@@ -62,8 +62,8 @@ and funcall the resource registered for the current locale."
           (values nil nil)))))
 
 (defun lookup-resource (name &key arguments (warn-if-missing t) (fallback-to-name t))
-  (loop for locale :in *locale* do
-        (dolist (locale (locale-precedence-list locale))
+  (loop for toplevel-locale :in *locale* do
+        (dolist (locale (precedence-list-of toplevel-locale))
           (multiple-value-bind (result foundp) (funcall '%lookup-resource locale name arguments)
             (when foundp
               (return-from lookup-resource (values result t))))))

@@ -38,6 +38,10 @@
     :initform nil
     :initarg :variant
     :accessor variant-of)
+   (precedence-list
+    :initform nil
+    :initarg :precedence-list
+    :accessor precedence-list-of)
    (version-info
     :initform nil
     :initarg :version-info
@@ -95,11 +99,18 @@
     (push *root-locale* result)
     (nreverse result)))
 
+(defmethod precedence-list-of :around ((self locale))
+  (let ((result (call-next-method)))
+    (unless result
+      (setf result (locale-precedence-list self))
+      (setf (precedence-list-of self) result))
+    result))
+
 (defmacro do-locales (var &rest body)
   "Iterate all locales in *locale* and all their base locales in the right order."
   (with-unique-names (locale)
     `(dolist (,locale *locale*)
-       (dolist (,var (locale-precedence-list ,locale))
+       (dolist (,var (precedence-list-of ,locale))
          ,@body))))
 
 ;;;

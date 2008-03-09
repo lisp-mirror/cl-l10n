@@ -12,7 +12,7 @@
    #:formatter
    #:*locale-cache*
    #:*locale*
-   #:locale-precedence-list
+   #:precedence-list-of
    ))
 
 (in-package #:cl-l10n.test)
