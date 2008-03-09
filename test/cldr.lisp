@@ -3,18 +3,19 @@
 
 (in-package :cl-l10n.test)
 
-(defmacro def-symbol-test (name (locales &rest accessors) &body body)
+(defmacro def-symbol-test (name accessors &body forms)
   `(deftest ,name ()
-     (flet ((one-pass ()
-              ,@(iter (for (symbol . values) :in body)
-                      (collect `(progn
-                                  ,@(iter (for value :in values)
-                                          (for accessor :in accessors)
-                                          (collect `(is (string= (,accessor ,symbol)
-                                                                 ,value)))))))))
-       ,@(iter (for locale :in (ensure-list locales))
-               (collect `(with-locale ,locale
-                           (one-pass)))))))
+     ,@(iter (for (locales . body) :in forms)
+             (collect `(flet ((one-pass ()
+                                ,@(iter (for (symbol . values) :in body)
+                                        (collect `(progn
+                                                    ,@(iter (for value :in values)
+                                                            (for accessor :in accessors)
+                                                            (collect `(is (string= (,accessor ,symbol)
+                                                                                   ,value)))))))))
+                         ,@(iter (for locale :in (ensure-list locales))
+                                 (collect `(with-locale ,locale
+                                             (one-pass)))))))))
 
 (defsuite (cldr :in test))
 (in-suite cldr)
@@ -22,45 +23,120 @@
 (defsuite (symbols :in cldr))
 (in-suite symbols)
 
-(def-symbol-test test/cldr/symbols/posix ("en_US_POSIX" cl-l10n.lang:number-symbol)
-  (per-mille "0/00")
-  (infinity "INF"))
+(def-symbol-test test/cldr/symbols/number-symbols (cl-l10n.lang:number-symbol)
+  ("en_US_POSIX"
 
-(def-symbol-test test/cldr/symbols/en (("en_US" "en_GB" "en")
-                                       cl-l10n.lang:number-symbol)
-  (decimal ".")
-  (group ",")
-  (list ";")
-  (percent-sign "%")
-  (native-zero-digit "0")
-  (pattern-digit "#")
-  (plus-sign "+")
-  (minus-sign "-")
-  (exponential "E")
-  (per-mille "‰")
-  (infinity "∞")
-  (nan "NaN"))
+   (per-mille "0/00")
+   (infinity "INF"))
+
+  (("en_US" "en_GB" "en")
+
+   (decimal ".")
+   (group ",")
+   (list ";")
+   (percent-sign "%")
+   (native-zero-digit "0")
+   (pattern-digit "#")
+   (plus-sign "+")
+   (minus-sign "-")
+   (exponential "E")
+   (per-mille "‰")
+   (infinity "∞")
+   (nan "NaN")))
 
 (defsuite (currencies :in cldr))
 (in-suite currencies)
 
-(def-symbol-test test/currencies/en (("en_US_POSIX" "en_US" "en_GB" "en")
-                                     cl-l10n.lang:currency-display-name
-                                     cl-l10n.lang:currency-symbol)
-  (usd   "US Dollar"              "$")
-  ("USN" "US Dollar (Next day)"   nil)
-  (uak   "Ukrainian Karbovanetz"  nil)
-  (huf   "Hungarian Forint"       "Ft")
-  ("GBP" "British Pound Sterling" "£"))
+(def-symbol-test test/currencies (cl-l10n.lang:currency-display-name cl-l10n.lang:currency-symbol)
+  (("en_US_POSIX" "en_US" "en_GB" "en")
 
-(def-symbol-test test/currencies/hu (("hu_HU" "hu")
-                                     cl-l10n.lang:currency-display-name
-                                     cl-l10n.lang:currency-symbol)
-  (usd   "USA dollár"                  "USD")
-  ("USN" "USA dollár (következő napi)" nil)
-  (uak   "Ukrán karbovanec"            nil)
-  (huf   "Magyar forint"               "Ft")
-  ("GBP" "Brit font sterling"          "GBP"))
+   (usd   "US Dollar"              "$")
+   ("USN" "US Dollar (Next day)"   nil)
+   (uak   "Ukrainian Karbovanetz"  nil)
+   (huf   "Hungarian Forint"       "Ft")
+   ("GBP" "British Pound Sterling" "£"))
+
+  (("hu_HU" "hu")
+
+   (usd   "USA dollár"                  "USD")
+   ("USN" "USA dollár (következő napi)" nil)
+   (uak   "Ukrán karbovanec"            nil)
+   (huf   "Magyar forint"               "Ft")
+   ("GBP" "Brit font sterling"          "GBP")))
+
+(defsuite (languages :in cldr))
+(in-suite languages)
+
+(def-symbol-test test/languages/language (cl-l10n.lang:language)
+  (("en_US_POSIX" "en_US" "en_GB" "en")
+
+   (aa        "Afar")
+   ("ace"     "Achinese")
+   (zza       "Zaza")
+   (zh_Hans   "Simplified Chinese")
+   ("zh_Hant" "Traditional Chinese")
+   (zh        "Chinese"))
+
+  (("hu_HU" "hu")
+
+   (aa        "afar")
+   ("ace"     "achinéz")
+   (zza       "zaza")
+   ;; The next two may break until support for the cldr 'draft' attribute is implemented
+   (zh_Hans   "kínai (egyszerűsített)")
+   ("zh_Hant" "kínai (hagyományos)")
+   (zh        "kínai")))
+
+(def-symbol-test test/languages/script (cl-l10n.lang:script)
+  (("en_US_POSIX" "en_US" "en_GB" "en")
+
+   (Arab      "Arabic")
+   ("Zyyy"    "Common")
+   (Tibt      "Tibetan")
+   (Knda      "Kannada")
+   ("Ital"    "Old Italic"))
+
+  (("hu_HU" "hu")
+
+   ;;(Arab      "Arabic") missing from the xml?!
+   ("Zyyy"    "Általános")
+   (Visp      "Látható beszéd")
+   (Tibt      "Tibeti")
+   (Knda      "Kannada")
+   ("Ital"    "Régi olasz")))
+
+
+(def-symbol-test test/languages/territory (cl-l10n.lang:territory)
+  (("en_US_POSIX" "en_US" "en_GB" "en")
+
+   (011       "Western Africa")
+   (200       "Czechoslovakia")
+   (BD        "Bangladesh")
+   (ZZ        "Unknown or Invalid Region")
+   ("HU"      "Hungary"))
+
+  (("hu_HU" "hu")
+
+   (019       "Amerika")
+   (142       "Ázsia")
+   (BD        "Banglades")
+   (ZZ        "Ismeretlen vagy érvénytelen terület")
+   ("HU"      "Magyarország")))
+
+(def-symbol-test test/languages/variant (cl-l10n.lang:variant)
+  (("en_US_POSIX" "en_US" "en_GB" "en")
+
+   (1901      "Traditional German orthography")
+   (REVISED   "Revised Orthography")
+   (ROZAJ     "Resian")
+   (POSIX     "Computer"))
+
+  (("hu_HU" "hu")
+
+   (1901      "Hagyományos német helyesírás")
+   (REVISED   "Átdolgozott helyesírás")
+   (ROZAJ     "Resian")
+   (POSIX     "Számítógép")))
 
 #+nil
 (
