@@ -181,14 +181,17 @@ Be careful when using in different situations, because it modifies *readtable*."
 ;;; some custom accessors
 ;;;
 (defun language-symbol-p (name)
-  (and (symbolp name)
-       (find-symbol (symbol-name name)
-                    (load-time-value
-                     (find-package :cl-l10n.lang)))
-       t))
+  (or (integerp name)
+      (and (symbolp name)
+           (find-symbol (symbol-name name)
+                        (load-time-value
+                         (find-package :cl-l10n.lang)))
+           t)))
 
 (defun ensure-language-symbol (name)
-  (intern (string-upcase (string name)) :cl-l10n.lang))
+  (if (integerp name)
+      name
+      (intern (string-upcase (string name)) :cl-l10n.lang)))
 
 
 (defun number-symbol (name)

@@ -152,6 +152,8 @@
 
 (defun process-langauge-list-like-ldml-node (node accessor)
   (let* ((name (string-upcase (slot-value node 'ldml::type))))
-    (setf name (intern name :cl-l10n.lang))
+    (aif (parse-integer name :junk-allowed t)
+         (setf name it)
+         (setf name (intern name :cl-l10n.lang)))
     (let* ((display-name (flexml:string-content-of node)))
       (setf (gethash name (funcall accessor *locale*)) display-name))))
