@@ -33,6 +33,14 @@
   ("őr"      "az őr")
   (("kutya" :capitalize-first-letter t) "A kutya"))
 
+(def-resource-test test/resources/hu/month-names
+    (cl-l10n.lang:month "hu" "hu_HU")
+  (0   "január")
+  (1   "február")
+  (2   "március")
+  (11  "december")
+  ((11 :capitalize-first-letter t) "December"))
+
 ;;;
 ;;; English
 ;;;
@@ -51,3 +59,11 @@
   ("car"      "the car")
   (("dog" :capitalize-first-letter t)     "The dog")
   (("element" :capitalize-first-letter t) "The element"))
+
+(def-resource-test test/resources/en/month-names
+    (cl-l10n.lang:month "en" "en_GB" "en_US" "en_US_POSIX")
+  (0   "January")
+  (1   "February")
+  (2   "March")
+  (11  "December")
+  ((11 :capitalize-first-letter t) "December"))
