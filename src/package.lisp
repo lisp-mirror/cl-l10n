@@ -91,6 +91,39 @@
    #:script
    #:territory
    #:variant
+
+   #:with-indefinite-article
+   #:with-definite-article
+
+   #:month
+   #:day
+   #:quarter
+
+   #:january
+   #:february
+   #:marc
+   #:april
+   #:may
+   #:june
+   #:july
+   #:august
+   #:september
+   #:october
+   #:november
+   #:december
+
+   #:first-quarter
+   #:second-quarter
+   #:third-quarter
+   #:fourth-quarter
+
+   #:sunday
+   #:monday
+   #:tuesday
+   #:wednesday
+   #:thursday
+   #:friday
+   #:saturday
    ))
 
 (defpackage #:cl-l10n.ldml

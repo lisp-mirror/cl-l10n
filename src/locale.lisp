@@ -65,6 +65,7 @@
     :initform (make-hash-table :test #'eq)
     :accessor variants-of)
    (gregorian-calendar
+    :initform nil
     :initarg :gregorian-calendar
     :accessor gregorian-calendar-of)
    (resources
@@ -124,9 +125,16 @@
 (defmacro do-locales (var &rest body)
   "Iterate all locales in *locale* and all their base locales in the right order."
   (with-unique-names (locale)
-    `(dolist (,locale *locale*)
-       (dolist (,var (precedence-list-of ,locale))
-         ,@body))))
+    `(block do-locales
+       (dolist (,locale *locale*)
+         (dolist (,var (precedence-list-of ,locale))
+           ,@body)))))
+
+(defmacro do-locales-for-resource (name var &rest body)
+  `(block do-locales-for-resource
+     (do-locales ,var
+       ,@body)
+     (resource-missing ,name)))
 
 ;;;
 ;;; Caching parsed locale instances

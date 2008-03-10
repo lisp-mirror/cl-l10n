@@ -211,15 +211,19 @@
      parent node 4 '(("abbreviated" . abbreviated-quarter-names-of)
                      ("wide"        . quarter-names-of)))))
 
-(defun process-month-list-like-ldml-node (parent node max-count accessor-map &optional index-designators)
+(defun process-month-list-like-ldml-node (parent node max-count reader-map &optional index-designators)
   (let* ((calendar (gregorian-calendar-of *locale*))
-         (accessor (awhen (assoc (slot-value parent 'ldml::type) accessor-map :test #'string=)
-                     (cdr it)))
+         (reader (awhen (assoc (slot-value parent 'ldml::type) reader-map :test #'string=)
+                   (cdr it)))
          (index-designator (slot-value node 'ldml::type))
          (index (aif (parse-integer index-designator :junk-allowed t)
                      (1- it)
                      (position index-designator index-designators :test #'string=))))
     (assert (<= 0 index (1- max-count)))
-    (when accessor
-      (let ((vector (funcall accessor calendar)))
+    (when reader
+      (bind ((writer (fdefinition `(setf ,reader)))
+             (vector (funcall reader calendar)))
+        (unless vector
+          (setf vector (make-array max-count :initial-element nil))
+          (funcall writer vector calendar))
         (setf (aref vector index) (flexml:string-content-of node))))))
