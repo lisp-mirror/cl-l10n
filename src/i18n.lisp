@@ -108,25 +108,23 @@ An example usage:
       (name-of (state-machine-of state)) (name-of state))
     (\"state-name\" (name-of state))
     \"last-try\")"
-  (with-unique-names (fallback-tmp block resource foundp)
-    (iter (with fallback = nil)
-          (for spec :in specs)
-          (for wrapper = '())
+  (with-unique-names (fallback block resource foundp)
+    (iter (for spec :in specs)
+          (for wrapper = `(progn))
           (when (and (consp spec)
                      (member (first spec) '(when unless)))
-            (assert (not (first-iteration-p)) () "Conditionals are not supported for the first entry in lookup-first-matching-resource, because that one is the default fallback")
-            (setf wrapper (list (first spec) (second spec)))
-            (setf spec (rest (rest spec))))
+            (setf wrapper (subseq spec 0 2))
+            (setf spec (cddr spec)))
           (for key = (cond ((atom spec)
                             spec)
                            ((and (listp spec)
-                                 (= (length spec) 1))
+                                 (= 1 (length spec)))
                             (first spec))
                            (t `(strcat-separated-by "." ,@spec))))
           (if (first-iteration-p)
               (setf fallback key)
               (let ((lookup-entry `(multiple-value-bind (,resource ,foundp)
-                                        (lookup-resource ,key :warn-if-missing nil :fallback-to-name nil)
+                                        (lookup-resource ,key nil :warn-if-missing nil :fallback-to-name nil)
                                       (when ,foundp
                                         (return-from ,block (values ,resource t))))))
                 (collect (if wrapper
@@ -137,7 +135,7 @@ An example usage:
                              ;; the first lookup must be treated differently to avoid double evaluation of the key
                              (let ((,fallback-tmp ,fallback))
                                (multiple-value-bind (,resource ,foundp)
-                                   (lookup-resource ,fallback-tmp :warn-if-missing nil :fallback-to-name nil)
+                                   (lookup-resource ,fallback-tmp nil :warn-if-missing nil :fallback-to-name nil)
                                  (when ,foundp
                                    (return-from ,block (values ,resource t))))
                                ,@lookups
