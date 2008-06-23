@@ -92,10 +92,7 @@ and funcall the resource registered for the current locale."
                    (if (= 2 (length resource))
                        (collect `(%set-resource ,locale ',name ',(second resource)))
                        (collect `(%set-resource ,locale ',name (lambda ,(second resource)
-                                                                 ,@(cddr resource)))))
-                   (when (and (symbolp name)
-                              (not (char= (aref (symbol-name name) 0) #\%)))
-                     (collect `(export ',name)))))))))
+                                                                 ,@(cddr resource)))))))))))
 
 (defmacro lookup-first-matching-resource (&body specs)
   "Try to look up the resource keys, return the first match, fallback to the first key.
@@ -108,7 +105,7 @@ An example usage:
       (name-of (state-machine-of state)) (name-of state))
     (\"state-name\" (name-of state))
     \"last-try\")"
-  (with-unique-names (fallback block resource foundp)
+  (with-unique-names (fallback key-tmp block resource foundp)
     (iter (for spec :in specs)
           (for wrapper = `(progn))
           (when (and (consp spec)
@@ -121,25 +118,22 @@ An example usage:
                                  (= 1 (length spec)))
                             (first spec))
                            (t `(strcat-separated-by "." ,@spec))))
-          (if (first-iteration-p)
-              (setf fallback key)
-              (let ((lookup-entry `(multiple-value-bind (,resource ,foundp)
-                                        (lookup-resource ,key nil :warn-if-missing nil :fallback-to-name nil)
-                                      (when ,foundp
-                                        (return-from ,block (values ,resource t))))))
-                (collect (if wrapper
-                             `(,@wrapper ,lookup-entry)
-                             lookup-entry)
-                  :into lookups)))
-          (finally (return `(block ,block
-                             ;; the first lookup must be treated differently to avoid double evaluation of the key
-                             (let ((,fallback-tmp ,fallback))
-                               (multiple-value-bind (,resource ,foundp)
-                                   (lookup-resource ,fallback-tmp nil :warn-if-missing nil :fallback-to-name nil)
-                                 (when ,foundp
-                                   (return-from ,block (values ,resource t))))
-                               ,@lookups
-                               (return-from ,block (values ,fallback-tmp nil)))))))))
+          (collect `(,@wrapper
+                     (setf ,key-tmp ,key)
+                     (multiple-value-bind (,resource ,foundp)
+                         (lookup-resource ,key-tmp :warn-if-missing nil :fallback-to-name nil)
+                       (unless ,fallback
+                         (setf ,fallback ,key-tmp))
+                       (when ,foundp
+                         (return-from ,block (values ,resource t)))))
+            :into lookups)
+          (finally
+           (return `(block ,block
+                      ;; the first lookup must be treated differently to avoid double evaluation of the key
+                      (let ((,fallback nil)
+                            (,key-tmp nil))
+                        ,@lookups
+                        (return-from ,block (values ,fallback nil)))))))))
 
 (defmacro enable-sharpquote-reader ()
   "Enable quote reader for the rest of the file (being loaded or compiled).
