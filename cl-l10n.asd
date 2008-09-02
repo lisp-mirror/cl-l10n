@@ -37,7 +37,16 @@
                                               :components ((:file "common"))
                                               :depends-on ("package" "utils" "load-locale")))
                         :depends-on ("flexml")))
-  :depends-on (:alexandria :iterate :cl-ppcre :metabang-bind :cl-fad :flexi-streams))
+  :depends-on (:alexandria
+               :iterate
+               :cl-ppcre
+               :metabang-bind
+               :cl-fad
+               :flexi-streams
+               :cxml
+               :local-time
+               :closer-mop
+               ))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-l10n))))
   (provide 'cl-l10n))
