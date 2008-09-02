@@ -22,6 +22,7 @@
    #:cross-referenced-nodes
 
    ;; some useful helpers
+   #:the-only-child
    #:find-node-by-id
    #:first-child-with-type
    #:first-child-with-local-name
@@ -272,6 +273,11 @@
   (loop for child :across (children-of node) do
        (when (string= (local-name-of child) name)
          (return-from first-child-with-local-name child))))
+
+(defun the-only-child (node)
+  (let ((children (children-of node)))
+    (assert (= 1 (length children)))
+    (elt children 0)))
 
 (defgeneric find-node-by-id (id builder &key otherwise)
   (:method ((id string) (builder flexml-builder) &key (otherwise :error))
