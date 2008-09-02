@@ -1,3 +1,8 @@
+;;; this file contains code to parse xml using cxml into CLOS nodes
+;;; (hint: multiple dispatch) that have a special feature: (slot-value
+;;; node 'some-attribute) returns the attribute value even if the
+;;; class has no such slot (using a hashtable).  it is to be moved
+;;; into the cxml repo as a plugin if accepted by the maintainer.
 
 (defpackage :flexml
   (:use :common-lisp :cxml)
@@ -33,10 +38,6 @@
        #:space))))
 
 (in-package :flexml)
-
-;;; this file contains code to parse the gccxml output using cxml. the xml is parsed into
-;;; CLOS nodes (hint: multiple dispatch) that have a special feature:
-;;; (slot-value node 'some-attribute) returns the attribute value.
 
 (defparameter *xml-namespace->lisp-package* (make-hash-table :test #'equalp))
 
@@ -152,8 +153,8 @@
     slot))
 
 (defgeneric class-name-for-node-name (builder namespace-uri package local-name qualified-name)
-  (:method (parser namespace-uri package (local-name string) qualified-name)
-    (find-symbol (string-upcase local-name))))
+  (:method (builder namespace-uri package (local-name string) qualified-name)
+    (find-symbol (string-upcase local-name) (default-package-of builder))))
 
 (defgeneric class-for-node-name (builder namespace-uri package local-name qualified-name)
   (:method (builder namespace-uri package (local-name string) qualified-name)
@@ -213,9 +214,9 @@
                    (cond ((member slot-type '(cross-referenced-node
                                               cross-referenced-nodes))
                           (push (cons node slot) (cross-referencing-slots-of builder)))
-                         ((eq slot-type 'integer)
+                         ((subtypep slot-type 'integer)
                           (setf attribute-value (parse-integer attribute-value)))
-                         ((eq slot-type 'boolean)
+                         ((subtypep slot-type 'boolean)
                           (setf attribute-value (not (null (member attribute-value
                                                                    '("1" "true" "TRUE")
                                                                    :test #'string=))))))
