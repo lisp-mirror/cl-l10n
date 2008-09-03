@@ -61,7 +61,7 @@
    #:hungarian-plural-of
    ))
 
-(defpackage #:cl-l10n.lang
+(defpackage :cl-l10n.lang
   (:use :common-lisp :cl-l10n)
 
   (:shadowing-import-from :cl-l10n
@@ -126,7 +126,7 @@
    #:saturday
    ))
 
-(defpackage #:cl-l10n.ldml
+(defpackage :cl-l10n.ldml
   (:nicknames :ldml)
   (:export
    #:node

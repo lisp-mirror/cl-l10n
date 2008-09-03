@@ -171,18 +171,17 @@ Be careful when using in different situations, because it modifies *readtable*."
 ;;;
 ;;; some custom accessors
 ;;;
-(defun language-symbol-p (name)
+(defun ldml-symbol-p (name)
   (or (integerp name)
       (and (symbolp name)
            (find-symbol (symbol-name name)
-                        (load-time-value
-                         (find-package :cl-l10n.lang)))
+                        #.(find-package :cl-l10n.ldml))
            t)))
 
-(defun ensure-language-symbol (name)
+(defun ensure-ldml-symbol (name)
   (if (integerp name)
       name
-      (intern (string-upcase (string name)) :cl-l10n.lang)))
+      (intern (string-upcase (string name)) :cl-l10n.ldml)))
 
 (defmacro defun-with-capitalizer (name args &body body)
   (unless (member '&key args)
@@ -198,43 +197,43 @@ Be careful when using in different situations, because it modifies *readtable*."
                foundp))))
 
 (defun-with-capitalizer number-symbol (name)
-  (assert (language-symbol-p name))
+  (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (assoc name (number-symbols-of locale) :test #'eq)
       (return-from do-locales-for-resource (values (cdr it) t)))))
 
 (defun-with-capitalizer currency-symbol (name)
-  (assert (language-symbol-p name))
+  (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (currencies-of locale))
       (return-from do-locales-for-resource (second it)))))
 
 (defun-with-capitalizer currency-name (name)
-  (assert (language-symbol-p name))
+  (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (currencies-of locale))
       (return-from do-locales-for-resource (first it)))))
 
 (defun-with-capitalizer language-name (name)
-  (assert (language-symbol-p name))
+  (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (languages-of locale))
       (return-from do-locales-for-resource (values it t)))))
 
 (defun-with-capitalizer script-name (name)
-  (assert (language-symbol-p name))
+  (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (scripts-of locale))
       (return-from do-locales-for-resource (values it t)))))
 
 (defun-with-capitalizer territory-name (name)
-  (assert (language-symbol-p name))
+  (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (territories-of locale))
       (return-from do-locales-for-resource (values it t)))))
 
 (defun-with-capitalizer variant-name (name)
-  (assert (language-symbol-p name))
+  (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (variants-of locale))
       (return-from do-locales-for-resource (values it t)))))
@@ -242,7 +241,7 @@ Be careful when using in different situations, because it modifies *readtable*."
 (defun-with-capitalizer month-name (name &key abbreviated)
   (bind ((index name))
     (unless (integerp name)
-      (assert (language-symbol-p name))
+      (assert (ldml-symbol-p name))
       (setf index (position name '(cl-l10n.lang:january cl-l10n.lang:february cl-l10n.lang:marc
                                    cl-l10n.lang:april   cl-l10n.lang:may      cl-l10n.lang:june
                                    cl-l10n.lang:july    cl-l10n.lang:august   cl-l10n.lang:september
@@ -259,7 +258,7 @@ Be careful when using in different situations, because it modifies *readtable*."
 (defun-with-capitalizer day-name (name &key abbreviated)
   (bind ((index name))
     (unless (integerp name)
-      (assert (language-symbol-p name))
+      (assert (ldml-symbol-p name))
       (setf index (position name '(cl-l10n.lang:sunday    cl-l10n.lang:monday   cl-l10n.lang:tuesday
                                    cl-l10n.lang:wednesday cl-l10n.lang:thursday cl-l10n.lang:friday
                                    cl-l10n.lang:saturday))))
@@ -275,7 +274,7 @@ Be careful when using in different situations, because it modifies *readtable*."
 (defun-with-capitalizer quarter-name (name &key abbreviated)
   (bind ((index name))
     (unless (integerp name)
-      (assert (language-symbol-p name))
+      (assert (ldml-symbol-p name))
       (setf index (position name '(cl-l10n.lang:first-quarter cl-l10n.lang:second-quarter
                                    cl-l10n.lang:third-quarter cl-l10n.lang:fourth-quarter))))
     (assert (<= 0 index 3))

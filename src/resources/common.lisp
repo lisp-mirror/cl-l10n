@@ -19,38 +19,38 @@
                  str)))
 
 (defmacro number-symbol (name)
-  `(cl-l10n::number-symbol ',(cl-l10n::ensure-language-symbol name)))
+  `(cl-l10n::number-symbol ',(cl-l10n::ensure-ldml-symbol name)))
 
 (defmacro currency-symbol (name)
-  `(cl-l10n::currency-symbol ',(cl-l10n::ensure-language-symbol name)))
+  `(cl-l10n::currency-symbol ',(cl-l10n::ensure-ldml-symbol name)))
 
 (defmacro currency-name (name)
-  `(cl-l10n::currency-name ',(cl-l10n::ensure-language-symbol name)))
+  `(cl-l10n::currency-name ',(cl-l10n::ensure-ldml-symbol name)))
 
 (defmacro language (name)
-  `(cl-l10n::language-name ',(cl-l10n::ensure-language-symbol name)))
+  `(cl-l10n::language-name ',(cl-l10n::ensure-ldml-symbol name)))
 
 (defmacro script (name)
-  `(cl-l10n::script-name ',(cl-l10n::ensure-language-symbol name)))
+  `(cl-l10n::script-name ',(cl-l10n::ensure-ldml-symbol name)))
 
 (defmacro territory (name)
-  `(cl-l10n::territory-name ',(cl-l10n::ensure-language-symbol name)))
+  `(cl-l10n::territory-name ',(cl-l10n::ensure-ldml-symbol name)))
 
 (defmacro variant (name)
-  `(cl-l10n::variant-name ',(cl-l10n::ensure-language-symbol name)))
+  `(cl-l10n::variant-name ',(cl-l10n::ensure-ldml-symbol name)))
 
 (defmacro month (name &key abbreviated capitalize-first-letter)
-  `(cl-l10n::month-name ',(cl-l10n::ensure-language-symbol name)
+  `(cl-l10n::month-name ',(cl-l10n::ensure-ldml-symbol name)
                         :abbreviated ,abbreviated
                         :capitalize-first-letter ,capitalize-first-letter))
 
 (defmacro day (name &key abbreviated capitalize-first-letter)
-  `(cl-l10n::day-name ',(cl-l10n::ensure-language-symbol name)
+  `(cl-l10n::day-name ',(cl-l10n::ensure-ldml-symbol name)
                       :abbreviated ,abbreviated
                       :capitalize-first-letter ,capitalize-first-letter))
 
 (defmacro quarter (name &key abbreviated capitalize-first-letter)
-  `(cl-l10n::quarter-name ',(cl-l10n::ensure-language-symbol name)
+  `(cl-l10n::quarter-name ',(cl-l10n::ensure-ldml-symbol name)
                           :abbreviated ,abbreviated
                           :capitalize-first-letter ,capitalize-first-letter))
 

@@ -83,6 +83,8 @@
    ldml:quarter
    ldml:am
    ldml:pm
+   ldml:date-formats
+   ldml:date-format-length
    ))
 
 (defmethod sax:characters ((parser cldr-parser) data)
@@ -90,6 +92,14 @@
                    (member char '(#\Space #\Tab #\Return #\Linefeed) :test #'char=))
                  data)
     (call-next-method)))
+
+(defun ldml-intern (name &key hyphenize)
+  (when hyphenize
+    (setf name (camel-case-to-hyphened name)))
+  (let* ((ldml-package (find-package '#:cl-l10n.ldml))
+         (result (intern (string-upcase name) ldml-package)))
+    (export result ldml-package)
+    result))
 
 (defgeneric process-ldml-node (parent node)
   (:method (parent (node flexml:flexml-node))
@@ -134,16 +144,13 @@
   (:method ((parent ldml:numbers) (node ldml:symbols))
     (iter (for symbol-node :in-sequence (flexml:children-of node))
           (for value = (flexml:string-content-of symbol-node))
-          (for name = (intern (string-upcase
-                               (camel-case-to-hyphened
-                                (flexml:local-name-of symbol-node)))
-                              :cl-l10n.lang))
+          (for name = (ldml-intern (flexml:local-name-of symbol-node) :hyphenize t))
           (push (cons name value) (number-symbols-of *locale*))))
 
   (:method ((parent ldml:currencies) (node ldml:currency))
     (let* ((name (slot-value node 'ldml::type)))
       (assert (every #'upper-case-p name))
-      (setf name (intern name :cl-l10n.lang))
+      (setf name (ldml-intern name))
       (let* ((display-name (flexml:string-content-of
                             (flexml:first-child-with-local-name node "displayName")))
              (symbol (awhen (flexml:first-child-with-local-name node "symbol")
@@ -176,7 +183,7 @@
   (let* ((name (string-upcase (slot-value node 'ldml::type))))
     (aif (parse-integer name :junk-allowed t)
          (setf name it)
-         (setf name (intern name :cl-l10n.lang)))
+         (setf name (ldml-intern name)))
     (let* ((display-name (flexml:string-content-of node)))
       (setf (gethash name (funcall accessor *locale*)) display-name))))
 
