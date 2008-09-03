@@ -124,17 +124,26 @@
 
 (defmacro do-locales (var &rest body)
   "Iterate all locales in *locale* and all their base locales in the right order."
-  (with-unique-names (locale)
-    `(block do-locales
+  (with-unique-names (top-block locale end)
+    `(block ,top-block
        (dolist (,locale *locale*)
          (dolist (,var (precedence-list-of ,locale))
-           ,@body)))))
+           (tagbody
+              (return-from ,top-block (block nil
+                                        ,@body
+                                        (go ,end)))
+              ,end))))))
 
 (defmacro do-locales-for-resource (name var &rest body)
-  `(block do-locales-for-resource
-     (do-locales ,var
-       ,@body)
-     (resource-missing ,name)))
+  (with-unique-names (top-block end)
+    `(block ,top-block
+       (do-locales ,var
+         (tagbody
+            (return-from ,top-block (block nil
+                                      ,@body
+                                      (go ,end)))
+            ,end))
+       (resource-missing ,name))))
 
 ;;;
 ;;; Caching parsed locale instances

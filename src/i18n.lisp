@@ -199,43 +199,43 @@ Be careful when using in different situations, because it modifies *readtable*."
   (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (assoc name (number-symbols-of locale) :test #'eq)
-      (return-from do-locales-for-resource (values (cdr it) t)))))
+      (return (values (cdr it) t)))))
 
 (defun-with-capitalizer currency-symbol (name)
   (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (currencies-of locale))
-      (return-from do-locales-for-resource (second it)))))
+      (return (second it)))))
 
 (defun-with-capitalizer currency-name (name)
   (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (currencies-of locale))
-      (return-from do-locales-for-resource (first it)))))
+      (return (first it)))))
 
 (defun-with-capitalizer language-name (name)
   (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (languages-of locale))
-      (return-from do-locales-for-resource (values it t)))))
+      (return (values it t)))))
 
 (defun-with-capitalizer script-name (name)
   (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (scripts-of locale))
-      (return-from do-locales-for-resource (values it t)))))
+      (return (values it t)))))
 
 (defun-with-capitalizer territory-name (name)
   (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (territories-of locale))
-      (return-from do-locales-for-resource (values it t)))))
+      (return (values it t)))))
 
 (defun-with-capitalizer variant-name (name)
   (assert (ldml-symbol-p name))
   (do-locales-for-resource name locale
     (awhen (gethash name (variants-of locale))
-      (return-from do-locales-for-resource (values it t)))))
+      (return (values it t)))))
 
 (defun-with-capitalizer month-name (name &key abbreviated)
   (bind ((index name))
@@ -252,7 +252,7 @@ Be careful when using in different situations, because it modifies *readtable*."
                              (abbreviated-month-names-of calendar)
                              (month-names-of calendar))
          (awhen (aref vector index)
-           (return-from do-locales-for-resource (values it t))))))))
+           (return (values it t))))))))
 
 (defun-with-capitalizer day-name (name &key abbreviated)
   (bind ((index name))
@@ -268,7 +268,7 @@ Be careful when using in different situations, because it modifies *readtable*."
                              (abbreviated-day-names-of calendar)
                              (day-names-of calendar))
          (awhen (aref vector index)
-           (return-from do-locales-for-resource (values it t))))))))
+           (return (values it t))))))))
 
 (defun-with-capitalizer quarter-name (name &key abbreviated)
   (bind ((index name))
@@ -283,4 +283,4 @@ Be careful when using in different situations, because it modifies *readtable*."
                               (abbreviated-quarter-names-of calendar)
                               (quarter-names-of calendar))
           (awhen (aref vector index)
-            (return-from do-locales-for-resource (values it t))))))))
+            (return (values it t))))))))
