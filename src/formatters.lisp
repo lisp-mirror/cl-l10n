@@ -2,6 +2,19 @@
 ;; See the file LICENCE for licence information.
 (in-package :cl-l10n)
 
+(defun format-date/gregorian-calendar (stream date &key (verbosity 'ldml::medium))
+  (declare (optimize speed))
+  (do-locales locale
+    (when-bind gregorian-calendar (gregorian-calendar-of locale)
+      (when-bind formatter (the (or null function) (getf (date-formatters-of gregorian-calendar) verbosity))
+        (funcall formatter stream date)
+        (return))))
+  date)
+
+#|
+
+TODO revive the same functionality
+
 ;; Number
 (defun get-sign (arg locale)
   (cond ((plusp arg) (locale-positive-sign locale))

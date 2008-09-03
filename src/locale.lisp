@@ -49,6 +49,10 @@
    (number-symbols
     :initform (list)
     :accessor number-symbols-of)
+   (formatters
+    :initform nil
+    :initarg :formatters
+    :accessor formatters-of)
    (currencies
     :initform (make-hash-table :test #'eq)
     :accessor currencies-of)

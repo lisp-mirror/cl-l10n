@@ -13,14 +13,24 @@
     :initform nil
     :type (or null (vector * 12))
     :accessor abbreviated-month-names-of)
+   (narrow-month-names
+    :initform nil
+    :type (or null (vector * 12))
+    :accessor narrow-month-names-of)
+
    (day-names
     :initform nil
     :type (or null (vector * 7))
     :accessor day-names-of)
+   (narrow-day-names
+    :initform nil
+    :type (or null (vector * 7))
+    :accessor narrow-day-names-of)
    (abbreviated-day-names
     :initform nil
     :type (or null (vector * 7))
     :accessor abbreviated-day-names-of)
+
    (quarter-names
     :initform nil
     :type (or null (vector * 4))
@@ -32,5 +42,7 @@
    (am
     :accessor am-of)
    (pm
-    :accessor pm-of)))
-
+    :accessor pm-of)
+   (date-formatters
+    :initform nil
+    :accessor date-formatters-of)))

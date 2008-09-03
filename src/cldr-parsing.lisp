@@ -204,19 +204,27 @@
 
   (:method ((parent ldml:month-width) (node ldml:month))
     (process-month-list-like-ldml-node
-     parent node 12 '(("abbreviated" . abbreviated-month-names-of)
+     parent node 12 '(("narrow"      . narrow-month-names-of)
+                      ("abbreviated" . abbreviated-month-names-of)
                       ("wide"        . month-names-of))))
 
   (:method ((parent ldml:day-width) (node ldml:day))
     (process-month-list-like-ldml-node
-     parent node 7 '(("abbreviated" . abbreviated-day-names-of)
-                      ("wide"        . day-names-of))
+     parent node 7 '(("narrow"      . narrow-day-names-of)
+                     ("abbreviated" . abbreviated-day-names-of)
+                     ("wide"        . day-names-of))
      '("sun" "mon" "tue" "wed" "thu" "fri" "sat")))
 
   (:method ((parent ldml:quarter-width) (node ldml:quarter))
     (process-month-list-like-ldml-node
      parent node 4 '(("abbreviated" . abbreviated-quarter-names-of)
-                     ("wide"        . quarter-names-of)))))
+                     ("wide"        . quarter-names-of))))
+
+  (:method ((parent ldml:date-formats) (node ldml:date-format-length))
+    (let* ((name (ldml-intern (slot-value node 'ldml::type)))
+           (pattern (flexml:string-content-of (flexml:the-only-child (flexml:the-only-child node)))))
+      (setf (getf (date-formatters-of (gregorian-calendar-of *locale*)) name)
+            (compile-date-pattern/gregorian-calendar pattern)))))
 
 (defun process-month-list-like-ldml-node (parent node max-count reader-map &optional index-designators)
   (let* ((calendar (gregorian-calendar-of *locale*))

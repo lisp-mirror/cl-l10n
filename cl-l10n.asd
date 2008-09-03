@@ -19,13 +19,14 @@
                (:module :src
                         :components ((:file "package")
                                      (:file "utils" :depends-on ("package"))
-                                     (:file "cldr-parsing" :depends-on ("package" "utils" "locale" "i18n"))
+                                     (:file "pattern-compiling" :depends-on ("utils"))
+                                     (:file "cldr-parsing" :depends-on ("package" "utils" "locale" "i18n" "pattern-compiling"))
                                      (:file "parse-number" :depends-on ("package"))
                                      (:file "locale" :depends-on ("utils" "calendar"))
                                      (:file "calendar" :depends-on ("utils"))
                                      (:file "load-locale" :depends-on ("locale" "cldr-parsing"))
-                                     (:file "printers" :depends-on ("load-locale"))
-                                     (:file "parsers" :depends-on ("printers" "parse-number"))
+                                     (:file "formatters" :depends-on ("load-locale"))
+                                     (:file "parsers" :depends-on ("formatters" "parse-number"))
                                      (:file "parse-time" :depends-on ("load-locale"))
                                      (:file "i18n" :depends-on ("locale"))
                                      (:module :languages
