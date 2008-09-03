@@ -71,7 +71,7 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
                 (load-resource name)
                 locale)
               (when errorp
-                (error "Could not find locale definition for ~S among the CLDR files" name)))))))
+                (error "Could not find locale definition for ~S among the CLDR files. (Hint: cl-l10n/bin/update-cldr.sh)" name)))))))
 
 (defun load-resource (name)
   ;;(l10n-logger.debug "Trying to load resource ~A" name)

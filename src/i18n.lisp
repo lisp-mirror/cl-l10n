@@ -12,8 +12,8 @@
    (name :accessor name-of :initarg :name))
   (:report
    (lambda (condition stream)
-     (format stream "The resource ~S is missing for ~A"
-             (name-of condition) (locale-of condition)))))
+     (cl:format stream "The resource ~S is missing for ~A"
+                (name-of condition) (locale-of condition)))))
 
 (defun resource-missing (name &optional (warn-if-missing t) (fallback-to-name nil))
   (when warn-if-missing
@@ -61,11 +61,10 @@ and funcall the resource registered for the current locale."
         (values nil nil))))
 
 (defun lookup-resource (name &key arguments (warn-if-missing t) (fallback-to-name t))
-  (loop for toplevel-locale :in *locale* do
-        (dolist (locale (precedence-list-of toplevel-locale))
-          (multiple-value-bind (result foundp) (funcall '%lookup-resource locale name arguments)
-            (when foundp
-              (return-from lookup-resource (values result t))))))
+  (do-locales locale
+    (multiple-value-bind (result foundp) (funcall '%lookup-resource locale name arguments)
+      (when foundp
+        (return-from lookup-resource (values result t)))))
   (resource-missing name warn-if-missing fallback-to-name))
 
 (defun (setf lookup-resource) (value name)

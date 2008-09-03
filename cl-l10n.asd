@@ -42,7 +42,7 @@
                :cl-ppcre
                :metabang-bind
                :cl-fad
-               :flexi-streams
+               :flexi-streams ; TODO replace with babel
                :cxml
                :local-time
                :closer-mop

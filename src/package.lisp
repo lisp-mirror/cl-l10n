@@ -72,6 +72,8 @@
    ;; <numbers> / <symbols>
    #:number-symbol
 
+   #:plural-of
+
    #:decimal
    #:group
    #:list
@@ -95,6 +97,7 @@
    #:with-indefinite-article
    #:with-definite-article
 
+   #:today
    #:month
    #:day
    #:quarter
@@ -159,6 +162,8 @@
    #:quarter
    #:am
    #:pm
+   #:date-formats
+   #:date-format-length
 #|
    #:locale-display-names
    #:layout
