@@ -6,6 +6,7 @@
         :alexandria
         :iter
         :stefil
+        :metabang-bind
         )
   (:shadowing-import-from :cl-l10n
    #:format
@@ -17,6 +18,12 @@
 
 (in-package #:cl-l10n.test)
 
-(in-root-suite)
+(defsuite* (test :in root-suite))
 
-(defsuite* test)
+;; import all the internal symbol of WUI
+(let ((cl-l10n-package (find-package :cl-l10n))
+      (cl-l10n-test-package (find-package :cl-l10n.test)))
+  (iter (for symbol :in-package cl-l10n-package :external-only nil)
+        (when (and (eq (symbol-package symbol) cl-l10n-package)
+                   (not (find-symbol (symbol-name symbol) cl-l10n-test-package)))
+          (import symbol cl-l10n-test-package))))

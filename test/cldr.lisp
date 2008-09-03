@@ -17,11 +17,9 @@
                                  (collect `(with-locale ,locale
                                              (one-pass)))))))))
 
-(defsuite (cldr :in test))
-(in-suite cldr)
+(defsuite* (test/cldr :in test))
 
-(defsuite (symbols :in cldr))
-(in-suite symbols)
+(defsuite* (test/cldr/symbols :in test/cldr))
 
 (def-symbol-test test/cldr/symbols/number-symbols (cl-l10n.lang:number-symbol)
   ("en_US_POSIX"
@@ -44,8 +42,7 @@
    (infinity "∞")
    (nan "NaN")))
 
-(defsuite (currencies :in cldr))
-(in-suite currencies)
+(defsuite* (test/cldr/currencies :in test/cldr))
 
 (def-symbol-test test/currencies (cl-l10n.lang:currency-name cl-l10n.lang:currency-symbol)
   (("en_US_POSIX" "en_US" "en_GB" "en")
@@ -64,8 +61,7 @@
    (huf   "Magyar forint"               "Ft")
    ("GBP" "Brit font sterling"          "GBP")))
 
-(defsuite (languages :in cldr))
-(in-suite languages)
+(defsuite* (test/cldr/languages :in test/cldr))
 
 (def-symbol-test test/languages/language (cl-l10n.lang:language)
   (("en_US_POSIX" "en_US" "en_GB" "en")
@@ -83,8 +79,8 @@
    ("ace"     "achinéz")
    (zza       "zaza")
    ;; The next two may break until support for the cldr 'draft' attribute is implemented
-   (zh_Hans   "kínai (egyszerűsített)")
-   ("zh_Hant" "kínai (hagyományos)")
+   (zh_Hans   "egyszerűsített kínai")
+   ("zh_Hant" "hagyományos kínai")
    (zh        "kínai")))
 
 (def-symbol-test test/languages/script (cl-l10n.lang:script)
@@ -99,7 +95,7 @@
   (("hu_HU" "hu")
 
    ;;(Arab      "Arabic") missing from the xml?!
-   ("Zyyy"    "Általános")
+   ("Zyyy"    "Meghatározatlan")
    (Visp      "Látható beszéd")
    (Tibt      "Tibeti")
    (Knda      "Kannada")
@@ -120,7 +116,7 @@
    (019       "Amerika")
    (142       "Ázsia")
    (BD        "Banglades")
-   (ZZ        "Ismeretlen vagy érvénytelen terület")
+   (ZZ        "Ismeretlen vagy érvénytelen körzet")
    ("HU"      "Magyarország")))
 
 (def-symbol-test test/languages/variant (cl-l10n.lang:variant)
@@ -135,7 +131,7 @@
 
    (1901      "Hagyományos német helyesírás")
    (REVISED   "Átdolgozott helyesírás")
-   (ROZAJ     "Resian")
+   (ROZAJ     "Reziján")
    (POSIX     "Számítógép")))
 
 #+nil

@@ -13,8 +13,7 @@
                (collect `(with-locale ,locale
                            (one-pass)))))))
 
-(defsuite (resources :in test))
-(in-suite resources)
+(defsuite* (resources :in test))
 
 ;;;
 ;;; Hungarian
