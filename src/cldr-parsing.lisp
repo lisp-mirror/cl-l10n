@@ -29,7 +29,7 @@
   (declare (ignore public-id))
   (cond
     ((puri:uri= system-id (load-time-value
-                           (puri:parse-uri "http://www.unicode.org/cldr/dtd/1.5/ldml.dtd")))
+                           (puri:parse-uri "http://www.unicode.org/cldr/dtd/1.6/ldml.dtd")))
      (open (project-relative-pathname "cldr/ldml.dtd")
            :element-type '(unsigned-byte 8)
            :direction :input))))
