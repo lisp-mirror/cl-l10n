@@ -58,6 +58,7 @@
 
 (defclass flexml-builder (sax:default-handler)
   ((default-package :accessor default-package-of :initarg :default-package)
+   (id-attributes :initform (make-hash-table :test 'equal) :accessor id-attributes-of :documentation "Hashtable of (namespace-uri name) -> id-attribute-entry")
    (element-stack :initform nil :accessor element-stack-of)
    (root :accessor root-of)
    (include-default-values :initform t
@@ -69,11 +70,32 @@
    (cross-referencing-slots :initform nil
                             :accessor cross-referencing-slots-of)))
 
-(defun make-flexml-builder (&key (default-package nil default-package-p) (include-default-values t))
+(defclass id-attribute-entry ()
+  ((id->node :initform (make-hash-table :test 'equal) :accessor id->node-of)
+   (namespace-uri :accessor namespace-uri-of :initarg namespace-uri)
+   (name :accessor name-of :initarg name)))
+
+(defun make-flexml-builder (&key (default-package nil default-package-p) (include-default-values t)
+                            id-attributes)
   (let ((builder (make-instance 'flexml-builder
                                 :include-default-values include-default-values)))
     (when default-package-p
       (setf (default-package-of builder) default-package))
+    (dolist (entry id-attributes)
+      (let ((namespace-uri nil)
+            (name nil))
+        (if (consp entry)
+            (progn
+              (assert (= 2 (length entry)))
+              (setf namespace-uri (first entry))
+              (setf name (second entry)))
+            (progn
+              (assert (and entry (symbolp entry)))
+              (setf name entry)))
+        (setf (gethash (list namespace-uri name) (id-attributes-of builder))
+              (make-instance 'id-attribute-entry
+                             :namespace-uri namespace-uri
+                             :name name))))
     builder))
 
 (defclass flexml-node ()
@@ -113,6 +135,7 @@
   (loop
      for (node . slot) :in (cross-referencing-slots-of builder)
      for slot-value = (closer-mop:slot-value-using-class (class-of node) node slot) do
+       ;; TODO this needs to be updated to follow the id-attributes stuff
        (ecase (closer-mop:slot-definition-type slot)
          (cross-referenced-node
           (assert (stringp slot-value))
@@ -179,7 +202,7 @@
     (assert (subtypep class 'flexml-node))
     (let* ((parent (first (element-stack-of builder)))
            (node (make-instance class))
-           (id->node (id->node-of builder)))
+           (id-attributes (id-attributes-of builder)))
       (setf (local-name-of node) local-name)
       (loop
          for attribute in attributes
@@ -193,11 +216,11 @@
                                      (find-lisp-package-for-xml-namespace attribute-namespace-uri)
                                      (default-package-of builder))
          for attribute-value = (sax:attribute-value attribute)
-         when (and (or (null namespace-uri) ; KLUDGE when parsing XML 1.1 this should be an assert
-                       (string= namespace-uri +xml-namespace-uri+))
-                   (string-equal attribute-local-name "id")) do
-           (progn
-             (assert (not (gethash attribute-value id->node)) () "Duplicate id found: ~S" attribute-value)
+         for id-attribute-entry = (gethash (list namespace-uri attribute-local-name) id-attributes)
+         when id-attribute-entry do
+           (let ((id->node (id->node-of id-attribute-entry)))
+             (assert (not (gethash attribute-value id->node)) () "Duplicate id found for attribute ~A:~A, value is ~S"
+                     (namespace-uri-of id-attribute-entry) (name-of id-attribute-entry) attribute-value)
              (setf (gethash attribute-value id->node) node))
          when (and (or (sax:attribute-specified-p attribute)
                        include-default-values)) do
