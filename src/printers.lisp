@@ -91,7 +91,7 @@ determine the number of zero's to print")
   num)
 
 ;; ;; Time and date printing.
-(defun get-time-fmt-string (locale show-date show-time)
+(defun get-time-format-string (locale show-date show-time)
   (cond ((and show-time show-date)
          (locale-d-t-fmt locale))
         ((and (not show-date) (not show-time))
@@ -321,15 +321,15 @@ determine the number of zero's to print")
 (defun format-time (stream ut show-date show-time &optional (locale (current-locale)) fmt time-zone)
   (let ((locale (locale locale))
         (*time-zone* (or time-zone (nth-value 8 (decode-universal-time ut)))))
-    (print-time-string (or fmt (get-time-fmt-string locale 
+    (print-time-string (or fmt (get-time-format-string locale 
                                                     show-date show-time))
                        stream ut locale))
   (values))
 
-(defun print-time-string (fmt-string stream ut locale)
-  (declare (optimize speed) (type simple-string fmt-string))
+(defun print-time-string (format-string stream ut locale)
+  (declare (optimize speed) (type simple-string format-string))
   (let ((values (multiple-value-list (decode-universal-time ut *time-zone*))))
-    (loop for x across fmt-string 
+    (loop for x across format-string 
           with perc = nil 
           with in-dot = nil do
           (case x 
@@ -357,20 +357,20 @@ determine the number of zero's to print")
 
 ;; Format
 (define-compiler-macro format (&whole form dest control &rest args)
-  "Compiler macro to remove unnecessary calls to parse-fmt-string."
+  "Compiler macro to remove unnecessary calls to parse-format-string."
   (if (stringp control)
-      `(cl::format ,dest ,(parse-fmt-string control) ,@args)
+      `(cl::format ,dest ,(parse-format-string control) ,@args)
       form))
 
-(defmacro formatter (fmt-string)
-  (etypecase fmt-string 
-    (string `(cl:formatter ,(parse-fmt-string fmt-string)))))
+(defmacro formatter (format-string)
+  (etypecase format-string 
+    (string `(cl:formatter ,(parse-format-string format-string)))))
 
 (defun format (stream fmt-cntrl &rest args)
   (apply #'cl:format stream
          (etypecase fmt-cntrl
            (function fmt-cntrl)
-           (string (parse-fmt-string fmt-cntrl)))
+           (string (parse-format-string fmt-cntrl)))
          args))
 
 (defun shadow-format (&optional (package *package*))
@@ -378,40 +378,49 @@ determine the number of zero's to print")
 
 (defvar *scanner* (cl-ppcre:create-scanner "~[@V,:]*[M|U|N]"))
 
-(defun needs-parsing (string)
+(defun needs-parsing? (string)
   (declare (optimize speed (safety 1) (debug 0)))
   (cl-ppcre:scan *scanner* (string-upcase string)))
 
-(defun parse-fmt-string (string)
-  (if (needs-parsing string)
-      (really-parse-fmt-string string)
+(defun parse-format-string (string)
+  (if (needs-parsing? string)
+      (really-parse-format-string string)
       string))
 
-(defun really-parse-fmt-string (string)
-  (declare (optimize speed) (type simple-string string))
-  (with-output-to-string (fmt-string)
-    (loop for char across string 
-          with tilde = nil do
-          (case char
-            ((#\@ #\v #\, #\:) (princ char fmt-string))
-            (#\~ (princ char fmt-string)
-                 (if tilde 
-                     (setf tilde nil)
-                     (setf tilde t)))
-            (t (if tilde
-                   (progn (setf tilde nil) 
-                     (princ (get-replacement char) fmt-string))
-                   (princ char fmt-string)))))))
-  
-(defvar *directive-replacements*
-  '((#\M . "/cl-l10n:format-money/")
-    (#\U . "/cl-l10n:format-time/")
-    (#\N . "/cl-l10n:format-number/")))
+|#
 
-(defun get-replacement (char)
-  (or (cdr (assoc (char-upcase char) *directive-replacements*))
-      char))
-  
+(define-constant +directive-replacements+ '((#\M . "/cl-l10n:format-money/")
+                                            (#\U . "/cl-l10n:format-time/")
+                                            (#\N . "/cl-l10n:format-number/"))
+  :test 'equal)
 
-
+(defun really-parse-format-string (string)
+  (declare (optimize speed)
+           (type simple-string string))
+  (flet ((get-replacement (char)
+           (or (when (typep char 'base-char)
+                 (cdr (assoc (char-upcase (the base-char char))
+                             +directive-replacements+)))
+               char)))
+    (declare (inline get-replacement))
+    (bind ((*print-pretty* nil)
+           (*print-circle* nil))
+      (with-output-to-string (result)
+        (loop
+           :for char :across string
+           :with tilde = nil
+           :do (case char
+                 ((#\@ #\v #\, #\:)
+                  (princ char result))
+                 (#\~
+                  (princ char result)
+                  (if tilde
+                      (setf tilde nil)
+                      (setf tilde t)))
+                 (t
+                  (if tilde
+                      (progn
+                        (setf tilde nil)
+                        (princ (get-replacement char) result))
+                      (princ char result)))))))))
 
