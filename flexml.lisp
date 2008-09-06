@@ -24,6 +24,7 @@
    ;; some useful helpers
    #:the-only-child
    #:find-node-by-id
+   #:first-child
    #:first-child-with-type
    #:first-child-with-local-name
    #:string-content-of
@@ -286,6 +287,9 @@
     (unless (stringp value)
       (error "Single child ~S of node ~A is not a string" value node))
     value))
+
+(defun first-child (node)
+  (elt (children-of node) 0))
 
 (defun first-child-with-type (node type)
   (loop for child :across (children-of node) do
