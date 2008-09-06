@@ -4,11 +4,10 @@
 (in-package :cl-l10n)
 
 ;;; http://www.unicode.org/reports/tr35/tr35-11.html#Date_Format_Patterns
-(define-constant +date-pattern-characters+ "GyYuQqMLlwWdDFgEecahHKkjmsSAzZvV"
-  :test #'string=)
+(define-constant +date-pattern-characters/gregorian-calendar+ "GyYuQqMLlwWdDFgEecahHKkjmsSAzZvV" :test #'string=)
 
-(defparameter +date-pattern-scanner+
-  (cl-ppcre:create-scanner (coerce (iter (for char :in-sequence +date-pattern-characters+)
+(defparameter +date-pattern-scanner/gregorian-calendar+
+  (cl-ppcre:create-scanner (coerce (iter (for char :in-sequence +date-pattern-characters/gregorian-calendar+)
                                          (unless (first-time-p)
                                            (collect #\|))
                                          (nconcing (list #\( char #\+ #\))))
@@ -48,18 +47,25 @@
                   (declare (ignorable date year month day day-of-week)
                            (type fixnum year month day day-of-week))
                   ,@body))
+             (era-formatter (vector)
+               `(piece-formatter
+                 (bind ((era (if (< year 0) 0 1)))
+                   (write-string (aref ,vector era) stream))))
              (invalid-number-of-directives ()
                `(error "Invalid number of consecutive '~A' directives in Gregorian calendar date format: \"~A\", piece \"~A\""
                        directive-character pattern piece)))
     (bind ((locale *locale*)
-           (gregorian-calendar (gregorian-calendar-of locale))
-           (day-names (day-names-of gregorian-calendar))
-           (abbreviated-day-names (abbreviated-day-names-of gregorian-calendar))
-           (narrow-day-names (narrow-day-names-of gregorian-calendar))
-           (month-names (month-names-of gregorian-calendar))
-           (abbreviated-month-names (abbreviated-month-names-of gregorian-calendar))
-           (narrow-month-names (narrow-month-names-of gregorian-calendar))
-           (pieces (cl-ppcre:split +date-pattern-scanner+ pattern :with-registers-p t :omit-unmatched-p t))
+           (calendar (gregorian-calendar-of locale))
+           (day-names (day-names-of calendar))
+           (abbreviated-day-names (abbreviated-day-names-of calendar))
+           (narrow-day-names (narrow-day-names-of calendar))
+           (month-names (month-names-of calendar))
+           (abbreviated-month-names (abbreviated-month-names-of calendar))
+           (narrow-month-names (narrow-month-names-of calendar))
+           (era-names (era-names-of calendar))
+           (abbreviated-era-names (abbreviated-era-names-of calendar))
+           (narrow-era-names (narrow-era-names-of calendar))
+           (pieces (cl-ppcre:split +date-pattern-scanner/gregorian-calendar+ pattern :with-registers-p t :omit-unmatched-p t))
            (formatter-list
             (iter (for piece :in pieces)
                   (for length = (length piece))
@@ -95,12 +101,23 @@
                                 (collect (piece-formatter (write-string (aref abbreviated-day-names day) stream))))
                                (t
                                 (invalid-number-of-directives))))
+                        (#\G (cond
+                               ((= length 4)
+                                (collect (era-formatter era-names)))
+                               ((= length 5)
+                                (unless narrow-era-names
+                                  (error "Locale ~A does not have narrow era names for the Gregorian calendar" *locale*))
+                                (collect (era-formatter narrow-era-names)))
+                               ((<= length 3)
+                                (collect (era-formatter abbreviated-era-names)))
+                               (t
+                                (invalid-number-of-directives))))
                         (#\d (unless (or (= 1 length)
                                          (= 2 length))
                                (invalid-number-of-directives))
                              (collect (piece-formatter (write-decimal-digits stream day :minimum-column-count length))))
                         (otherwise
-                         (when (find directive-character +date-pattern-characters+ :test #'char=)
+                         (when (find directive-character +date-pattern-characters/gregorian-calendar+ :test #'char=)
                            (cerror "Print it unprocessed" "Unexpected or not yet implemented directive in Gregorian calendar date format: \"~A\", character ~A"
                                    pattern directive-character))
                          (collect (piece-formatter (write-string piece stream))))))))))
