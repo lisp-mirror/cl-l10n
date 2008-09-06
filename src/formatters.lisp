@@ -2,13 +2,27 @@
 ;; See the file LICENCE for licence information.
 (in-package :cl-l10n)
 
-(defun format-date/gregorian-calendar (stream date &key (verbosity 'ldml::medium))
+(declaim (inline keyword-to-ldml))
+(defun keyword-to-ldml (symbol)
+  (case symbol
+    (:short  'ldml:short)
+    (:medium 'ldml:medium)
+    (:long   'ldml:long)
+    (:full   'ldml:full)))
+
+(defun format-date/gregorian-calendar (stream date &key (verbosity 'ldml:medium))
   (declare (optimize speed))
+  (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
   (do-locales locale
     (when-bind gregorian-calendar (gregorian-calendar-of locale)
-      (when-bind formatter (the (or null function) (getf (date-formatters-of gregorian-calendar) verbosity))
-        (funcall formatter stream date)
-        (return))))
+      (bind ((formatter-entry (getf (date-formatters-of gregorian-calendar) verbosity))
+             (formatter (getf formatter-entry :formatter)))
+        (when formatter
+          (funcall (the function formatter) stream date)
+          (return-from format-date/gregorian-calendar date)))))
+  (warn "No Gregorian calendar date formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+        (current-locale) verbosity)
+  (local-time:format-timestring stream date :format '((:year 4) #\- (:month 2) #\- (:day 2)))
   date)
 
 #|

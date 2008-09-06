@@ -237,7 +237,8 @@
     (let* ((name (ldml-intern (slot-value node 'ldml::type)))
            (pattern (flexml:string-content-of (flexml:the-only-child (flexml:the-only-child node)))))
       (setf (getf (date-formatters-of (gregorian-calendar-of *locale*)) name)
-            (compile-date-pattern/gregorian-calendar pattern)))))
+            (list :formatter (compile-date-pattern/gregorian-calendar pattern)
+                  :pattern pattern)))))
 
 (defun parse-era-ldml-node (node reader)
   (bind ((calendar (gregorian-calendar-of *locale*))
