@@ -10,7 +10,7 @@
   (cond
     ((typep locale 'locale)
      (locale-name locale))
-    ((member locale '("root" "en_US_POSIX") :test #'string=)
+    ((stringp locale) ;; (member locale '("root" "en_US_POSIX") :test #'string=)
      locale)
     (t
      (let ((name locale)
