@@ -85,6 +85,10 @@
    ldml:pm
    ldml:date-formats
    ldml:date-format-length
+   ldml:era-names
+   ldml:era-abbr
+   ldml:era-narrow
+   ldml:era
    ))
 
 (defmethod sax:characters ((parser cldr-parser) data)
@@ -220,11 +224,32 @@
      parent node 4 '(("abbreviated" . abbreviated-quarter-names-of)
                      ("wide"        . quarter-names-of))))
 
+  (:method ((parent ldml:era-names) (node ldml:era))
+    (parse-era-ldml-node node 'era-names-of))
+
+  (:method ((parent ldml:era-abbr) (node ldml:era))
+    (parse-era-ldml-node node 'abbreviated-era-names-of))
+
+  (:method ((parent ldml:era-narrow) (node ldml:era))
+    (parse-era-ldml-node node 'narrow-era-names-of))
+
   (:method ((parent ldml:date-formats) (node ldml:date-format-length))
     (let* ((name (ldml-intern (slot-value node 'ldml::type)))
            (pattern (flexml:string-content-of (flexml:the-only-child (flexml:the-only-child node)))))
       (setf (getf (date-formatters-of (gregorian-calendar-of *locale*)) name)
             (compile-date-pattern/gregorian-calendar pattern)))))
+
+(defun parse-era-ldml-node (node reader)
+  (bind ((calendar (gregorian-calendar-of *locale*))
+         (index-designator (slot-value node 'ldml::type))
+         (index (parse-integer index-designator))
+         (writer (fdefinition `(setf ,reader)))
+         (vector (funcall reader calendar)))
+    (assert (<= 0 index 1))
+    (unless vector
+      (setf vector (make-array 2 :initial-element nil))
+      (funcall writer vector calendar))
+    (setf (aref vector index) (flexml:string-content-of node))))
 
 (defun process-month-list-like-ldml-node (parent node max-count reader-map &optional index-designators)
   (let* ((calendar (gregorian-calendar-of *locale*))

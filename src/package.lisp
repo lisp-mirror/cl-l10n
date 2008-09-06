@@ -164,6 +164,10 @@
    #:pm
    #:date-formats
    #:date-format-length
+   #:era-names
+   #:era-abbr
+   #:era-narrow
+   #:era
 #|
    #:locale-display-names
    #:layout
