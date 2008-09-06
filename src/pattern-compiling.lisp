@@ -15,30 +15,6 @@
 
 ;;; at the time these functions are called *locale* is bound the the locale from which this pattern comes from.
 
-(defun write-decimal-digits (stream number &key minimum-column-count (maximum-digit-count most-positive-fixnum))
-  (declare (optimize speed)
-           (type (or null fixnum) minimum-column-count)
-           (type fixnum maximum-digit-count))
-  (bind ((remainder number)
-         (digit 0)
-         (number-of-digits 0)
-         (digits (list)))
-    (declare (dynamic-extent digits)
-             (type fixnum digit number-of-digits))
-    (iter (repeat maximum-digit-count)
-          (setf (values remainder digit) (truncate remainder 10))
-          (push digit digits)
-          (incf number-of-digits)
-          (until (zerop remainder)))
-    (when minimum-column-count
-      (bind ((padding-length (- minimum-column-count number-of-digits)))
-        (when (plusp padding-length)
-          (iter (repeat padding-length)
-                (write-char #\0 stream)))))
-    (dolist (digit digits)
-      (write-char (code-char (+ #x30 digit)) stream)))
-  (values))
-
 (defun compile-date-pattern/gregorian-calendar (pattern)
   (declare (type string pattern)
            (optimize speed))
