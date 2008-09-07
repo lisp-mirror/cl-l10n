@@ -3,6 +3,91 @@
 
 (in-package :cl-l10n.test)
 
+(defsuite* (test/cldr :in test))
+
+(deftest (test/cldr/run-cldr-tests :auto-call nil) ()
+  ;; don't run the cldr tests by default, we are just not there yet...
+  (cl-fad:walk-directory (project-relative-pathname "cldr/test/")
+                         'test/cldr/run-cldr-test
+                         :directories nil
+                         :test (lambda (file)
+                                 (string= "xml" (pathname-type file)))))
+
+(macrolet ((define (&body entries)
+             `(progn
+                ,@(iter (for entry :in entries)
+                        (destructuring-bind (name &optional supers &body slots)
+                            (ensure-list entry)
+                          (unless supers
+                            (setf supers '(ldml:node)))
+                          (collect `(defclass ,name ,supers
+                                      (,@slots))))))))
+  (define
+   ldml::cldr-test
+   ldml::number
+   ldml::date
+   ldml::zone-fields
+   ldml::collation
+   ldml::result
+   ))
+
+(defun parse-cldr-test-file (file-name)
+  (bind ((*parser* (make-cldr-parser)))
+    (cxml:parse file-name *parser* :validate nil
+                ;; let's just ignore the dtd's...
+                :entity-resolver (constantly (flexi-streams:make-in-memory-input-stream nil)))
+    (values (flexml:root-of *parser*) *parser*)))
+
+(defvar *date-test-current-input*)
+
+(deftest test/cldr/run-cldr-test (file-name &key (timezone local-time:*default-timezone*))
+  (format *debug-io* "~%Running tests in '~A'~%" file-name)
+  (when (stringp timezone)
+    ;; TODO introduce something in local-time for this
+    (setf timezone (local-time:find-timezone-by-location-name timezone))
+    (assert timezone))
+  (bind ((root (parse-cldr-test-file file-name))
+         (*date-test-current-input* nil)
+         ;; TODO introduce something in local-time for this
+         (local-time:*default-timezone* timezone))
+    (process-ldml-test-node nil root)))
+
+(defgeneric process-ldml-test-node (parent node)
+  (:method (parent (node flexml:flexml-node))
+    (iter (for child :in-sequence (flexml:children-of node))
+          (process-ldml-test-node node child)))
+
+  (:method ((parent flexml:flexml-node) (node string))
+    ;; nop
+    )
+
+  (:method ((parent ldml::cldr-test) (node ldml::date))
+    (bind ((locale-names (cl-ppcre:split " " (slot-value node 'ldml::locales))))
+      (format *debug-io* "  - running date formatter tests with locale ~A~%" locale-names)
+      (block nil
+        (handler-bind ((locale-not-found-error (lambda (error)
+                                                 (format *debug-io* "  *** ~A~%" error)
+                                                 (return))))
+          (with-locale locale-names
+            (flet ((process-result-node (node)
+                     (when (typep node 'ldml::result)
+                       (awhen (slot-value node 'ldml::input)
+                         (setf *date-test-current-input* (local-time:parse-rfc3339-timestring it)))
+                       (bind ((date-format (slot-value node 'ldml::datetype))
+                              (time-format (slot-value node 'ldml::timetype)))
+                         (when (string= date-format "none")
+                           (setf date-format nil))
+                         (when (string= time-format "none")
+                           (setf time-format nil))
+                         (assert (not (and date-format time-format)))
+                         (when date-format
+                           (is (string= (format-date/gregorian-calendar nil *date-test-current-input*
+                                                                        :verbosity (ensure-ldml-symbol date-format))
+                                        (flexml:string-content-of node))))))))
+              (map nil #'process-result-node (flexml:children-of node)))))))))
+
+(defsuite* (test/cldr/symbols :in test/cldr))
+
 (defmacro def-symbol-test (name accessors &body forms)
   `(deftest ,name ()
      ,@(iter (for (locales . body) :in forms)
@@ -16,10 +101,6 @@
                          ,@(iter (for locale :in (ensure-list locales))
                                  (collect `(with-locale ,locale
                                              (one-pass)))))))))
-
-(defsuite* (test/cldr :in test))
-
-(defsuite* (test/cldr/symbols :in test/cldr))
 
 (def-symbol-test test/cldr/symbols/number-symbols (cl-l10n.lang:number-symbol)
   ("en_US_POSIX"
