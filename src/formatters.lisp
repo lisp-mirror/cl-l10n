@@ -13,17 +13,23 @@
 (defun format-date/gregorian-calendar (stream date &key (verbosity 'ldml:medium))
   (declare (optimize speed))
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
-  (do-locales locale
-    (when-bind gregorian-calendar (gregorian-calendar-of locale)
-      (bind ((formatter-entry (getf (date-formatters-of gregorian-calendar) verbosity))
-             (formatter (getf formatter-entry :formatter)))
-        (when formatter
-          (funcall (the function formatter) stream date)
-          (return-from format-date/gregorian-calendar date)))))
-  (warn "No Gregorian calendar date formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
-        (current-locale) verbosity)
-  (local-time:format-timestring stream date :format '((:year 4) #\- (:month 2) #\- (:day 2)))
-  date)
+  (bind ((to-string? (null stream)))
+    (unless stream
+      (setf stream (make-string-output-stream)))
+    (block iterating-locales
+      (do-locales locale
+        (when-bind gregorian-calendar (gregorian-calendar-of locale)
+          (bind ((formatter-entry (getf (date-formatters-of gregorian-calendar) verbosity))
+                 (formatter (getf formatter-entry :formatter)))
+            (when formatter
+              (funcall (the function formatter) stream date)
+              (return-from iterating-locales)))))
+      (warn "No Gregorian calendar date formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+            verbosity (current-locale))
+      (local-time:format-timestring stream date :format '((:year 4) #\- (:month 2) #\- (:day 2))))
+   (if to-string?
+       (get-output-stream-string stream)
+       stream)))
 
 #|
 
