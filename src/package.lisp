@@ -2,18 +2,19 @@
 ;; See the file LICENCE for licence information.
 (in-package #:cl-l10n.system)
 
-(defpackage #:cl-l10n 
+(defpackage #:cl-l10n
   (:use
    :common-lisp
    :metabang-bind
    :alexandria
    :cl-ppcre
    :flexi-streams
-   :cl-fad
-   :iterate)
-  (:shadow cl:format cl:formatter)
-  (:shadowing-import-from :cl-fad
-                          #:copy-stream #:copy-file)
+   :iterate
+   )
+  (:shadow
+   cl:format
+   cl:formatter
+   )
   (:export
    #:locale
    #:locale-name
@@ -54,7 +55,7 @@
    #:last-vowel-of
    #:starts-with-consonant-p
    #:starts-with-vowel-p
-           
+
    #:english-plural-of
    #:english-indefinite-article-for
    #:hungarian-definite-article-for

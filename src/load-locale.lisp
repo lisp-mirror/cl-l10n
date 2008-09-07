@@ -13,10 +13,10 @@
     ((stringp locale) ;; (member locale '("root" "en_US_POSIX") :test #'string=)
      locale)
     (t
-     (let ((name locale)
-           (language nil)
-           (script nil)
-           (territory nil))
+     (bind ((name locale)
+            (language nil)
+            (script nil)
+            (territory nil))
        (when (and (not (null name))
                   (symbolp name))
          (setf name (symbol-name name)))
@@ -28,6 +28,8 @@
          (if (= count 2)
              (setf territory (second parts))
              (progn
+               ;; FIXME this is broken for names like aa_ER_SAAHO, which doesn't have a script but does have a variant
+               ;; it's low priority, because this entire parsing branch is mostly dead due to that stringp check above
                (setf script (second parts))
                (setf territory (third parts))))
          (unless (and (= (length language) 2)

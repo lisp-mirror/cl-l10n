@@ -27,12 +27,15 @@
 
 (defun cldr-entity-resolver (public-id system-id)
   (declare (ignore public-id))
-  (cond
-    ((puri:uri= system-id (load-time-value
-                           (puri:parse-uri "http://www.unicode.org/cldr/dtd/1.6/ldml.dtd")))
-     (open (project-relative-pathname "cldr/ldml.dtd")
-           :element-type '(unsigned-byte 8)
-           :direction :input))))
+  (bind ((file (cond
+                 ((puri:uri= system-id (load-time-value
+                                        (puri:parse-uri "http://www.unicode.org/cldr/dtd/1.6/ldml.dtd")))
+                  "cldr/ldml.dtd")
+                 ((puri:uri= system-id (load-time-value
+                                        (puri:parse-uri "http://www.unicode.org/cldr/dtd/1.6/cldrTest.dtd")))
+                  "cldr/cldrTest.dtd"))))
+    (when file
+      (open (project-relative-pathname file) :element-type '(unsigned-byte 8) :direction :input))))
 
 (defmethod flexml:class-name-for-node-name ((parser cldr-parser) namespace-uri package (local-name string) qualified-name)
   (let ((class-name (find-symbol (string-upcase (camel-case-to-hyphened local-name)) :ldml)))
@@ -152,17 +155,17 @@
           (push (cons name value) (number-symbols-of *locale*))))
 
   (:method ((parent ldml:currencies) (node ldml:currency))
-    (let* ((name (slot-value node 'ldml::type)))
+    (bind ((name (slot-value node 'ldml::type)))
       (assert (every #'upper-case-p name))
       (setf name (ldml-intern name))
-      (let* ((display-name (flexml:string-content-of
-                            (flexml:first-child-with-local-name node "displayName")))
-             (symbol (awhen (flexml:first-child-with-local-name node "symbol")
-                       (flexml:string-content-of it)))
-             (entry (list* display-name
-                           (when symbol
-                             (list symbol)))))
-        (setf (gethash name (currencies-of *locale*)) entry))))
+      (when-bind display-name-node (flexml:first-child-with-local-name node "displayName")
+        (bind ((display-name (flexml:string-content-of display-name-node))
+               (symbol (awhen (flexml:first-child-with-local-name node "symbol")
+                         (flexml:string-content-of it)))
+               (entry (list* display-name
+                             (when symbol
+                               (list symbol)))))
+          (setf (gethash name (currencies-of *locale*)) entry)))))
 
   (:method ((parent ldml:languages) (node ldml:language))
     (process-langauge-list-like-ldml-node node 'languages-of))
@@ -253,7 +256,7 @@
     (setf (aref vector index) (flexml:string-content-of node))))
 
 (defun process-month-list-like-ldml-node (parent node max-count reader-map &optional index-designators)
-  (let* ((calendar (gregorian-calendar-of *locale*))
+  (bind ((calendar (gregorian-calendar-of *locale*))
          (reader (awhen (assoc (slot-value parent 'ldml::type) reader-map :test #'string=)
                    (cdr it)))
          (index-designator (slot-value node 'ldml::type))

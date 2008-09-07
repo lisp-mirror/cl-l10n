@@ -159,7 +159,9 @@
 (declaim (inline clear-locale-cache cached-locale (setf cached-locale)))
 
 (defun clear-locale-cache ()
-  (clrhash *locale-cache*))
+  (prog1
+      (hash-table-count *locale-cache*)
+    (clrhash *locale-cache*)))
 
 (defun cached-locale (name)
   (gethash name *locale-cache*))
