@@ -23,6 +23,8 @@
    #:load-all-locales
    #:with-locale
 
+   #:locale-not-found-error
+
    #:format-number
    #:print-number
    #:format-money

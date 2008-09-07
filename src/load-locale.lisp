@@ -53,6 +53,15 @@
                (write-char #\_)
                (write-string it)))))))))
 
+(define-condition locale-not-found-error (error)
+  ((locale-name :initarg :locale-name :accessor locale-name-of))
+  (:report (lambda (condition stream)
+             (cl:format stream "Could not find locale definition for ~S among the CLDR files. (Hint: cl-l10n/bin/update-cldr.sh)"
+                        (locale-name-of condition)))))
+
+(defun locale-not-found-error (locale-name)
+  (error 'locale-not-found-error :locale-name locale-name))
+
 (defun locale (locale-designator &key (use-cache t) (errorp t))
   "Find locale named by the specification LOCALE-DESIGNATOR. If USE-CACHE
 is non-nil forcefully reload/reparse the cldr locale else
@@ -73,7 +82,7 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
                 (load-resource name)
                 locale)
               (when errorp
-                (error "Could not find locale definition for ~S among the CLDR files. (Hint: cl-l10n/bin/update-cldr.sh)" name)))))))
+                (locale-not-found-error  name)))))))
 
 (defun load-resource (name)
   ;;(l10n-logger.debug "Trying to load resource ~A" name)
