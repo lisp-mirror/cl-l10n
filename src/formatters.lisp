@@ -386,45 +386,52 @@ determine the number of zero's to print")
                       (locale (current-locale)) fmt time-zone)
   (format-time stream ut show-date show-time locale fmt time-zone)
   ut)
-      
 
-;; Format
-(define-compiler-macro format (&whole form dest control &rest args)
+||#
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Customized format directives
+
+(define-compiler-macro format (&whole form destination format-control &rest format-arguments)
   "Compiler macro to remove unnecessary calls to parse-format-string."
-  (if (stringp control)
-      `(cl::format ,dest ,(parse-format-string control) ,@args)
+  (if (stringp format-control)
+      `(cl:format ,destination ,(parse-format-string format-control) ,@format-arguments)
       form))
 
 (defmacro formatter (format-string)
-  (etypecase format-string 
+  (etypecase format-string
     (string `(cl:formatter ,(parse-format-string format-string)))))
 
-(defun format (stream fmt-cntrl &rest args)
+(defun format (stream format-control &rest format-arguments)
   (apply #'cl:format stream
-         (etypecase fmt-cntrl
-           (function fmt-cntrl)
-           (string (parse-format-string fmt-cntrl)))
-         args))
+         (etypecase format-control
+           (function format-control)
+           (string (parse-format-string format-control)))
+         format-arguments))
 
 (defun shadow-format (&optional (package *package*))
   (shadowing-import '(cl-l10n::format cl-l10n::formatter) package))
 
-(defvar *scanner* (cl-ppcre:create-scanner "~[@V,:]*[M|U|N]"))
-
 (defun needs-parsing? (string)
-  (declare (optimize speed (safety 1) (debug 0)))
-  (cl-ppcre:scan *scanner* (string-upcase string)))
+  (declare (optimize speed)
+           (type string string))
+  (cl-ppcre:scan (load-time-value (cl-ppcre:create-scanner
+                                   (cl:format nil "~~[@V,:]*[~{~A~^|~}]" (mapcar 'first +directive-replacements+))))
+                 (string-upcase string)))
 
 (defun parse-format-string (string)
   (if (needs-parsing? string)
-      (really-parse-format-string string)
+      (really-parse-format-string (coerce string 'simple-string))
       string))
 
-|#
+(defun %format-date (stream date colon-modifier? at-modifier?)
+  (declare (ignore colon-modifier? at-modifier?))
+  (format-date/gregorian-calendar stream date))
 
-(define-constant +directive-replacements+ '((#\M . "/cl-l10n:format-money/")
-                                            (#\U . "/cl-l10n:format-time/")
-                                            (#\N . "/cl-l10n:format-number/"))
+(define-constant +directive-replacements+ '((#\M . "/cl-l10n:%format-money/")
+                                            (#\U . "/cl-l10n:%format-timestamp/")
+                                            (#\L . "/cl-l10n:%format-date/")
+                                            (#\N . "/cl-l10n:%format-number/"))
   :test 'equal)
 
 (defun really-parse-format-string (string)
@@ -456,4 +463,3 @@ determine the number of zero's to print")
                         (setf tilde nil)
                         (princ (get-replacement char) result))
                       (princ char result)))))))))
-
