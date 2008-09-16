@@ -392,6 +392,12 @@ determine the number of zero's to print")
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Customized format directives
 
+(define-constant +directive-replacements+ '((#\M . "/cl-l10n:%format-money/")
+                                            (#\U . "/cl-l10n:%format-timestamp/")
+                                            (#\L . "/cl-l10n:%format-date/")
+                                            (#\N . "/cl-l10n:%format-number/"))
+  :test 'equal)
+
 (define-compiler-macro format (&whole form destination format-control &rest format-arguments)
   "Compiler macro to remove unnecessary calls to parse-format-string."
   (if (stringp format-control)
@@ -427,12 +433,6 @@ determine the number of zero's to print")
 (defun %format-date (stream date colon-modifier? at-modifier?)
   (declare (ignore colon-modifier? at-modifier?))
   (format-date/gregorian-calendar stream date))
-
-(define-constant +directive-replacements+ '((#\M . "/cl-l10n:%format-money/")
-                                            (#\U . "/cl-l10n:%format-timestamp/")
-                                            (#\L . "/cl-l10n:%format-date/")
-                                            (#\N . "/cl-l10n:%format-number/"))
-  :test 'equal)
 
 (defun really-parse-format-string (string)
   (declare (optimize speed)
