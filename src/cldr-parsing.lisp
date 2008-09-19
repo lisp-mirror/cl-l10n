@@ -101,6 +101,7 @@
     (call-next-method)))
 
 (defun ldml-intern (name &key hyphenize)
+  (check-type name string)
   (when hyphenize
     (setf name (camel-case-to-hyphened name)))
   (let* ((ldml-package (find-package '#:cl-l10n.ldml))
