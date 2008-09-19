@@ -41,7 +41,7 @@
 (defvar *date-test-current-input*)
 
 (deftest test/cldr/run-cldr-test (file-name &key (timezone local-time:*default-timezone*))
-  (format *debug-io* "~%Running tests in '~A'~%" file-name)
+  (format *debug-io* "~%Running tests in '~A'" file-name)
   (when (stringp timezone)
     ;; TODO introduce something in local-time for this
     (setf timezone (local-time:find-timezone-by-location-name timezone))
@@ -63,7 +63,7 @@
 
   (:method ((parent ldml::cldr-test) (node ldml::date))
     (bind ((locale-names (cl-ppcre:split " " (slot-value node 'ldml::locales))))
-      (format *debug-io* "  - running date formatter tests with locale ~A~%" locale-names)
+      (format *debug-io* "~%  - running date formatter tests with locale ~A~%" locale-names)
       (block nil
         (handler-bind ((locale-not-found-error (lambda (error)
                                                  (format *debug-io* "  *** ~A~%" error)
