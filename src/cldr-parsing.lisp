@@ -8,22 +8,37 @@
 (defvar *parser*)
 
 (defclass cldr-parser (flexml:flexml-builder)
-  ())
+  ((source-xml-file :initarg :source-xml-file :accessor source-xml-file-of)))
 
 (defun make-cldr-parser ()
   (make-instance 'cldr-parser :default-package "CL-L10N.LDML"))
 
+(defparameter *cldr-root-directory* (project-relative-pathname "cldr/main/"))
+
 (defun cldr-pathname-for (locale-name)
-  (project-relative-pathname (concatenate 'string "cldr/main/" locale-name ".xml")))
+  (merge-pathnames (concatenate 'string locale-name ".xml") *cldr-root-directory*))
 
 (defun parse-cldr-file (name)
   (let* ((*parser* (make-cldr-parser))
-         (*locale* nil))
-    (cxml:parse (cldr-pathname-for name) *parser*
-                :entity-resolver 'cldr-entity-resolver)
+         (*locale* nil)
+         (source-xml-file (cldr-pathname-for name)))
+    (setf (source-xml-file-of *parser*) source-xml-file)
+    (cxml:parse source-xml-file *parser* :entity-resolver 'cldr-entity-resolver)
     (process-ldml-node nil (flexml:root-of *parser*))
     (assert *locale*)
     (values *locale* *parser*)))
+
+(define-condition cldr-parser-warning (simple-warning)
+  ((parser :initform *parser* :initarg :parser :accessor parser-of))
+  (:report (lambda (c stream)
+             (bind ((source-xml-file (source-xml-file-of (parser-of c))))
+               (apply #'format stream (concatenate 'string "~A.~A: " (simple-condition-format-control c))
+                      (pathname-name source-xml-file)
+                      (pathname-type source-xml-file)
+                      (simple-condition-format-arguments c))))))
+
+(defun cldr-parser-warning (message &rest args)
+  (warn 'cldr-parser-warning :format-control message :format-arguments args))
 
 (defun cldr-entity-resolver (public-id system-id)
   (declare (ignore public-id))
@@ -241,7 +256,7 @@
     (bind ((name (ldml-intern (slot-value node 'ldml::type)))
            (inbetween-node (flexml:the-only-child node)))
       (unless (length= 1 (flexml:children-of inbetween-node))
-        (warn "Multiple children for ldml node ~A, using the first one" inbetween-node))
+        (cldr-parser-warning "LDML node ~A has multiple children, using the first one" inbetween-node))
       (bind ((pattern (flexml:string-content-of (flexml:first-child inbetween-node))))
         (setf (getf (date-formatters-of (gregorian-calendar-of *locale*)) name)
               (list :formatter (compile-date-pattern/gregorian-calendar pattern)
