@@ -385,6 +385,20 @@ are discarded \(that is, the body is an implicit PROGN)."
         (,traverser ,tree)
         ,ret-val))))
 
+(defun handle-otherwise (otherwise)
+  (cond
+    ((eq otherwise :error)
+     (error "Otherwise assertion failed"))
+    ((and (consp otherwise)
+          (member (first otherwise) '(:error :warn)))
+     (case (first otherwise)
+       (:error (apply #'error (second otherwise) (nthcdr 2 otherwise)))
+       (:warn (apply #'warn (second otherwise) (nthcdr 2 otherwise)))))
+    ((functionp otherwise)
+     (funcall otherwise))
+    (t
+     otherwise)))
+
 (defun strcat (&rest items)
   "Returns a fresh string consisting of ITEMS concat'd together."
   (strcat* items))
