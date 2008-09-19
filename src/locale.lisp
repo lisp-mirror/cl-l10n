@@ -119,36 +119,6 @@
     (push *root-locale* result)
     (nreverse result)))
 
-(defmethod precedence-list-of :around ((self locale))
-  (let ((result (call-next-method)))
-    (unless result
-      (setf result (locale-precedence-list self))
-      (setf (precedence-list-of self) result))
-    result))
-
-(defmacro do-locales (var &rest body)
-  "Iterate all locales in *locale* and all their base locales in the right order."
-  (with-unique-names (top-block locale end)
-    `(block ,top-block
-       (dolist (,locale *locale*)
-         (dolist (,var (precedence-list-of ,locale))
-           (tagbody
-              (return-from ,top-block (block nil
-                                        ,@body
-                                        (go ,end)))
-              ,end))))))
-
-(defmacro do-locales-for-resource (name var &rest body)
-  (with-unique-names (top-block end)
-    `(block ,top-block
-       (do-locales ,var
-         (tagbody
-            (return-from ,top-block (block nil
-                                      ,@body
-                                      (go ,end)))
-            ,end))
-       (resource-missing ,name))))
-
 ;;;
 ;;; Caching parsed locale instances
 ;;;

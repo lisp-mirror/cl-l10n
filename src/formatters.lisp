@@ -17,7 +17,7 @@
     (unless stream
       (setf stream (make-string-output-stream)))
     (block iterating-locales
-      (do-locales locale
+      (do-current-locales locale
         (when-bind gregorian-calendar (gregorian-calendar-of locale)
           (bind ((formatter-entry (getf (date-formatters-of gregorian-calendar) verbosity))
                  (formatter (getf formatter-entry :formatter)))

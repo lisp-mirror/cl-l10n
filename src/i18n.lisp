@@ -61,7 +61,7 @@ and funcall the resource registered for the current locale."
         (values nil nil))))
 
 (defun lookup-resource (name &key arguments (warn-if-missing t) (fallback-to-name t))
-  (do-locales locale
+  (do-current-locales locale
     (multiple-value-bind (result foundp) (funcall '%lookup-resource locale name arguments)
       (when foundp
         (return-from lookup-resource (values result t)))))
@@ -197,43 +197,43 @@ Be careful when using in different situations, because it modifies *readtable*."
 
 (defun-with-capitalizer number-symbol (name)
   (assert (ldml-symbol-p name))
-  (do-locales-for-resource name locale
+  (do-current-locales-for-resource name locale
     (awhen (assoc name (number-symbols-of locale) :test #'eq)
       (return (values (cdr it) t)))))
 
 (defun-with-capitalizer currency-symbol (name)
   (assert (ldml-symbol-p name))
-  (do-locales-for-resource name locale
+  (do-current-locales-for-resource name locale
     (awhen (gethash name (currencies-of locale))
       (return (second it)))))
 
 (defun-with-capitalizer currency-name (name)
   (assert (ldml-symbol-p name))
-  (do-locales-for-resource name locale
+  (do-current-locales-for-resource name locale
     (awhen (gethash name (currencies-of locale))
       (return (first it)))))
 
 (defun-with-capitalizer language-name (name)
   (assert (ldml-symbol-p name))
-  (do-locales-for-resource name locale
+  (do-current-locales-for-resource name locale
     (awhen (gethash name (languages-of locale))
       (return (values it t)))))
 
 (defun-with-capitalizer script-name (name)
   (assert (ldml-symbol-p name))
-  (do-locales-for-resource name locale
+  (do-current-locales-for-resource name locale
     (awhen (gethash name (scripts-of locale))
       (return (values it t)))))
 
 (defun-with-capitalizer territory-name (name)
   (assert (ldml-symbol-p name))
-  (do-locales-for-resource name locale
+  (do-current-locales-for-resource name locale
     (awhen (gethash name (territories-of locale))
       (return (values it t)))))
 
 (defun-with-capitalizer variant-name (name)
   (assert (ldml-symbol-p name))
-  (do-locales-for-resource name locale
+  (do-current-locales-for-resource name locale
     (awhen (gethash name (variants-of locale))
       (return (values it t)))))
 
@@ -246,7 +246,7 @@ Be careful when using in different situations, because it modifies *readtable*."
                                    cl-l10n.lang:july    cl-l10n.lang:august   cl-l10n.lang:september
                                    cl-l10n.lang:october cl-l10n.lang:november cl-l10n.lang:december))))
    (assert (<= 0 index 11))
-   (do-locales-for-resource "<a month name>" locale
+   (do-current-locales-for-resource "<a month name>" locale
      (when-bind calendar (gregorian-calendar-of locale)
        (when-bind vector (if abbreviated
                              (abbreviated-month-names-of calendar)
@@ -262,7 +262,7 @@ Be careful when using in different situations, because it modifies *readtable*."
                                    cl-l10n.lang:wednesday cl-l10n.lang:thursday cl-l10n.lang:friday
                                    cl-l10n.lang:saturday))))
    (assert (<= 0 index 6))
-   (do-locales-for-resource "<a day name>" locale
+   (do-current-locales-for-resource "<a day name>" locale
      (when-bind calendar (gregorian-calendar-of locale)
        (when-bind vector (if abbreviated
                              (abbreviated-day-names-of calendar)
@@ -277,7 +277,7 @@ Be careful when using in different situations, because it modifies *readtable*."
       (setf index (position name '(cl-l10n.lang:first-quarter cl-l10n.lang:second-quarter
                                    cl-l10n.lang:third-quarter cl-l10n.lang:fourth-quarter))))
     (assert (<= 0 index 3))
-    (do-locales-for-resource "<a quarter name>" locale
+    (do-current-locales-for-resource "<a quarter name>" locale
       (when-bind calendar (gregorian-calendar-of locale)
         (when-bind vector (if abbreviated
                               (abbreviated-quarter-names-of calendar)

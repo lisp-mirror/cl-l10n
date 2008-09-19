@@ -312,6 +312,30 @@
           (multiple-value-bind (r s m+ m-) (initialize)
             (scale r s m+ m-)))))))
 
+(defmacro do-locales ((var locales &optional return-value) &rest body)
+  "Iterate all locale in LOCALES and all their precedence lists in the locale precedence order."
+  (with-unique-names (top-block locale end)
+    `(block ,top-block
+       (dolist (,locale ,locales)
+         (dolist (,var (precedence-list-of ,locale))
+           (tagbody
+              (return-from ,top-block (block nil
+                                        ,@body
+                                        (go ,end)))
+              ,end)))
+       ,return-value)))
+
+(defmacro do-current-locales (var &rest body)
+  "DO-LOCALES on *LOCALE*."
+  `(do-locales (,var *locale*)
+     ,@body))
+
+(defmacro do-current-locales-for-resource (name var &rest body)
+  "DO-LOCALES on *LOCALE* that calls RESOURCE-MISSING unless there's a non-local exit in its body."
+  `(do-locales (,var *locale* (resource-missing ,name))
+     ,@body))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; some duplicates copied from various other libs to lower the number of dependencies
 
