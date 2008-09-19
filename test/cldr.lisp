@@ -40,7 +40,7 @@
 
 (defvar *date-test-current-input*)
 
-(deftest test/cldr/run-cldr-test (file-name &key (timezone local-time:*default-timezone*))
+(deftest test/cldr/run-cldr-test (file-name &key (timezone local-time:+utc-zone+))
   (format *debug-io* "~%Running tests in '~A'" file-name)
   (when (stringp timezone)
     ;; TODO introduce something in local-time for this
