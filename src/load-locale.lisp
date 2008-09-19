@@ -101,20 +101,20 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
   (iter (for (name nil) :in-hashtable *locale-cache*)
         (load-resource name)))
 
-#+nil
-(defun load-all-locales (&key (path *locale-path*) (ignore-errors nil) (use-cache nil))
+(defun load-all-locales (&key (ignore-errors nil) (use-cache t))
   "Load all locale found in pathname designator PATH."
-  ;; TODO
-  (let ((*locale-path* path))
-    (dolist (x (list-directory *locale-path*))
-      (when (and (not (directory-pathname-p x)) (pathname-name x))
-        (let ((locale (pathname-name x)))
-          (with-simple-restart (continue "Ignore locale ~A." x)
-            (handler-bind ((error (lambda (&optional c)
-                                    (when ignore-errors
-                                      (warn "Failed to load locale ~S, Ignoring." locale)
-                                      (invoke-restart (find-restart 'continue c))))))
-              (locale locale :use-cache use-cache))))))))
+  (cl-fad:walk-directory
+   *cldr-root-directory*
+   (lambda (file-name)
+     (bind ((locale-name (pathname-name file-name)))
+       (with-simple-restart (continue "Skip loading locale ~A" locale-name)
+         (handler-bind ((error (lambda (error)
+                                 (when ignore-errors
+                                   (warn "Ignoring failure while loading locale ~S" locale-name)
+                                   (invoke-restart (find-restart 'continue error))))))
+           (locale locale-name :use-cache use-cache)))))
+   :test (lambda (file-name)
+           (equal (pathname-type file-name) "xml"))))
 
 (declaim (inline current-locale (setf current-locale)))
 
