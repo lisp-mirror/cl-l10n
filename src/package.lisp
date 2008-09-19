@@ -171,6 +171,11 @@
    #:era-abbr
    #:era-narrow
    #:era
+
+   #:short
+   #:medium
+   #:long
+   #:full
 #|
    #:locale-display-names
    #:layout

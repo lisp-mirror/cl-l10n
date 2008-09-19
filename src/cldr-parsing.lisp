@@ -7,6 +7,18 @@
 
 (defvar *parser*)
 
+(define-condition cldr-parser-warning (simple-warning)
+  ((parser :initform *parser* :initarg :parser :accessor parser-of))
+  (:report (lambda (c stream)
+             (bind ((source-xml-file (source-xml-file-of (parser-of c))))
+               (apply #'format stream (concatenate 'string "~A.~A: " (simple-condition-format-control c))
+                      (pathname-name source-xml-file)
+                      (pathname-type source-xml-file)
+                      (simple-condition-format-arguments c))))))
+
+(defun cldr-parser-warning (message &rest args)
+  (warn 'cldr-parser-warning :format-control message :format-arguments args))
+
 (defclass cldr-parser (flexml:flexml-builder)
   ((source-xml-file :initarg :source-xml-file :accessor source-xml-file-of)))
 
@@ -28,47 +40,61 @@
       (process-ldml-node nil (flexml:root-of *parser*))
       (setf (precedence-list-of *locale*) (compute-locale-precedence-list *locale*)))
     (assert *locale*)
-    (unless (boundp '*parser*)
+    (unless (boundp '*parser*) ; are we a toplevel invocation?
       ;; we are a non-recursive invocation of PARSE-CLDR-FILE, so do
       ;; some postprocessing. these operations must be postponed
       ;; because they need the locale precedence list, which means
       ;; that parsing needs to be called recursively.
-      (map nil 'ensure-locale-is-initialized (precedence-list-of *locale*)))
+      (bind ((*parser* parser)) ; rebind it so that CLDR-PARSER-WARNING is usable inside
+        (map nil 'ensure-locale-is-initialized (precedence-list-of *locale*))))
     (values *locale* parser)))
 
 (defun ensure-locale-is-initialized (locale)
   (unless (initialized-p locale)
     (setf (initialized-p locale) t)
     (unless (equal (language-of locale) "root")
-      (bind ((*locale* (list locale))
-             (gregorian-calendar (gregorian-calendar-of locale)))
-        (when gregorian-calendar
-          (iter (for (verbosity nil) :on (date-formatters-of gregorian-calendar) :by #'cddr)
-                ;; FIXME this should apply locale inheritance when finds the format pattern, then compile the pattern
-                ;; but store it to the head of the locale precedence list. some locales don't provide all the date
-                ;; format patterns, so we reach the root locale, that in turn has no day/month/etc names, so their
-                ;; date formatters are not instantiated. exampl locale: ii, in (it doesn't even have a gregorian calendar).
-                (bind (((&key formatter pattern &allow-other-keys) (getf (date-formatters-of gregorian-calendar) verbosity)))
-                  (assert (eq formatter 'dummy-formatter))
-                  (setf (getf (date-formatters-of gregorian-calendar) verbosity)
-                        (list :formatter (compile-date-pattern/gregorian-calendar pattern)
-                              :pattern pattern)))))))))
+      (flatten-date-related-names locale 'gregorian-calendar *date-part-name-slots/gregorian-calendar*)
+      (compile-date-formatters/gregorian-calendar locale))))
+
+(defun flatten-date-related-names (locale calendar-slot-name name-part-slot-names)
+  (bind ((*locale* (list locale))
+         (calendar (slot-value locale calendar-slot-name)))
+    (when calendar
+      (iter (for slot-name :in name-part-slot-names)
+            (for reader = (fdefinition (symbolicate slot-name '#:-of)))
+            (for names = (funcall reader calendar))
+            (when names
+              (iter (for index :from 0 :below (length names))
+                    (unless (aref names index)
+                      (bind ((inherited-name (do-current-locales locale
+                                               (awhen (slot-value locale calendar-slot-name)
+                                                 (awhen (funcall reader it)
+                                                   (awhen (aref it index)
+                                                     (return it)))))))
+                        (unless inherited-name
+                          (cldr-parser-warning "Locale ~A has no value at index ~A of gregorian date part name ~A"
+                                               locale index slot-name))
+                        (setf (aref names index) inherited-name)))))))))
+
+(defun compile-date-formatters/gregorian-calendar (locale)
+  (bind ((*locale* (list locale))
+         (gregorian-calendar (gregorian-calendar-of locale)))
+    (when gregorian-calendar
+      (iter (for verbosity :in '(ldml:short ldml:medium ldml:long ldml:full))
+            (bind ((pattern (do-current-locales locale
+                              ;; find a pattern on the locale precedence list
+                              (awhen (gregorian-calendar-of locale)
+                                (awhen (getf (date-formatters-of it) verbosity)
+                                  (awhen (getf it :pattern)
+                                    (return it)))))))
+              (assert pattern) ; the root locale should have it at the very least
+              (setf (getf (date-formatters-of gregorian-calendar) verbosity)
+                    (list :formatter (compile-date-pattern/gregorian-calendar pattern)
+                          :pattern pattern)))))))
 
 (defun dummy-formatter (&rest args)
   (declare (ignore args))
   (error "Seems like the CLDR file parsing has a bug. This dummy formatter should have been replaced in the postprocessing phase."))
-
-(define-condition cldr-parser-warning (simple-warning)
-  ((parser :initform *parser* :initarg :parser :accessor parser-of))
-  (:report (lambda (c stream)
-             (bind ((source-xml-file (source-xml-file-of (parser-of c))))
-               (apply #'format stream (concatenate 'string "~A.~A: " (simple-condition-format-control c))
-                      (pathname-name source-xml-file)
-                      (pathname-type source-xml-file)
-                      (simple-condition-format-arguments c))))))
-
-(defun cldr-parser-warning (message &rest args)
-  (warn 'cldr-parser-warning :format-control message :format-arguments args))
 
 (defun cldr-entity-resolver (public-id system-id)
   (declare (ignore public-id))
