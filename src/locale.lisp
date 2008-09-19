@@ -116,7 +116,8 @@
                           :ignore-script t
                           :ignore-territory t
                           :ignore-variant t))))
-    (push *root-locale* result)
+    (when (boundp '*root-locale*)
+      (push *root-locale* result))
     (nreverse result)))
 
 ;;;
@@ -126,12 +127,15 @@
 (defparameter *locale-cache* (make-hash-table :test #'equal)
   "Hashtable containing all loaded locales keyed on LOCALE-NAME (eg. \"af_ZA\")")
 
-(declaim (inline clear-locale-cache cached-locale (setf cached-locale)))
-
 (defun clear-locale-cache ()
   (prog1
       (hash-table-count *locale-cache*)
-    (clrhash *locale-cache*)))
+    (clrhash *locale-cache*)
+    (makunbound '*root-locale*)
+    (load-root-locale)
+    (load-default-locale)))
+
+(declaim (inline cached-locale (setf cached-locale)))
 
 (defun cached-locale (name)
   (gethash name *locale-cache*))
