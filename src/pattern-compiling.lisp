@@ -52,10 +52,9 @@
                   (declare (ignorable date year month day day-of-week)
                            (type non-negative-fixnum year month day day-of-week))
                   (bind ((month-1 (1- month))
-                         (day-1 (1- day))
-                         (day-of-week-1 (1- day-of-week)))
-                    (declare (ignorable date month-1 day-1 day-of-week-1)
-                             (type non-negative-fixnum month-1 day-1 day-of-week-1))
+                         (day-1 (1- day)))
+                    (declare (ignorable date month-1 day-1 day-of-week)
+                             (type non-negative-fixnum month-1 day-1 day-of-week))
                     ,@body)))
              (invalid-number-of-directives ()
                `(error "Invalid number of consecutive '~A' directives in Gregorian calendar date format: \"~A\", piece \"~A\""
@@ -104,11 +103,11 @@
                                   (invalid-number-of-directives))))
                           (#\E (cond
                                  ((= length 4)
-                                  (collect (piece-formatter (write-string (aref day-names day-of-week-1) stream))))
+                                  (collect (piece-formatter (write-string (aref day-names day-of-week) stream))))
                                  ((= length 5)
-                                  (collect (piece-formatter (write-string (aref narrow-day-names day-of-week-1) stream))))
+                                  (collect (piece-formatter (write-string (aref narrow-day-names day-of-week) stream))))
                                  ((<= length 3)
-                                  (collect (piece-formatter (write-string (aref abbreviated-day-names day-of-week-1) stream))))
+                                  (collect (piece-formatter (write-string (aref abbreviated-day-names day-of-week) stream))))
                                  (t
                                   (invalid-number-of-directives))))
                           (#\G (macrolet ((era-formatter (vector)
