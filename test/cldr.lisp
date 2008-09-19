@@ -52,39 +52,41 @@
          (local-time:*default-timezone* timezone))
     (process-ldml-test-node nil root)))
 
-(defgeneric process-ldml-test-node (parent node)
-  (:method (parent (node flexml:flexml-node))
-    (iter (for child :in-sequence (flexml:children-of node))
-          (process-ldml-test-node node child)))
+(locally
+    (declare (optimize debug))
+  (defgeneric process-ldml-test-node (parent node)
+    (:method (parent (node flexml:flexml-node))
+      (iter (for child :in-sequence (flexml:children-of node))
+            (process-ldml-test-node node child)))
 
-  (:method ((parent flexml:flexml-node) (node string))
-    ;; nop
-    )
+    (:method ((parent flexml:flexml-node) (node string))
+      ;; nop
+      )
 
-  (:method ((parent ldml::cldr-test) (node ldml::date))
-    (bind ((locale-names (cl-ppcre:split " " (slot-value node 'ldml::locales))))
-      (format *debug-io* "~%  - running date formatter tests with locale ~A~%" locale-names)
-      (block nil
-        (handler-bind ((locale-not-found-error (lambda (error)
-                                                 (format *debug-io* "  *** ~A~%" error)
-                                                 (return))))
-          (with-locale locale-names
-            (flet ((process-result-node (node)
-                     (when (typep node 'ldml::result)
-                       (awhen (slot-value node 'ldml::input)
-                         (setf *date-test-current-input* (local-time:parse-rfc3339-timestring it)))
-                       (bind ((date-format (slot-value node 'ldml::datetype))
-                              (time-format (slot-value node 'ldml::timetype)))
-                         (when (string= date-format "none")
-                           (setf date-format nil))
-                         (when (string= time-format "none")
-                           (setf time-format nil))
-                         (assert (not (and date-format time-format)))
-                         (when date-format
-                           (is (string= (format-date/gregorian-calendar nil *date-test-current-input*
-                                                                        :verbosity (ensure-ldml-symbol date-format))
-                                        (flexml:string-content-of node))))))))
-              (map nil #'process-result-node (flexml:children-of node)))))))))
+    (:method ((parent ldml::cldr-test) (node ldml::date))
+      (bind ((locale-names (cl-ppcre:split " " (slot-value node 'ldml::locales))))
+        (format *debug-io* "~%  - running date formatter tests with locale ~A~%" locale-names)
+        (block nil
+          (handler-bind ((locale-not-found-error (lambda (error)
+                                                   (format *debug-io* "  *** ~A~%" error)
+                                                   (return))))
+            (with-locale locale-names
+              (flet ((process-result-node (node)
+                       (when (typep node 'ldml::result)
+                         (awhen (slot-value node 'ldml::input)
+                           (setf *date-test-current-input* (local-time:parse-rfc3339-timestring it)))
+                         (bind ((date-format (slot-value node 'ldml::datetype))
+                                (time-format (slot-value node 'ldml::timetype)))
+                           (when (string= date-format "none")
+                             (setf date-format nil))
+                           (when (string= time-format "none")
+                             (setf time-format nil))
+                           (assert (not (and date-format time-format)))
+                           (when date-format
+                             (is (string= (format-date/gregorian-calendar nil *date-test-current-input*
+                                                                          :verbosity (ensure-ldml-symbol date-format))
+                                          (flexml:string-content-of node))))))))
+                (map nil #'process-result-node (flexml:children-of node))))))))))
 
 (defsuite* (test/cldr/symbols :in test/cldr))
 

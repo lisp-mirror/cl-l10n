@@ -134,7 +134,7 @@
                            (collect (piece-formatter (write-string piece stream)))))))))
                 (collect (piece-formatter (write-string outer-piece stream)))))))
       (nreversef formatter-list)
-      (lambda (stream date)
+      (named-lambda date-formatter (stream date)
         (local-time:with-decoded-timestamp (:year year :month month :day day :day-of-week day-of-week) date
           (dolist (formatter formatter-list)
             (funcall (the function formatter) stream date year month day day-of-week)))))))
