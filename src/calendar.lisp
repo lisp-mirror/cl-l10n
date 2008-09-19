@@ -60,3 +60,45 @@
    (date-formatters
     :initform nil
     :accessor date-formatters-of)))
+
+(defun handle-otherwise/gregorian-calendar-effective-accessor (slot-name otherwise otherwise-provided?)
+  (unless otherwise-provided?
+    (setf otherwise
+          `(:error "Could not find a locale with non-nil ~S slot in the current locale precedence list ~A"
+                   ,slot-name ,*locale*)))
+  (handle-otherwise otherwise))
+
+(macrolet
+    ((define-effective-accessors (&rest slot-names)
+       `(progn
+          ,@(iter (for slot-name :in slot-names)
+                  (for accessor = (symbolicate slot-name '#:-of))
+                  (for effective-accessor = (symbolicate '#:effective- slot-name '#:/gregorian-calendar))
+                  (collect `(progn
+                              (defun ,effective-accessor (&key (otherwise nil otherwise-provided?))
+                                (do-current-locales locale
+                                  (awhen (gregorian-calendar-of locale)
+                                    (awhen (,accessor it)
+                                      (return-from ,effective-accessor it))))
+                                (handle-otherwise/gregorian-calendar-effective-accessor ',slot-name otherwise otherwise-provided?))
+                              (export ',effective-accessor)))))))
+  ;; FIXME this should collect the non-nil array values, not only non-nil entire arrays.
+  ;; e.g. de_AT has a month override for de, but only for january.
+  (define-effective-accessors
+    month-names
+    abbreviated-month-names
+    narrow-month-names
+
+    day-names
+    abbreviated-day-names
+    narrow-day-names
+
+    quarter-names
+    abbreviated-quarter-names
+
+    era-names
+    abbreviated-era-names
+    narrow-era-names
+
+    am
+    pm))
