@@ -19,14 +19,44 @@
   (merge-pathnames (concatenate 'string locale-name ".xml") *cldr-root-directory*))
 
 (defun parse-cldr-file (name)
-  (let* ((*parser* (make-cldr-parser))
+  (bind ((parser (make-cldr-parser))
          (*locale* nil)
          (source-xml-file (cldr-pathname-for name)))
-    (setf (source-xml-file-of *parser*) source-xml-file)
-    (cxml:parse source-xml-file *parser* :entity-resolver 'cldr-entity-resolver)
-    (process-ldml-node nil (flexml:root-of *parser*))
+    (bind ((*parser* parser))
+      (setf (source-xml-file-of *parser*) source-xml-file)
+      (cxml:parse source-xml-file *parser* :entity-resolver 'cldr-entity-resolver)
+      (process-ldml-node nil (flexml:root-of *parser*))
+      (setf (precedence-list-of *locale*) (compute-locale-precedence-list *locale*)))
     (assert *locale*)
-    (values *locale* *parser*)))
+    (unless (boundp '*parser*)
+      ;; we are a non-recursive invocation of PARSE-CLDR-FILE, so do
+      ;; some postprocessing. these operations must be postponed
+      ;; because they need the locale precedence list, which means
+      ;; that parsing needs to be called recursively.
+      (map nil 'ensure-locale-is-initialized (precedence-list-of *locale*)))
+    (values *locale* parser)))
+
+(defun ensure-locale-is-initialized (locale)
+  (unless (initialized-p locale)
+    (setf (initialized-p locale) t)
+    (unless (equal (language-of locale) "root")
+      (bind ((*locale* (list locale))
+             (gregorian-calendar (gregorian-calendar-of locale)))
+        (when gregorian-calendar
+          (iter (for (verbosity nil) :on (date-formatters-of gregorian-calendar) :by #'cddr)
+                ;; FIXME this should apply locale inheritance when finds the format pattern, then compile the pattern
+                ;; but store it to the head of the locale precedence list. some locales don't provide all the date
+                ;; format patterns, so we reach the root locale, that in turn has no day/month/etc names, so their
+                ;; date formatters are not instantiated. exampl locale: ii, in (it doesn't even have a gregorian calendar).
+                (bind (((&key formatter pattern &allow-other-keys) (getf (date-formatters-of gregorian-calendar) verbosity)))
+                  (assert (eq formatter 'dummy-formatter))
+                  (setf (getf (date-formatters-of gregorian-calendar) verbosity)
+                        (list :formatter (compile-date-pattern/gregorian-calendar pattern)
+                              :pattern pattern)))))))))
+
+(defun dummy-formatter (&rest args)
+  (declare (ignore args))
+  (error "Seems like the CLDR file parsing has a bug. This dummy formatter should have been replaced in the postprocessing phase."))
 
 (define-condition cldr-parser-warning (simple-warning)
   ((parser :initform *parser* :initarg :parser :accessor parser-of))
@@ -259,8 +289,7 @@
         (cldr-parser-warning "LDML node ~A has multiple children, using the first one" inbetween-node))
       (bind ((pattern (flexml:string-content-of (flexml:first-child inbetween-node))))
         (setf (getf (date-formatters-of (gregorian-calendar-of *locale*)) name)
-              (list :formatter (compile-date-pattern/gregorian-calendar pattern)
-                    :pattern pattern))))))
+              (list :formatter 'dummy-formatter :pattern pattern))))))
 
 (defun parse-era-ldml-node (node reader)
   (bind ((calendar (gregorian-calendar-of *locale*))

@@ -74,7 +74,10 @@
     :accessor gregorian-calendar-of)
    (resources
     :initform (make-hash-table :test #'equal)
-    :accessor resources-of)))
+    :accessor resources-of)
+   (initialized
+    :initform nil
+    :accessor initialized-p)))
 
 (defmethod print-object ((obj locale) stream)
   (print-unreadable-object (obj stream :type t :identity t)
@@ -98,7 +101,7 @@
             (write-char #\_)
             (write-string it)))))))
 
-(defun locale-precedence-list (locale)
+(defun compute-locale-precedence-list (locale)
   "Calculate the precedence list for a locale that should be searched for definitions. For example: (locale-precedence-list (locale \"en_US_POSIX\")) => (en_US_POSIX en_US en root)"
   (let ((result (list locale)))
     (flet ((try (locale-name)
