@@ -13,7 +13,7 @@
                                          (nconcing (list #\( char #\+ #\))))
                                    'simple-string)))
 
-;;; at the time these functions are called *locale* is bound the the locale from which this pattern comes from.
+;;; at the time these functions are called *locale* is bound the the locale for which the pattern should be compiled for
 
 (defun tokenize-format-pattern (pattern scanner)
   (bind ((quote-pieces (remove-if #'zerop
@@ -59,19 +59,17 @@
              (invalid-number-of-directives ()
                `(error "Invalid number of consecutive '~A' directives in Gregorian calendar date format: \"~A\", piece \"~A\""
                        directive-character pattern piece)))
-    (bind ((locale *locale*)
-           (calendar (gregorian-calendar-of locale))
-           (day-names (day-names-of calendar))
-           (abbreviated-day-names (abbreviated-day-names-of calendar))
-           (narrow-day-names (narrow-day-names-of calendar))
-           (month-names (month-names-of calendar))
-           (abbreviated-month-names (abbreviated-month-names-of calendar))
-           (narrow-month-names (narrow-month-names-of calendar))
-           (era-names (era-names-of calendar))
-           (abbreviated-era-names (abbreviated-era-names-of calendar))
-           (narrow-era-names (narrow-era-names-of calendar))
-           (outer-pieces (tokenize-format-pattern pattern +date-pattern-scanner/gregorian-calendar+))
-           (formatter-list (list)))
+    (bind ((day-names               (effective-day-names/gregorian-calendar :otherwise #("Sunday" "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday")))
+           (abbreviated-day-names   (effective-abbreviated-day-names/gregorian-calendar :otherwise #("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat")))
+           (narrow-day-names        (effective-narrow-day-names/gregorian-calendar :otherwise #("S" "M" "T" "W" "T" "F" "S")))
+           (month-names             (effective-month-names/gregorian-calendar :otherwise #("January" "February" "March" "April" "May" "June" "July" "August" "September" "October" "November" "December")))
+           (abbreviated-month-names (effective-abbreviated-month-names/gregorian-calendar :otherwise #("Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec")))
+           (narrow-month-names      (effective-narrow-month-names/gregorian-calendar :otherwise #("J" "F" "M" "A" "M" "J" "J" "A" "S" "O" "N" "D")))
+           (era-names               (effective-era-names/gregorian-calendar :otherwise #("BC" "AD")))
+           (abbreviated-era-names   (effective-abbreviated-era-names/gregorian-calendar :otherwise #("BC" "AD")))
+           (narrow-era-names        (effective-narrow-era-names/gregorian-calendar :otherwise #("BC" "AD")))
+           (outer-pieces            (tokenize-format-pattern pattern +date-pattern-scanner/gregorian-calendar+))
+           (formatter-list          (list)))
       (flet ((collect (formatter)
                (push formatter formatter-list)))
         (dolist (outer-piece outer-pieces)
