@@ -63,46 +63,34 @@
     :initform nil
     :accessor date-formatters-of)))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (defparameter *date-part-name-slots/gregorian-calendar*
-    '(month-names
-      abbreviated-month-names
-      narrow-month-names
+(defun effective-date-related-names (calendar-slot-reader name-vector-slot-reader &optional defaults)
+  (setf calendar-slot-reader (ensure-function calendar-slot-reader))
+  (setf name-vector-slot-reader (ensure-function name-vector-slot-reader))
+  (bind ((result nil))
+    (do-current-locales locale
+      ;; find the first non-nil name vector
+      (awhen (funcall calendar-slot-reader locale)
+        (awhen (funcall name-vector-slot-reader it)
+          (setf result it)
+          (return))))
+    (when (some #'null result)
+      ;; if it's partial then make a copy and fill it in
+      (setf result (copy-seq result))
+      (iter (for index :from 0 :below (length result))
+            (unless (aref result index)
+              (bind ((inherited-name (do-current-locales locale
+                                       (awhen (funcall calendar-slot-reader locale)
+                                         (awhen (funcall name-vector-slot-reader it)
+                                           (awhen (aref it index)
+                                             (return it)))))))
+                (unless inherited-name
+                  (cldr-parser-warning "Locale ~A has no value at index ~A of gregorian date part name ~A"
+                                       (current-locale) index name-vector-slot-reader)
+                  (when defaults
+                    (setf inherited-name (aref defaults index))))
+                (setf (aref result index) inherited-name)))))
+    result))
 
-      day-names
-      abbreviated-day-names
-      narrow-day-names
+(defun effective-date-related-names/gregorian-calendar (name-vector-slot-reader &optional defaults)
+  (effective-date-related-names 'gregorian-calendar-of name-vector-slot-reader defaults))
 
-      quarter-names
-      abbreviated-quarter-names
-
-      era-names
-      abbreviated-era-names
-      narrow-era-names
-
-      am
-      pm)))
-
-(defun handle-otherwise/gregorian-calendar-effective-accessor (slot-name otherwise otherwise-provided?)
-  (unless otherwise-provided?
-    (setf otherwise
-          `(:error "Could not find a locale with non-nil ~S slot in the current locale precedence list ~A"
-                   ,slot-name ,*locale*)))
-  (handle-otherwise otherwise))
-
-(macrolet
-    ((define-effective-accessors (&rest slot-names)
-       `(progn
-          ,@(iter (for slot-name :in slot-names)
-                  (for accessor = (symbolicate slot-name '#:-of))
-                  (for effective-accessor = (symbolicate '#:effective- slot-name '#:/gregorian-calendar))
-                  (collect `(progn
-                              (defun ,effective-accessor (&key (otherwise nil otherwise-provided?))
-                                (do-current-locales locale
-                                  (awhen (gregorian-calendar-of locale)
-                                    (awhen (,accessor it)
-                                      (return-from ,effective-accessor it))))
-                                (handle-otherwise/gregorian-calendar-effective-accessor
-                                 ',slot-name otherwise otherwise-provided?))
-                              (export ',effective-accessor)))))))
-  #.`(define-effective-accessors ,@*date-part-name-slots/gregorian-calendar*))

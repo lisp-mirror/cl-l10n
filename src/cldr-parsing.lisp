@@ -53,44 +53,28 @@
   (unless (initialized-p locale)
     (setf (initialized-p locale) t)
     (unless (equal (language-of locale) "root")
-      (flatten-date-related-names locale 'gregorian-calendar *date-part-name-slots/gregorian-calendar*)
       (compile-date-formatters/gregorian-calendar locale))))
-
-(defun flatten-date-related-names (locale calendar-slot-name name-part-slot-names)
-  (bind ((*locale* (list locale))
-         (calendar (slot-value locale calendar-slot-name)))
-    (when calendar
-      (iter (for slot-name :in name-part-slot-names)
-            (for reader = (fdefinition (symbolicate slot-name '#:-of)))
-            (for names = (funcall reader calendar))
-            (when names
-              (iter (for index :from 0 :below (length names))
-                    (unless (aref names index)
-                      (bind ((inherited-name (do-current-locales locale
-                                               (awhen (slot-value locale calendar-slot-name)
-                                                 (awhen (funcall reader it)
-                                                   (awhen (aref it index)
-                                                     (return it)))))))
-                        (unless inherited-name
-                          (cldr-parser-warning "Locale ~A has no value at index ~A of gregorian date part name ~A"
-                                               locale index slot-name))
-                        (setf (aref names index) inherited-name)))))))))
 
 (defun compile-date-formatters/gregorian-calendar (locale)
   (bind ((*locale* (list locale))
          (gregorian-calendar (gregorian-calendar-of locale)))
     (when gregorian-calendar
-      (iter (for verbosity :in '(ldml:short ldml:medium ldml:long ldml:full))
-            (bind ((pattern (do-current-locales locale
-                              ;; find a pattern on the locale precedence list
-                              (awhen (gregorian-calendar-of locale)
-                                (awhen (getf (date-formatters-of it) verbosity)
-                                  (awhen (getf it :pattern)
-                                    (return it)))))))
-              (assert pattern) ; the root locale should have it at the very least
-              (setf (getf (date-formatters-of gregorian-calendar) verbosity)
-                    (list :formatter (compile-date-pattern/gregorian-calendar pattern)
-                          :pattern pattern)))))))
+      (bind ((verbosities '(ldml:short ldml:medium ldml:long ldml:full))
+             (patterns (iter (for verbosity :in verbosities)
+                             (for pattern = (do-current-locales locale
+                                              ;; find a pattern on the locale precedence list
+                                              (awhen (gregorian-calendar-of locale)
+                                                (awhen (getf (date-formatters-of it) verbosity)
+                                                  (awhen (getf it :pattern)
+                                                    (return it))))))
+                             (assert pattern) ; the root locale should have it at the very least
+                             (collect pattern))))
+        (setf (date-formatters-of gregorian-calendar)
+              (mapcan (lambda (verbosity pattern formatter)
+                        (list verbosity (list :formatter formatter :pattern pattern)))
+                      verbosities
+                      patterns
+                      (apply 'compile-date-pattern/gregorian-calendar patterns)))))))
 
 (defun dummy-formatter (&rest args)
   (declare (ignore args))
