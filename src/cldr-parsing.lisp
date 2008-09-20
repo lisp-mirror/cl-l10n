@@ -94,7 +94,7 @@
 
 (defun dummy-formatter (&rest args)
   (declare (ignore args))
-  (error "Seems like the CLDR file parsing has a bug. This dummy formatter should have been replaced in the postprocessing phase."))
+  (error "Seems like either the CLDR file parsing or the CLDR files themselves have a bug. This dummy formatter should have been replaced in the postprocessing phase."))
 
 (defun cldr-entity-resolver (public-id system-id)
   (declare (ignore public-id))
