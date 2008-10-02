@@ -141,14 +141,14 @@
                                                (round (/ number rounding-increment)))
                                             (* rounded-integer-part scaling-factor)))
                                     0)))
-
                           ;; fraction part
                           (flet ((localize-and-collect (stuff)
                                    (typecase stuff
                                      (character
                                       (setf stuff (localize-number-symbol-character stuff)))
                                      (number
-                                      (setf stuff (localize-number-symbol-character (digit-char stuff))))
+                                      (setf stuff (localize-number-symbol-character (digit-char stuff)))))
+                                   (typecase stuff
                                      (sequence
                                       (iter (for i from (length stuff) downto 1)
                                             (push (elt stuff (- i 1)) formatted-digits)))
@@ -274,13 +274,16 @@
                                         (collect pad-char)) 'string))))
           (when (eq pad-pos 'before-prefix)
             (write-string padding stream))
-          (write-string prefix stream)
+          (when prefix
+            (write-string prefix stream))
           (when (eq pad-pos 'after-prefix)
             (write-string padding stream))
-          (write-string formatted-number stream)
+          (when formatted-number
+            (write-string formatted-number stream))
           (when (eq pad-pos 'before-suffix)
             (write-string padding stream))
-          (write-string suffix stream)
+          (when suffix
+            (write-string suffix stream))
           (when (eq pad-pos 'after-suffix)
             (write-string padding stream)))))))
 
