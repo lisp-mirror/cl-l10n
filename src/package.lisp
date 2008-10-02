@@ -175,9 +175,20 @@
    #:medium
    #:long
    #:full
+   #:decimal
    #:decimal-formats
    #:decimal-format-length
    #:decimal-format
+   #:native-zero-digit
+   #:group
+   #:percent-sign
+   #:per-mille
+   #:infinity
+   #:exponential
+   #:plus-sign
+   #:minus-sign
+   #:list
+
 #|
    #:locale-display-names
    #:layout

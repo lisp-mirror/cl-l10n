@@ -46,7 +46,7 @@
             (return-from iterating-locales))))
       (warn "No decimal number formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
             verbosity (current-locale))
-      (format *standard-output* "~A" number))
+      (format stream "~A" number))
    (if to-string?
        (get-output-stream-string stream)
        stream)))

@@ -87,22 +87,21 @@
 (defun parse-padding (a-pattern)
   (bind ((pad nil))
     (cl-ppcre:register-groups-bind (nil the-quote quoted-directive ordinary-char) ("(^\\*'(')|^\\*'([^'])'|^\\*([^']))" a-pattern)
-      (if (not (null the-quote))
-          (progn
-            (setf pad the-quote)
-            (setf a-pattern (subseq a-pattern 3)))
-          (if (not (null quoted-directive))
-              (progn
-                (setf pad quoted-directive)
-                (setf a-pattern (subseq a-pattern 4)))
-              (if (not (null ordinary-char))
-                  (if (find ordinary-char +number-pattern-characters+)
-                      (error "Invalid padding character:~A . The specified padding character is special, try enclosing it in 'quotes'." ordinary-char)
-                      (progn
-                        (setf pad ordinary-char)
-                        (setf a-pattern (subseq a-pattern 2))))
-                  (error "No padding character specified after * pad escape directive.")))))
-    (list pad a-pattern)))
+      (cond
+        (the-quote
+         (setf pad the-quote)
+         (setf a-pattern (subseq a-pattern 3)))
+        (quoted-directive
+         (setf pad quoted-directive)
+         (setf a-pattern (subseq a-pattern 4)))
+        (ordinary-char
+         (if (find ordinary-char +number-pattern-characters+)
+             (error "Invalid padding character: '~A'. The specified padding character is special, try enclosing it in 'quotes'." ordinary-char)
+             (progn
+               (setf pad ordinary-char)
+               (setf a-pattern (subseq a-pattern 2)))))
+        (t (error "No padding character specified after * pad escape directive."))))
+    (values pad a-pattern)))
 
 (defun compile-number-absolute-value-pattern/decimal (number-format)
   (bind ((integer-fraction-with-dot-? (find #\. number-format :test #'char=))
@@ -145,15 +144,16 @@
 
                           ;; fraction part
                           (flet ((localize-and-collect (stuff)
-                                   (if (subtypep (type-of stuff) 'character)
-                                       (setf stuff (localize-number-symbol-character stuff))
-                                       (if (subtypep (type-of stuff) 'number)
-                                           (setf stuff (localize-number-symbol-character (digit-char stuff)))))
-                                   (if (subtypep (type-of stuff) 'sequence)
-                                       (iter (for i from (length stuff) downto 1)
-                                             (push (elt stuff (- i 1)) formatted-digits))
-                                       (push stuff formatted-digits))
-                                   ))
+                                   (typecase stuff
+                                     (character
+                                      (setf stuff (localize-number-symbol-character stuff)))
+                                     (number
+                                      (setf stuff (localize-number-symbol-character (digit-char stuff))))
+                                     (sequence
+                                      (iter (for i from (length stuff) downto 1)
+                                            (push (elt stuff (- i 1)) formatted-digits)))
+                                     (t
+                                      (push stuff formatted-digits)))))
                             (iter
                               (with was-non-zero-digit = nil)
                               (with remainder = rounded-fraction-part)
@@ -211,7 +211,7 @@
          (number-format-size nil)
          (number-formatter nil))
     (macrolet ((handle-padding-if-applicable (position)
-                 `(bind (((pad tail) (parse-padding pattern)))
+                 `(bind (((:values pad tail) (parse-padding pattern)))
                     (unless (null pad)
                       (if (not (null pad-char))
                           (error "Padding cannot be specified more than once."))
@@ -266,20 +266,23 @@
           (setf neg-subpat-prefix "-"))
 
       (lambda (stream number)
-        (bind ((prefix (if (>= number 0) pos-subpat-prefix neg-subpat-prefix))
-               (suffix (if (>= number 0) pos-subpat-suffix neg-subpat-suffix))
+        (bind ((prefix (if (minusp number) neg-subpat-prefix pos-subpat-prefix))
+               (suffix (if (minusp number) neg-subpat-suffix pos-subpat-suffix))
                (formatted-number (funcall number-formatter number))
-               (padding (if pad-pos
-                            (coerce (iter (repeat (- number-format-size (+ (length formatted-number) (length prefix) (length suffix))))
-                                          (collect pad-char)) 'string))))
-          (write-string (concatenate 'string
-                                     (if (eq pad-pos 'before-prefix) padding "")
-                                     prefix
-                                     (if (eq pad-pos 'after-prefix) padding "")
-                                     formatted-number
-                                     (if (eq pad-pos 'before-suffix) padding "")
-                                     suffix
-                                     (if (eq pad-pos 'after-suffix) padding "")) stream))))))
+               (padding (when pad-pos
+                          (coerce (iter (repeat (- number-format-size (+ (length formatted-number) (length prefix) (length suffix))))
+                                        (collect pad-char)) 'string))))
+          (when (eq pad-pos 'before-prefix)
+            (write-string padding stream))
+          (write-string prefix stream)
+          (when (eq pad-pos 'after-prefix)
+            (write-string padding stream))
+          (write-string formatted-number stream)
+          (when (eq pad-pos 'before-suffix)
+            (write-string padding stream))
+          (write-string suffix stream)
+          (when (eq pad-pos 'after-suffix)
+            (write-string padding stream)))))))
 
 (defun compile-date-pattern/gregorian-calendar (&rest patterns)
   (declare (optimize speed))
