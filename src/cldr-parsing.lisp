@@ -53,7 +53,8 @@
   (unless (initialized-p locale)
     (setf (initialized-p locale) t)
     (unless (equal (language-of locale) "root")
-      (compile-date-formatters/gregorian-calendar locale))))
+      (compile-date-formatters/gregorian-calendar locale)
+      (compile-number-formatters/decimal locale))))
 
 (defun compile-date-formatters/gregorian-calendar (locale)
   (bind ((*locale* (list locale))
@@ -75,6 +76,15 @@
                       verbosities
                       patterns
                       (apply 'compile-date-pattern/gregorian-calendar patterns)))))))
+
+(defun compile-number-formatters/decimal (locale)
+  (bind ((decimal-formatters (decimal-formatter-of locale)))
+    (iter (for verbosity in decimal-formatters by #'cddr)
+          (with pattern = (getf (getf decimal-formatters verbosity) :pattern))
+          (setf (getf decimal-formatters verbosity)
+                (list :formatter (compile-number-pattern/decimal pattern)
+                      :pattern pattern)))))
+
 
 (defun dummy-formatter (&rest args)
   (declare (ignore args))
@@ -147,6 +157,9 @@
    ldml:era-abbr
    ldml:era-narrow
    ldml:era
+   ldml:decimal-formats
+   ldml:decimal-format-length
+   ldml:decimal-format
    ))
 
 (defmethod sax:characters ((parser cldr-parser) data)
@@ -240,7 +253,17 @@
         (progn
           (setf (gregorian-calendar-of *locale*) (make-instance 'gregorian-calendar))
           (process-ldml-gregorian-calendar-node parent node))
-        (call-next-method))))
+        (call-next-method)))
+  (:method ((parent ldml:decimal-formats) (node ldml:decimal-format-length))
+    (bind ((ldml-type (slot-value node 'ldml::type))
+           (name (and ldml-type (ldml-intern ldml-type)))
+           (inbetween-node (flexml:the-only-child node)))
+      (unless (length= 1 (flexml:children-of inbetween-node))
+        (cldr-parser-warning "LDML node ~A has multiple children, using the first one" inbetween-node))
+      (bind ((pattern (flexml:string-content-of (flexml:first-child inbetween-node))))
+        (setf (getf (decimal-formatter-of *locale*) name)
+              (list :formatter 'dummy-formatter :pattern pattern))))))
+
 
 (defun process-langauge-list-like-ldml-node (node accessor)
   (let* ((name (string-upcase (slot-value node 'ldml::type))))

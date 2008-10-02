@@ -171,11 +171,13 @@
    #:era-abbr
    #:era-narrow
    #:era
-
    #:short
    #:medium
    #:long
    #:full
+   #:decimal-formats
+   #:decimal-format-length
+   #:decimal-format
 #|
    #:locale-display-names
    #:layout

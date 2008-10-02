@@ -20,7 +20,7 @@
                         :components ((:file "package")
                                      (:file "utils" :depends-on ("package"))
                                      (:file "pattern-compiling" :depends-on ("utils"))
-                                     (:file "cldr-parsing" :depends-on ("package" "utils" "locale" "i18n" "pattern-compiling"))
+                                     (:file "cldr-parsing" :depends-on ("package" "parse-number" "utils" "locale" "i18n" "pattern-compiling"))
                                      (:file "parse-number" :depends-on ("package"))
                                      (:file "locale" :depends-on ("utils" "calendar"))
                                      (:file "calendar" :depends-on ("utils"))

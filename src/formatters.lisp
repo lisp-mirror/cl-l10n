@@ -31,6 +31,27 @@
        (get-output-stream-string stream)
        stream)))
 
+(defun format-number/decimal (stream number &key (verbosity 'ldml:medium))
+  (declare (optimize speed))
+  (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
+  (bind ((to-string? (null stream)))
+    (unless stream
+      (setf stream (make-string-output-stream)))
+    (block iterating-locales
+      (do-current-locales locale
+        (awhen (or (getf (decimal-formatter-of locale) verbosity)
+                   (getf (decimal-formatter-of locale) nil))
+          (when-bind formatter (getf it :formatter)
+            (funcall formatter stream number)
+            (return-from iterating-locales))))
+      (warn "No decimal number formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+            verbosity (current-locale))
+      (format *standard-output* "~A" number))
+   (if to-string?
+       (get-output-stream-string stream)
+       stream)))
+
+
 #|
 
 TODO revive the same functionality

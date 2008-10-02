@@ -49,10 +49,10 @@
    (number-symbols
     :initform (list)
     :accessor number-symbols-of)
-   (formatters
+   (number-formatter
     :initform nil
-    :initarg :formatters
-    :accessor formatters-of)
+    :initarg :number-formatter
+    :accessor number-formatter-of)
    (currencies
     :initform (make-hash-table :test #'eq)
     :accessor currencies-of)
@@ -77,7 +77,10 @@
     :accessor resources-of)
    (initialized
     :initform nil
-    :accessor initialized-p)))
+    :accessor initialized-p)
+   (decimal-formatter
+    :initform nil
+    :accessor decimal-formatter-of)))
 
 (defmethod print-object ((obj locale) stream)
   (print-unreadable-object (obj stream :type t :identity t)
