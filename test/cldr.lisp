@@ -39,6 +39,7 @@
     (values (flexml:root-of *parser*) *parser*)))
 
 (defvar *date-test-current-input*)
+(defvar *number-test-current-input*)
 
 (deftest test/cldr/run-cldr-test (file-name &key (timezone local-time:+utc-zone+))
   (format *debug-io* "~%Running tests in '~A'" file-name)
@@ -48,6 +49,7 @@
     (assert timezone))
   (bind ((root (parse-cldr-test-file file-name))
          (*date-test-current-input* nil)
+         (*number-test-current-input* nil)
          ;; TODO introduce something in local-time for this
          (local-time:*default-timezone* timezone))
     (process-ldml-test-node nil root)))
@@ -86,6 +88,22 @@
                              (is (string= (format-date/gregorian-calendar nil *date-test-current-input*
                                                                           :verbosity (ensure-ldml-symbol date-format))
                                           (flexml:string-content-of node))))))))
+                (map nil #'process-result-node (flexml:children-of node))))))))
+    (:method ((parent ldml::cldr-test) (node ldml::number))
+      (bind ((locale-names (cl-ppcre:split " " (slot-value node 'ldml::locales))))
+        (format *debug-io* "~%  - running number formatter tests with locale ~A~%" locale-names)
+        (block nil
+          (handler-bind ((locale-not-found-error (lambda (error)
+                                                   (format *debug-io* "  *** ~A~%" error)
+                                                   (return))))
+            (with-locale locale-names
+              (flet ((process-result-node (node)
+                       (when (typep node 'ldml::result)
+                         (awhen (slot-value node 'ldml::input)
+                           ;; FIXME parse-real-number?
+                           (setf *number-test-current-input* (parse-real-number it)))
+                         ;; TODO check the thing
+                         )))
                 (map nil #'process-result-node (flexml:children-of node))))))))))
 
 (defsuite* (test/cldr/symbols :in test/cldr))
