@@ -85,123 +85,121 @@
     (values-list (list prefix (subseq a-pattern split-at)))))
 
 (defun parse-padding (a-pattern)
-           (bind ((pad nil))
-             (cl-ppcre:register-groups-bind (some-match the-quote quoted-directive ordinary-char) ("(^\\*'(')|^\\*'([^'])'|^\\*([^']))" a-pattern)
-               (if (not (null the-quote))
-                   (progn
-                     (setf pad the-quote)
-                     (setf a-pattern (subseq a-pattern 3)))
-                   (if (not (null quoted-directive))
-                       (progn
-                         (setf pad quoted-directive)
-                         (setf a-pattern (subseq a-pattern 4)))
-                       (if (not (null ordinary-char))
-                           (if (find ordinary-char +number-pattern-characters+)
-                               (error "Invalid padding character:~A . The specified padding character is special, try enclosing it in 'quotes'." ordinary-char)
-                               (progn
-                                 (setf pad ordinary-char)
-                                 (setf a-pattern (subseq a-pattern 2))))
-                           (error "No padding character specified after * pad escape directive.")))))
-             (list pad a-pattern)))
-
+  (bind ((pad nil))
+    (cl-ppcre:register-groups-bind (some-match the-quote quoted-directive ordinary-char) ("(^\\*'(')|^\\*'([^'])'|^\\*([^']))" a-pattern)
+      (if (not (null the-quote))
+          (progn
+            (setf pad the-quote)
+            (setf a-pattern (subseq a-pattern 3)))
+          (if (not (null quoted-directive))
+              (progn
+                (setf pad quoted-directive)
+                (setf a-pattern (subseq a-pattern 4)))
+              (if (not (null ordinary-char))
+                  (if (find ordinary-char +number-pattern-characters+)
+                      (error "Invalid padding character:~A . The specified padding character is special, try enclosing it in 'quotes'." ordinary-char)
+                      (progn
+                        (setf pad ordinary-char)
+                        (setf a-pattern (subseq a-pattern 2))))
+                  (error "No padding character specified after * pad escape directive.")))))
+    (list pad a-pattern)))
 
 (defun compile-number-absolute-value-pattern/decimal (number-format)
   (bind ((integer-fraction-with-dot-? (find #\. number-format :test #'char=))
-                (significant-digit-count-? (find #\@ number-format :test #'char=)))
-           (if (and integer-fraction-with-dot-?
-                    significant-digit-count-?)
-               (error "Significant digit count number format (@) and integer/fraction digit format (.) cannot be used simultaneously."))
-           (if significant-digit-count-?
-               (error "Not implemented yet.")
-               ;;integer/fraction format
-               (cl-ppcre:register-groups-bind (integer-part fraction-part dummy) ("^([^\\.]*)\\.?(.*)$|(.?)" number-format)
-                 (cl-ppcre:register-groups-bind (rounding-integer-number-part dummy) ("(\\d*)$(.?)" (cl-ppcre:regex-replace-all "\\D" integer-part ""))
-                   (cl-ppcre:register-groups-bind (rounding-fraction-number-part dummy) ("^(\\d*)(.?)" (cl-ppcre:regex-replace-all "\\D" fraction-part ""))
-                     (cl-ppcre:register-groups-bind (head (#'(lambda (x) (length x)) primary-grouping-size) dummy) ("(.*),([^,]*)$|(.?)" integer-part)
-                       (cl-ppcre:register-groups-bind ((#'(lambda (x) (length x)) secondary-grouping-size) dummy) (".*,([^,]*)$|(.?)" head)
-                         (flet ((nil-if-zero (value)
-                                  (if (zerop value) nil value)))
-                           (bind (
-                                  ((rounding-increment rounding-fraction-length)
-                                   (aif (nil-if-zero (parse-real-number (concatenate
-                                                                         'string rounding-integer-number-part "." rounding-fraction-number-part)))
-                                        (list it (length rounding-fraction-number-part))
-                                        (aif (nil-if-zero (length fraction-part))
-                                             (list (expt 10 (* -1 it)) it)
-                                             (list 1 0))))
-                                  (minimum-digits (funcall #'(lambda (x) (aif (position-if #'digit-char-p x) (- (length x) it) 0) ) (remove #\, integer-part) ))
-                                  (scaling-factor (expt 10 rounding-fraction-length)))
-                             (lambda (number)
-                               (setf number (* number (signum number)))
-                               (bind ((formatted-digits (list))
-                                      ;; TODO NORBI fixme - floating point arithmetics precision problem
-                                      (rounded-integer-part
-                                       (truncate (* rounding-increment (round (/ number rounding-increment)))))
-                                      (rounded-fraction-part
-                                       (if (not (zerop rounding-fraction-length))
-                                           (abs (- (* (truncate (* rounding-increment scaling-factor))
-                                                  (round (/ number rounding-increment)))
-                                               (* rounded-integer-part scaling-factor)))
-                                           0)))
-                                 
-                               ;; fraction part
-                                 (flet ((localize-and-collect (stuff)
-                                          (if (subtypep (type-of stuff) 'character)
-                                              (setf stuff (localize-number-symbol-character stuff))
-                                              (if (subtypep (type-of stuff) 'number)
-                                                  (setf stuff (localize-number-symbol-character (digit-char stuff)))))
-                                          (if (subtypep (type-of stuff) 'sequence)
-                                              (iter (for i from (length stuff) downto 1)
-                                                (push (elt stuff (- i 1)) formatted-digits))
-                                              (push stuff formatted-digits))
-                                          ))
-                                   (iter
-                                     (with was-non-zero-digit = nil)
-                                     (with remainder = rounded-fraction-part)
-                                     (with digit)
-                                     (until (zerop remainder))
-                                     (setf (values remainder digit) (truncate remainder 10))
-                                     (if was-non-zero-digit
-                                         (localize-and-collect digit)
-                                         (unless (zerop digit)
-                                           (localize-and-collect digit)
-                                           (setf was-non-zero-digit t))))
-                             
-                                   (unless (zerop (length formatted-digits))
-                                     (localize-and-collect #\.))
-                             
-                                   ;;integer part
-                                   (iter
-                                     (with grouping-size = (if (null primary-grouping-size) 0 primary-grouping-size))
-                                     (with remainder = rounded-integer-part)
-                                     (with number-of-digits = 0)
-                                     (with group)
-                                     (until (and (zerop remainder) (>= number-of-digits minimum-digits)))
-                                     (if (zerop grouping-size)
-                                         (progn
-                                           (setf group remainder)
-                                           (setf remainder 0))
-                                         (setf (values remainder group) (truncate remainder (expt 10 grouping-size))))
-                                     (iter
-                                       (with digit)
-                                       (with count = 0)
-                                       (until (and (zerop group)
-                                                   (or (and (not (zerop grouping-size))
-                                                            (>= count grouping-size))
-                                                       (>= number-of-digits minimum-digits))))
-                                       (setf (values group digit) (truncate group 10))
-                                       (localize-and-collect digit)
-                                       (incf number-of-digits)
-                                       (incf count))
-                                     (if (and (> grouping-size 0)
-                                              (or (not (zerop remainder))
-                                                  (< number-of-digits minimum-digits)))
-                                         (localize-and-collect #\,))
-                                     (if-first-time (unless (or (null secondary-grouping-size)
-                                                                (zerop secondary-grouping-size))
-                                                      (setf grouping-size secondary-grouping-size)))))
-                                 (coerce formatted-digits 'string)))))))))))))
+         (significant-digit-count-? (find #\@ number-format :test #'char=)))
+    (if (and integer-fraction-with-dot-?
+             significant-digit-count-?)
+        (error "Significant digit count number format (@) and integer/fraction digit format (.) cannot be used simultaneously."))
+    (if significant-digit-count-?
+        (error "Not implemented yet.")
+        ;;integer/fraction format
+        (cl-ppcre:register-groups-bind (integer-part fraction-part dummy) ("^([^\\.]*)\\.?(.*)$|(.?)" number-format)
+          (cl-ppcre:register-groups-bind (rounding-integer-number-part dummy) ("(\\d*)$(.?)" (cl-ppcre:regex-replace-all "\\D" integer-part ""))
+            (cl-ppcre:register-groups-bind (rounding-fraction-number-part dummy) ("^(\\d*)(.?)" (cl-ppcre:regex-replace-all "\\D" fraction-part ""))
+              (cl-ppcre:register-groups-bind (head (#'(lambda (x) (length x)) primary-grouping-size) dummy) ("(.*),([^,]*)$|(.?)" integer-part)
+                (cl-ppcre:register-groups-bind ((#'(lambda (x) (length x)) secondary-grouping-size) dummy) (".*,([^,]*)$|(.?)" head)
+                  (flet ((nil-if-zero (value)
+                           (if (zerop value) nil value)))
+                    (bind (
+                           ((rounding-increment rounding-fraction-length)
+                            (aif (nil-if-zero (parse-real-number (concatenate
+                                                                  'string rounding-integer-number-part "." rounding-fraction-number-part)))
+                                 (list it (length rounding-fraction-number-part))
+                                 (aif (nil-if-zero (length fraction-part))
+                                      (list (expt 10 (* -1 it)) it)
+                                      (list 1 0))))
+                           (minimum-digits (funcall #'(lambda (x) (aif (position-if #'digit-char-p x) (- (length x) it) 0) ) (remove #\, integer-part) ))
+                           (scaling-factor (expt 10 rounding-fraction-length)))
+                      (lambda (number)
+                        (setf number (* number (signum number)))
+                        (bind ((formatted-digits (list))
+                               ;; TODO NORBI fixme - floating point arithmetics precision problem
+                               (rounded-integer-part
+                                (truncate (* rounding-increment (round (/ number rounding-increment)))))
+                               (rounded-fraction-part
+                                (if (not (zerop rounding-fraction-length))
+                                    (abs (- (* (truncate (* rounding-increment scaling-factor))
+                                               (round (/ number rounding-increment)))
+                                            (* rounded-integer-part scaling-factor)))
+                                    0)))
 
+                          ;; fraction part
+                          (flet ((localize-and-collect (stuff)
+                                   (if (subtypep (type-of stuff) 'character)
+                                       (setf stuff (localize-number-symbol-character stuff))
+                                       (if (subtypep (type-of stuff) 'number)
+                                           (setf stuff (localize-number-symbol-character (digit-char stuff)))))
+                                   (if (subtypep (type-of stuff) 'sequence)
+                                       (iter (for i from (length stuff) downto 1)
+                                             (push (elt stuff (- i 1)) formatted-digits))
+                                       (push stuff formatted-digits))
+                                   ))
+                            (iter
+                              (with was-non-zero-digit = nil)
+                              (with remainder = rounded-fraction-part)
+                              (with digit)
+                              (until (zerop remainder))
+                              (setf (values remainder digit) (truncate remainder 10))
+                              (if was-non-zero-digit
+                                  (localize-and-collect digit)
+                                  (unless (zerop digit)
+                                    (localize-and-collect digit)
+                                    (setf was-non-zero-digit t))))
+
+                            (unless (zerop (length formatted-digits))
+                              (localize-and-collect #\.))
+
+                            ;;integer part
+                            (iter
+                              (with grouping-size = (if (null primary-grouping-size) 0 primary-grouping-size))
+                              (with remainder = rounded-integer-part)
+                              (with number-of-digits = 0)
+                              (with group)
+                              (until (and (zerop remainder) (>= number-of-digits minimum-digits)))
+                              (if (zerop grouping-size)
+                                  (progn
+                                    (setf group remainder)
+                                    (setf remainder 0))
+                                  (setf (values remainder group) (truncate remainder (expt 10 grouping-size))))
+                              (iter
+                                (with digit)
+                                (with count = 0)
+                                (until (and (zerop group)
+                                            (or (and (not (zerop grouping-size))
+                                                     (>= count grouping-size))
+                                                (>= number-of-digits minimum-digits))))
+                                (setf (values group digit) (truncate group 10))
+                                (localize-and-collect digit)
+                                (incf number-of-digits)
+                                (incf count))
+                              (if (and (> grouping-size 0)
+                                       (or (not (zerop remainder))
+                                           (< number-of-digits minimum-digits)))
+                                  (localize-and-collect #\,))
+                              (if-first-time (unless (or (null secondary-grouping-size)
+                                                         (zerop secondary-grouping-size))
+                                               (setf grouping-size secondary-grouping-size)))))
+                          (coerce formatted-digits 'string)))))))))))))
 
 (defun compile-number-pattern/decimal (pattern)
   (bind ((pos-subpat-prefix nil)
@@ -212,7 +210,6 @@
          (pad-pos nil)
          (number-format-size nil)
          (number-formatter nil))
-    
     (macrolet ((handle-padding-if-applicable (position)
                  `(bind (((pad tail) (parse-padding pattern)))
                     (unless (null pad)
@@ -221,14 +218,12 @@
                       (setf pad-pos ,position)
                       (setf pad-char (elt pad 0)))
                     (setf pattern tail))))
-        
       ;; pad before prefix
       (handle-padding-if-applicable 'before-prefix)
-       
+
       ;; prefix
       (setf (values pos-subpat-prefix pattern) (parse-prefix pattern "*@#0123456789" ".,;"))
 
-       
       ;; pad after prefix
       (handle-padding-if-applicable 'after-prefix)
 
@@ -240,10 +235,10 @@
         (setf number-formatter (compile-number-absolute-value-pattern/decimal number-format) )
         (setf number-format-size (length number-format))
         (setf pattern tail))
-       
+
       ;; pad before suffix
       (handle-padding-if-applicable 'before-suffix)
-       
+
       ;;positive subpattern suffix
       (setf (values pos-subpat-suffix pattern) (parse-prefix pattern ";*" ".,"))
 
@@ -251,16 +246,16 @@
       (handle-padding-if-applicable 'after-suffix)
 
       (setf pattern (string-left-trim ";" pattern))
-       
+
       ;; negative subpattern
       (setf pattern (string-left-trim "(" pattern))
       (setf pattern (string-right-trim ")" pattern))
-       
+
       ;;negative subpattern prefix
       (setf (values neg-subpat-prefix pattern) (parse-prefix pattern "@#0123456789" ",."))
 
       (setf pattern (string-left-trim "@#,.0123456789" pattern))
-       
+
       ;;negative subpattern suffix
       (setf (values neg-subpat-suffix pattern) (parse-prefix pattern))
 
@@ -269,7 +264,7 @@
                (or (null neg-subpat-prefix)
                    (zerop (length neg-subpat-prefix))))
           (setf neg-subpat-prefix "-"))
-       
+
       (lambda (stream number)
         (bind ((prefix (if (>= number 0) pos-subpat-prefix neg-subpat-prefix))
                (suffix (if (>= number 0) pos-subpat-suffix neg-subpat-suffix))
@@ -285,7 +280,6 @@
                                      (if (eq pad-pos 'before-suffix) padding "")
                                      suffix
                                      (if (eq pad-pos 'after-suffix) padding "")) stream))))))
-
 
 (defun compile-date-pattern/gregorian-calendar (&rest patterns)
   (declare (optimize speed))
