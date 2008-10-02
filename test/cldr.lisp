@@ -105,8 +105,7 @@
                            (cond
                              ((string= it "decimal")
                               (is (string= (format-number/decimal nil *number-test-current-input*)
-                                           (flexml:string-content-of node))))))
-                         )))
+                                           (flexml:string-content-of node)))))))))
                 (map nil #'process-result-node (flexml:children-of node))))))))))
 
 (defsuite* (test/cldr/symbols :in test/cldr))

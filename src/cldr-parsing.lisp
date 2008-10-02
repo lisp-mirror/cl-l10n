@@ -53,8 +53,8 @@
   (unless (initialized-p locale)
     (setf (initialized-p locale) t)
     (unless (equal (language-of locale) "root")
-      (compile-date-formatters/gregorian-calendar locale)
-      (compile-number-formatters/decimal locale))))
+      (compile-date-formatters/gregorian-calendar locale))
+    (compile-number-formatters/decimal locale)))
 
 (defun compile-date-formatters/gregorian-calendar (locale)
   (bind ((*locale* (list locale))
