@@ -86,7 +86,7 @@
 
 (defun parse-padding (a-pattern)
   (bind ((pad nil))
-    (cl-ppcre:register-groups-bind (some-match the-quote quoted-directive ordinary-char) ("(^\\*'(')|^\\*'([^'])'|^\\*([^']))" a-pattern)
+    (cl-ppcre:register-groups-bind (nil the-quote quoted-directive ordinary-char) ("(^\\*'(')|^\\*'([^'])'|^\\*([^']))" a-pattern)
       (if (not (null the-quote))
           (progn
             (setf pad the-quote)
@@ -113,11 +113,11 @@
     (if significant-digit-count-?
         (error "Not implemented yet.")
         ;;integer/fraction format
-        (cl-ppcre:register-groups-bind (integer-part fraction-part dummy) ("^([^\\.]*)\\.?(.*)$|(.?)" number-format)
-          (cl-ppcre:register-groups-bind (rounding-integer-number-part dummy) ("(\\d*)$(.?)" (cl-ppcre:regex-replace-all "\\D" integer-part ""))
-            (cl-ppcre:register-groups-bind (rounding-fraction-number-part dummy) ("^(\\d*)(.?)" (cl-ppcre:regex-replace-all "\\D" fraction-part ""))
-              (cl-ppcre:register-groups-bind (head (#'(lambda (x) (length x)) primary-grouping-size) dummy) ("(.*),([^,]*)$|(.?)" integer-part)
-                (cl-ppcre:register-groups-bind ((#'(lambda (x) (length x)) secondary-grouping-size) dummy) (".*,([^,]*)$|(.?)" head)
+        (cl-ppcre:register-groups-bind (integer-part fraction-part nil) ("^([^\\.]*)\\.?(.*)$|(.?)" number-format)
+          (cl-ppcre:register-groups-bind (rounding-integer-number-part nil) ("(\\d*)$(.?)" (cl-ppcre:regex-replace-all "\\D" integer-part ""))
+            (cl-ppcre:register-groups-bind (rounding-fraction-number-part nil) ("^(\\d*)(.?)" (cl-ppcre:regex-replace-all "\\D" fraction-part ""))
+              (cl-ppcre:register-groups-bind (head (#'(lambda (x) (length x)) primary-grouping-size) nil) ("(.*),([^,]*)$|(.?)" integer-part)
+                (cl-ppcre:register-groups-bind ((#'(lambda (x) (length x)) secondary-grouping-size) nil) (".*,([^,]*)$|(.?)" head)
                   (flet ((nil-if-zero (value)
                            (if (zerop value) nil value)))
                     (bind (
