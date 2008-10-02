@@ -127,20 +127,16 @@
                                  (aif (nil-if-zero (length fraction-part))
                                       (list (expt 10 (* -1 it)) it)
                                       (list 1 0))))
-                           (minimum-digits (funcall #'(lambda (x) (aif (position-if #'digit-char-p x) (- (length x) it) 0) ) (remove #\, integer-part) ))
-                           (scaling-factor (expt 10 rounding-fraction-length)))
+                           (minimum-digits (funcall #'(lambda (x) (aif (position-if #'digit-char-p x) (- (length x) it) 0) ) (remove #\, integer-part) )))
+
                       (lambda (number)
                         (setf number (* number (signum number)))
                         (bind ((formatted-digits (list))
-                               ;; TODO NORBI fixme - floating point arithmetics precision problem
+                               ;; TODO MNORBI fixme - floating point arithmetics precision problem
                                (rounded-integer-part
                                 (truncate (* rounding-increment (round (/ number rounding-increment)))))
                                (rounded-fraction-part
-                                (if (not (zerop rounding-fraction-length))
-                                    (abs (- (* (truncate (* rounding-increment scaling-factor))
-                                               (round (/ number rounding-increment)))
-                                            (* rounded-integer-part scaling-factor)))
-                                    0)))
+                                (* rounding-increment (round (/ (- number (truncate number)) rounding-increment)))))
                           ;; fraction part
                           (flet ((localize-and-collect (stuff)
                                    (typecase stuff
@@ -154,17 +150,14 @@
                                             (push (elt stuff (- i 1)) formatted-digits)))
                                      (t
                                       (push stuff formatted-digits)))))
-                            (iter
-                              (with was-non-zero-digit = nil)
-                              (with remainder = rounded-fraction-part)
-                              (with digit)
-                              (until (zerop remainder))
-                              (setf (values remainder digit) (truncate remainder 10))
-                              (if was-non-zero-digit
-                                  (localize-and-collect digit)
-                                  (unless (zerop digit)
-                                    (localize-and-collect digit)
-                                    (setf was-non-zero-digit t))))
+                            ;;fraction part
+                            (iter (generating digit :in
+                                              (iter (for i from 1 to rounding-fraction-length)
+                                                    (with rest = rounded-fraction-part)
+                                                    (with digit)
+                                                    (setf (values digit rest) (truncate (* rest 10)))
+                                                    (collect digit at beginning)))
+                                  (localize-and-collect (next digit)))
 
                             (unless (zerop (length formatted-digits))
                               (localize-and-collect #\.))
@@ -199,7 +192,9 @@
                               (if-first-time (unless (or (null secondary-grouping-size)
                                                          (zerop secondary-grouping-size))
                                                (setf grouping-size secondary-grouping-size)))))
-                          (coerce formatted-digits 'string)))))))))))))
+                          (string-right-trim (localize-number-symbol-character #\.)
+                           (string-right-trim (localize-number-symbol-character #\0)
+                                              (coerce formatted-digits 'string)))))))))))))))
 
 (defun compile-number-pattern/decimal (pattern)
   (bind ((pos-subpat-prefix nil)

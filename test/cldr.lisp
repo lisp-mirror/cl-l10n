@@ -100,6 +100,8 @@
               (flet ((process-result-node (node)
                        (when (typep node 'ldml::result)
                          (awhen (slot-value node 'ldml::input)
+                           (if (find #\. it)
+                               (setf it (concatenate 'string it "l0")))
                            (setf *number-test-current-input* (parse-real-number it)))
                          (awhen (slot-value node 'ldml::numbertype)
                            (cond
