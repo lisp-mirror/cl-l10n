@@ -378,3 +378,29 @@
                       (funcall (the function formatter) stream date year month day day-of-week))))
                 formatters)))
       (nreverse formatters))))
+
+(defclass currency-formatter ()
+  ((before-currency
+    :initform nil
+    :accessor before-currency-of)
+   (after-currency
+    :initform nil
+    :accessor after-currency-of)
+   (unit-pattern
+    :initform nil
+    :accessor unit-pattern-of)
+   (pattern-verbosity-list
+    :initform nil
+    :accessor pattern-verbosity-list-of)))
+
+(defun compile-number-pattern/currency (locale)
+  (awhen (currency-formatter-of locale)
+    (awhen (pattern-verbosity-list-of it)
+      (iter (for verbosity :in it by #'cddr)
+            (with pattern = (getf (getf it verbosity) :pattern))
+            (setf (getf it verbosity)
+                  (list :pattern pattern
+                        :formatter
+                        (lambda (stream number currency-code)
+                          ;; TODO NORBI implement
+                          (write-string ""))))))))

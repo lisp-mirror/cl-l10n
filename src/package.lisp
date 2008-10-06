@@ -148,6 +148,13 @@
    #:symbols
    #:currencies
    #:currency
+   #:currency-formats
+   #:currency-format-length
+   #:currency-format
+   #:currency-spacing
+   #:currency-match
+   #:surrounding-match
+   #:insert-between
    #:display-name
    #:script
    #:scripts
@@ -188,7 +195,14 @@
    #:plus-sign
    #:minus-sign
    #:list
-
+   #:zero
+   #:one
+   #:two
+   #:few
+   #:many
+   #:other
+   #:unit-pattern
+   
 #|
    #:locale-display-names
    #:layout

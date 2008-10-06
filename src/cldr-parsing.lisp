@@ -54,7 +54,8 @@
     (setf (initialized-p locale) t)
     (unless (equal (language-of locale) "root")
       (compile-date-formatters/gregorian-calendar locale))
-    (compile-number-formatters/decimal locale)))
+    (compile-number-formatters/decimal locale)
+    (compile-number-formatters/currency locale)))
 
 (defun compile-date-formatters/gregorian-calendar (locale)
   (bind ((*locale* (list locale))
@@ -85,6 +86,8 @@
                 (list :formatter (compile-number-pattern/decimal pattern)
                       :pattern pattern)))))
 
+(defun compile-number-formatters/currency (locale)
+  (compile-number-pattern/currency locale))
 
 (defun dummy-formatter (&rest args)
   (declare (ignore args))
@@ -140,6 +143,11 @@
    ldml:symbols
    ldml:currencies
    ldml:currency
+   ldml:currency-formats
+   ldml:currency-format-length
+   ldml:currency-format
+   ldml:currency-spacing
+   ldml:unit-pattern
    ldml:display-name
    ldml:calendar
    ldml:calendars
@@ -236,6 +244,31 @@
                                (list symbol)))))
           (setf (gethash name (currencies-of *locale*)) entry)))))
 
+  (:method ((parent ldml:numbers) (node ldml:currency-formats))
+    (setf (currency-formatter-of *locale*) (make-instance 'currency-formatter))
+    (call-next-method))
+
+  (:method ((parent ldml:currency-spacing) node)
+    (bind ((currency-slot-reader (symbolicate (string-upcase (camel-case-to-hyphened (flexml:local-name-of node))) '#:-of)))
+      (iter (for child :in-sequence (flexml:children-of node))
+            (eval `(setf (getf (,currency-slot-reader (currency-formatter-of *locale*)) (ldml-intern (flexml:local-name-of ,child) :hyphenize t)) (flexml:string-content-of ,child))))))
+
+  (:method ((parent ldml:currency-formats) (node ldml:currency-format-length))
+    (bind ((ldml-type (slot-value node 'ldml::type))
+           (name (and ldml-type (ldml-intern ldml-type)))
+           (inbetween-node (flexml:the-only-child node)))
+      (unless (length= 1 (flexml:children-of inbetween-node))
+        (cldr-parser-warning "LDML node ~A has multiple children, using the first one" inbetween-node))
+      (bind ((pattern (flexml:string-content-of (flexml:first-child inbetween-node))))
+        (setf (getf (pattern-verbosity-list-of (currency-formatter-of *locale*)) name)
+              (list :formatter 'dummy-formatter :pattern pattern)))))
+
+  (:method ((parent ldml:currency-formats) (node ldml:unit-pattern))
+    (bind ((ldml-count (slot-value node 'ldml::count))
+           (name (and ldml-count (ldml-intern ldml-count)))
+           (unit-pattern (flexml:string-content-of node)))
+      (setf (getf (unit-pattern-of (currency-formatter-of *locale*)) name) unit-pattern)))
+  
   (:method ((parent ldml:languages) (node ldml:language))
     (process-langauge-list-like-ldml-node node 'languages-of))
 
@@ -263,7 +296,6 @@
       (bind ((pattern (flexml:string-content-of (flexml:first-child inbetween-node))))
         (setf (getf (decimal-formatter-of *locale*) name)
               (list :formatter 'dummy-formatter :pattern pattern))))))
-
 
 (defun process-langauge-list-like-ldml-node (node accessor)
   (let* ((name (string-upcase (slot-value node 'ldml::type))))
@@ -352,3 +384,5 @@
           (setf vector (make-array max-count :initial-element nil))
           (funcall writer vector calendar))
         (setf (aref vector index) (flexml:string-content-of node))))))
+
+

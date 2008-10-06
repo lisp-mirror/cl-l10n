@@ -51,6 +51,27 @@
        (get-output-stream-string stream)
        stream)))
 
+(defun format-number/currency (stream number currency-code &key (verbosity 'ldml:medium))
+  (declare (optimize speed))
+  (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
+  (bind ((to-string? (null stream)))
+    (unless stream
+      (setf stream (make-string-output-stream)))
+    (block iterating-locales
+      (do-current-locales locale
+        (awhen (currency-formatter-of locale)
+          (awhen (pattern-verbosity-list-of it)
+            (awhen (or (getf it verbosity)
+                       (getf it nil))
+              (when-bind formatter (getf it :formatter)
+                (funcall formatter stream number currency-code)
+                (return-from iterating-locales))))))
+      (warn "No currency formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+            verbosity (current-locale))
+      (format stream "~A ~A" number currency-code))
+   (if to-string?
+       (get-output-stream-string stream)
+       stream)))
 
 #|
 

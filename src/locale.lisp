@@ -56,6 +56,10 @@
    (currencies
     :initform (make-hash-table :test #'eq)
     :accessor currencies-of)
+   (currency-formatter
+    :initform nil
+    :initarg :currency-formatter
+    :accessor currency-formatter-of)
    (languages
     :initform (make-hash-table :test #'eq)
     :accessor languages-of)
