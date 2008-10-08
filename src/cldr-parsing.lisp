@@ -249,9 +249,11 @@
     (call-next-method))
 
   (:method ((parent ldml:currency-spacing) node)
-    (bind ((currency-slot-reader (symbolicate (string-upcase (camel-case-to-hyphened (flexml:local-name-of node))) '#:-of)))
+    (bind ((currency-slot-reader (symbolicate (string-upcase (camel-case-to-hyphened (flexml:local-name-of node))) '#:-of))
+           (slot-value (funcall currency-slot-reader (currency-formatter-of *locale*))))
       (iter (for child :in-sequence (flexml:children-of node))
-            (eval `(setf (getf (,currency-slot-reader (currency-formatter-of *locale*)) (ldml-intern (flexml:local-name-of ,child) :hyphenize t)) (flexml:string-content-of ,child))))))
+            (setf (getf slot-value (ldml-intern (flexml:local-name-of child) :hyphenize t)) (flexml:string-content-of child)))
+      (funcall (fdefinition `(setf ,currency-slot-reader)) slot-value (currency-formatter-of *locale*))))
 
   (:method ((parent ldml:currency-formats) (node ldml:currency-format-length))
     (bind ((ldml-type (slot-value node 'ldml::type))

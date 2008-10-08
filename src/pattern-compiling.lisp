@@ -103,6 +103,7 @@
         (t (error "No padding character specified after * pad escape directive."))))
     (values pad a-pattern)))
 
+;; TODO scientific and significant digit count format not implemented yet
 (defun compile-number-absolute-value-pattern/decimal (number-format)
   (bind ((integer-fraction-with-dot-? (find #\. number-format :test #'char=))
          (significant-digit-count-? (find #\@ number-format :test #'char=)))
@@ -110,7 +111,7 @@
              significant-digit-count-?)
         (error "Significant digit count number format (@) and integer/fraction digit format (.) cannot be used simultaneously."))
     (if significant-digit-count-?
-        (error "Not implemented yet.")
+        (error "Not implemented yet!")
         ;;integer/fraction format
         (cl-ppcre:register-groups-bind (integer-part fraction-part nil) ("^([^\\.]*)\\.?(.*)$|(.?)" number-format)
           (cl-ppcre:register-groups-bind (rounding-integer-number-part nil) ("(\\d*)$(.?)" (cl-ppcre:regex-replace-all "\\D" integer-part ""))
@@ -130,9 +131,9 @@
                            (minimum-digits (funcall #'(lambda (x) (aif (position-if #'digit-char-p x) (- (length x) it) 0) ) (remove #\, integer-part) )))
 
                       (lambda (number)
-                        (setf number (* number (signum number)))
+                        (setf number (abs number))
                         (bind ((formatted-digits (list))
-                               ;; TODO MNORBI fixme - floating point arithmetics precision problem
+                               ;; caution: there are rounding errors with floating point arithmetics
                                (rounded-integer-part
                                 (truncate (* rounding-increment (round (/ number rounding-increment)))))
                                (rounded-fraction-part
@@ -240,11 +241,9 @@
       ;; pad after suffix
       (handle-padding-if-applicable 'after-suffix)
 
-      (setf pattern (string-left-trim ";" pattern))
-
       ;; negative subpattern
-      (setf pattern (string-left-trim "(" pattern))
-      (setf pattern (string-right-trim ")" pattern))
+      (setf pattern
+            (string-right-trim ")" (string-left-trim ";(" pattern)))
 
       ;;negative subpattern prefix
       (setf (values neg-subpat-prefix pattern) (parse-prefix pattern "@#0123456789" ",."))
@@ -393,14 +392,101 @@
     :initform nil
     :accessor pattern-verbosity-list-of)))
 
+;; TODO for now, it's not implemented according to the cldr
 (defun compile-number-pattern/currency (locale)
   (awhen (currency-formatter-of locale)
     (awhen (pattern-verbosity-list-of it)
       (iter (for verbosity :in it by #'cddr)
             (with pattern = (getf (getf it verbosity) :pattern))
+            (with currency-specific-formatter = (make-hash-table))
             (setf (getf it verbosity)
                   (list :pattern pattern
+                        :currency-specific-formatter currency-specific-formatter
                         :formatter
                         (lambda (stream number currency-code)
-                          ;; TODO NORBI implement
-                          (write-string ""))))))))
+                          (assert (ldml-symbol-p currency-code))
+                          (bind ((formatter (or
+                                             (gethash currency-code currency-specific-formatter)
+                                             (setf
+                                              (gethash currency-code currency-specific-formatter)
+                                              (lambda (stream number currency-code)
+                                                (funcall
+                                                 (compile-number-pattern/decimal
+                                                  (replace-currency-sign-considering-quotes
+                                                   pattern
+                                                   (do-current-locales locale
+                                                     (awhen (gethash currency-code (currencies-of locale))
+                                                       (awhen (second it)
+                                                         (return it))))
+                                                   (symbol-name currency-code)
+                                                   (do-current-locales locale
+                                                     (awhen (gethash currency-code (currencies-of locale))
+                                                       (awhen (first it)
+                                                         (return it))))))
+                                                 stream number))))))
+                            (funcall formatter stream number currency-code))
+                          )))))))
+
+
+(defun replace-currency-sign-considering-quotes (pattern currency-symbol currency-code currency-long-name)
+  (flet ((char-at-? (pattern index character)
+           (if (and (<= 0 index) (< index (length pattern)))
+               (char= (elt pattern index) character)
+               nil)))
+    (macrolet ((collect-string (string)
+                 `(map 'list (lambda (c)
+                               (collect c)
+                               (if (char= c #\')
+                                   (collect c))) ,string)))
+      (coerce
+       (iter (generating char :in-sequence pattern :with-index index)
+             (with no-quote = t)
+             (next char)
+             (switch (char :test #'char=)
+               (#\¤ (if no-quote
+                        (progn
+                          (unless
+                              (and
+                               (char-at-? pattern (- index 1) #\')
+                               (bind ((pattern (subseq pattern 0 index))
+                                      (match (mismatch pattern (make-string index :initial-element #\') :from-end t)))
+                                 (and match (oddp (- index match)))))
+                            (collect #\'))
+                          (if (not (char-at-? pattern (+ index 1) #\¤))
+                              ;; currency symbol
+                              (collect-string currency-symbol)
+                              (progn
+                                (next char)
+                                (if (not (char-at-? pattern (+ index 1) #\¤))
+                                    ;; international currency symbol (3 letter code)
+                                    (collect-string currency-code)
+                                    (progn
+                                      ;; long form of decimal symbol
+                                      (next char)
+                                      (collect-string currency-long-name)))))
+                          (unless
+                            (and
+                             (char-at-? pattern (+ index 1) #\')
+                             (bind ((pattern (subseq pattern (+ index 1)))
+                                    (length (length pattern))
+                                    (match (mismatch pattern (make-string length :initial-element #\'))))
+                               (and match (oddp match))))
+                            (collect #\')))
+                        (collect char)))
+               (#\' (setf no-quote (not no-quote))
+                    (unless
+                        (or
+                         (and no-quote
+                              (char-at-? pattern (+ index 1) #\¤)
+                              (bind ((pattern (subseq pattern 0 index))
+                                     (match (mismatch pattern (make-string index :initial-element #\') :from-end t)))
+                                (and match (evenp (- index match)))))
+                         (and (not no-quote)
+                              (char-at-? pattern (- index 1) #\¤)
+                              (bind ((pattern (subseq pattern index))
+                                     (length (length pattern))
+                                     (match (mismatch pattern (make-string length :initial-element #\'))))
+                                (and match (oddp match)))))
+                      (collect #\')))
+               (otherwise (collect char)))
+             ) 'string ))))

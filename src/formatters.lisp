@@ -69,9 +69,9 @@
       (warn "No currency formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
             verbosity (current-locale))
       (format stream "~A ~A" number currency-code))
-   (if to-string?
-       (get-output-stream-string stream)
-       stream)))
+    (if to-string?
+        (get-output-stream-string stream)
+        stream)))
 
 #|
 
