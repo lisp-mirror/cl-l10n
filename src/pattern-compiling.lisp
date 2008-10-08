@@ -160,8 +160,7 @@
                                                     (collect digit at beginning)))
                                   (localize-and-collect (next digit)))
 
-                            (unless (zerop (length formatted-digits))
-                              (localize-and-collect #\.))
+                            (localize-and-collect #\.)
 
                             ;;integer part
                             (iter
@@ -253,11 +252,13 @@
       ;;negative subpattern suffix
       (setf (values neg-subpat-suffix pattern) (parse-prefix pattern))
 
-      (if (and (or (null neg-subpat-suffix)
-                   (zerop (length neg-subpat-suffix)))
-               (or (null neg-subpat-prefix)
-                   (zerop (length neg-subpat-prefix))))
-          (setf neg-subpat-prefix "-"))
+      (when (and
+             (or (null neg-subpat-suffix)
+                 (zerop (length neg-subpat-suffix)))
+             (or (null neg-subpat-prefix)
+                 (zerop (length neg-subpat-prefix))))
+          (setf neg-subpat-prefix (concatenate 'string pos-subpat-prefix "-"))
+          (setf neg-subpat-suffix pos-subpat-suffix))
 
       (lambda (stream number)
         (bind ((prefix (if (minusp number) neg-subpat-prefix pos-subpat-prefix))
@@ -282,7 +283,9 @@
             (write-string padding stream)))))))
 
 (defun compile-number-pattern/percent (pattern)
-  (bind ((formatter (compile-number-pattern/decimal pattern)))
+  ;; TODO localize percent
+  (bind ((pattern (replace-percent-considering-quotes pattern "%"))
+         (formatter (compile-number-pattern/decimal pattern)))
     (lambda (stream number)
       (funcall formatter stream (* number 100)))))
 
@@ -430,65 +433,75 @@
                           )))))))
 
 
+(defmacro replace-sign-considering-quotes (pattern char-to-replace &body body)
+  `(bind ((pattern ,pattern)
+          (char-to-replace ,char-to-replace))
+     (flet ((char-at-? (pattern index character)
+              (if (and (<= 0 index) (< index (length pattern)))
+                  (char= (elt pattern index) character)
+                  nil)))
+       (macrolet ((collect-string (string)
+                    `(map 'list (lambda (c)
+                                  (collect c)
+                                  (if (char= c #\')
+                                      (collect c))) ,string)))
+         (coerce
+          (iter (generating char :in-sequence pattern :with-index index)
+                (with no-quote = t)
+                (next char)
+                (switch (char :test #'char=)
+                  (char-to-replace (if no-quote
+                                       (progn
+                                         (unless
+                                             (and
+                                              (char-at-? pattern (- index 1) #\')
+                                              (bind ((pattern (subseq pattern 0 index))
+                                                     (match (mismatch pattern (make-string index :initial-element #\') :from-end t)))
+                                                (and match (oddp (- index match)))))
+                                           (collect #\'))
+                                         ,@body
+                                         (unless
+                                             (and
+                                              (char-at-? pattern (+ index 1) #\')
+                                              (bind ((pattern (subseq pattern (+ index 1)))
+                                                     (length (length pattern))
+                                                     (match (mismatch pattern (make-string length :initial-element #\'))))
+                                                (and match (oddp match))))
+                                           (collect #\')))
+                                       (collect char)))
+                  (#\' (setf no-quote (not no-quote))
+                       (unless
+                           (or
+                            (and no-quote
+                                 (char-at-? pattern (+ index 1) char-to-replace)
+                                 (bind ((pattern (subseq pattern 0 index))
+                                        (match (mismatch pattern (make-string index :initial-element #\') :from-end t)))
+                                   (and match (evenp (- index match)))))
+                            (and (not no-quote)
+                                 (char-at-? pattern (- index 1) char-to-replace)
+                                 (bind ((pattern (subseq pattern index))
+                                        (length (length pattern))
+                                        (match (mismatch pattern (make-string length :initial-element #\'))))
+                                   (and match (oddp match)))))
+                         (collect #\')))
+                  (otherwise (collect char)))
+                ) 'string )))))
+
+(defun replace-percent-considering-quotes (pattern localized-percent-string)
+  (replace-sign-considering-quotes pattern #\%
+    (collect-string localized-percent-string)))
+
 (defun replace-currency-sign-considering-quotes (pattern currency-symbol currency-code currency-long-name)
-  (flet ((char-at-? (pattern index character)
-           (if (and (<= 0 index) (< index (length pattern)))
-               (char= (elt pattern index) character)
-               nil)))
-    (macrolet ((collect-string (string)
-                 `(map 'list (lambda (c)
-                               (collect c)
-                               (if (char= c #\')
-                                   (collect c))) ,string)))
-      (coerce
-       (iter (generating char :in-sequence pattern :with-index index)
-             (with no-quote = t)
-             (next char)
-             (switch (char :test #'char=)
-               (#\¤ (if no-quote
-                        (progn
-                          (unless
-                              (and
-                               (char-at-? pattern (- index 1) #\')
-                               (bind ((pattern (subseq pattern 0 index))
-                                      (match (mismatch pattern (make-string index :initial-element #\') :from-end t)))
-                                 (and match (oddp (- index match)))))
-                            (collect #\'))
-                          (if (not (char-at-? pattern (+ index 1) #\¤))
-                              ;; currency symbol
-                              (collect-string currency-symbol)
-                              (progn
-                                (next char)
-                                (if (not (char-at-? pattern (+ index 1) #\¤))
-                                    ;; international currency symbol (3 letter code)
-                                    (collect-string currency-code)
-                                    (progn
-                                      ;; long form of decimal symbol
-                                      (next char)
-                                      (collect-string currency-long-name)))))
-                          (unless
-                            (and
-                             (char-at-? pattern (+ index 1) #\')
-                             (bind ((pattern (subseq pattern (+ index 1)))
-                                    (length (length pattern))
-                                    (match (mismatch pattern (make-string length :initial-element #\'))))
-                               (and match (oddp match))))
-                            (collect #\')))
-                        (collect char)))
-               (#\' (setf no-quote (not no-quote))
-                    (unless
-                        (or
-                         (and no-quote
-                              (char-at-? pattern (+ index 1) #\¤)
-                              (bind ((pattern (subseq pattern 0 index))
-                                     (match (mismatch pattern (make-string index :initial-element #\') :from-end t)))
-                                (and match (evenp (- index match)))))
-                         (and (not no-quote)
-                              (char-at-? pattern (- index 1) #\¤)
-                              (bind ((pattern (subseq pattern index))
-                                     (length (length pattern))
-                                     (match (mismatch pattern (make-string length :initial-element #\'))))
-                                (and match (oddp match)))))
-                      (collect #\')))
-               (otherwise (collect char)))
-             ) 'string ))))
+  (replace-sign-considering-quotes pattern #\¤
+    (if (not (char-at-? pattern (+ index 1) char-to-replace))
+        ;; currency symbol
+        (collect-string currency-symbol)
+        (progn
+          (next char)
+          (if (not (char-at-? pattern (+ index 1) char-to-replace))
+              ;; international currency symbol (3 letter code)
+              (collect-string currency-code)
+              (progn
+                ;; long form of decimal symbol
+                (next char)
+                (collect-string currency-long-name)))))))

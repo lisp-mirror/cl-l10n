@@ -112,6 +112,9 @@
                              ((null *number-test-current-input*))
                              ((string= it "decimal")
                               (is (string= (format-number/decimal nil *number-test-current-input*)
+                                           (flexml:string-content-of node))))
+                             ((string= it "percent")
+                              (is (string= (format-number/percent nil *number-test-current-input*)
                                            (flexml:string-content-of node)))))))))
                 (map nil #'process-result-node (flexml:children-of node))))))))))
 
