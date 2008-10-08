@@ -54,8 +54,12 @@
     (setf (initialized-p locale) t)
     (unless (equal (language-of locale) "root")
       (compile-date-formatters/gregorian-calendar locale))
-    (compile-number-formatters/decimal locale)
-    (compile-number-formatters/currency locale)))
+    (compile-number-formatters locale)))
+
+(defun compile-number-formatters (locale)
+  (compile-number-formatters/decimal locale)
+  (compile-number-formatters/percent locale)
+  (compile-number-formatters/currency locale))
 
 (defun compile-date-formatters/gregorian-calendar (locale)
   (bind ((*locale* (list locale))
@@ -78,13 +82,20 @@
                       patterns
                       (apply 'compile-date-pattern/gregorian-calendar patterns)))))))
 
-(defun compile-number-formatters/decimal (locale)
-  (bind ((decimal-formatters (decimal-formatter-of locale)))
-    (iter (for verbosity in decimal-formatters by #'cddr)
-          (with pattern = (getf (getf decimal-formatters verbosity) :pattern))
-          (setf (getf decimal-formatters verbosity)
-                (list :formatter (compile-number-pattern/decimal pattern)
+
+(defun compile-simple-number-formatters (locale formatter-accessor pattern-compiler)
+  (bind ((formatters (funcall formatter-accessor locale)))
+    (iter (for verbosity in formatters by #'cddr)
+          (with pattern = (getf (getf formatters verbosity) :pattern))
+          (setf (getf formatters verbosity)
+                (list :formatter (funcall pattern-compiler pattern)
                       :pattern pattern)))))
+
+(defun compile-number-formatters/decimal (locale)
+  (compile-simple-number-formatters locale #'decimal-formatter-of #'compile-number-pattern/decimal))
+
+(defun compile-number-formatters/percent (locale)
+  (compile-simple-number-formatters locale #'percent-formatter-of #'compile-number-pattern/percent))
 
 (defun compile-number-formatters/currency (locale)
   (compile-number-pattern/currency locale))
@@ -168,6 +179,9 @@
    ldml:decimal-formats
    ldml:decimal-format-length
    ldml:decimal-format
+   ldml:percent-formats
+   ldml:percent-format-length
+   ldml:percent-format
    ))
 
 (defmethod sax:characters ((parser cldr-parser) data)
@@ -290,14 +304,23 @@
           (process-ldml-gregorian-calendar-node parent node))
         (call-next-method)))
   (:method ((parent ldml:decimal-formats) (node ldml:decimal-format-length))
-    (bind ((ldml-type (slot-value node 'ldml::type))
+    (process-simple-number-formatter-node node 'decimal-formatter-of))
+  
+  (:method ((parent ldml:percent-formats) (node ldml:percent-format-length))
+    (process-simple-number-formatter-node node 'percent-formatter-of))
+  )
+
+(defun process-simple-number-formatter-node (node formatter-accessor)
+  (bind ((ldml-type (slot-value node 'ldml::type))
            (name (and ldml-type (ldml-intern ldml-type)))
            (inbetween-node (flexml:the-only-child node)))
       (unless (length= 1 (flexml:children-of inbetween-node))
         (cldr-parser-warning "LDML node ~A has multiple children, using the first one" inbetween-node))
-      (bind ((pattern (flexml:string-content-of (flexml:first-child inbetween-node))))
-        (setf (getf (decimal-formatter-of *locale*) name)
-              (list :formatter 'dummy-formatter :pattern pattern))))))
+      (bind ((pattern (flexml:string-content-of (flexml:first-child inbetween-node)))
+             (formatter (funcall formatter-accessor *locale*)))
+        (setf (getf formatter name)
+              (list :formatter 'dummy-formatter :pattern pattern))
+        (funcall (fdefinition `(setf ,formatter-accessor)) formatter *locale*))))
 
 (defun process-langauge-list-like-ldml-node (node accessor)
   (let* ((name (string-upcase (slot-value node 'ldml::type))))

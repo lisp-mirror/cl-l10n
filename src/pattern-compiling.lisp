@@ -281,6 +281,11 @@
           (when (eq pad-pos 'after-suffix)
             (write-string padding stream)))))))
 
+(defun compile-number-pattern/percent (pattern)
+  (bind ((formatter (compile-number-pattern/decimal pattern)))
+    (lambda (stream number)
+      (funcall formatter stream (* number 100)))))
+
 (defun compile-date-pattern/gregorian-calendar (&rest patterns)
   (declare (optimize speed))
   (macrolet ((piece-formatter (&body body)
@@ -409,22 +414,19 @@
                                              (gethash currency-code currency-specific-formatter)
                                              (setf
                                               (gethash currency-code currency-specific-formatter)
-                                              (lambda (stream number currency-code)
-                                                (funcall
-                                                 (compile-number-pattern/decimal
-                                                  (replace-currency-sign-considering-quotes
-                                                   pattern
-                                                   (do-current-locales locale
-                                                     (awhen (gethash currency-code (currencies-of locale))
-                                                       (awhen (second it)
-                                                         (return it))))
-                                                   (symbol-name currency-code)
-                                                   (do-current-locales locale
-                                                     (awhen (gethash currency-code (currencies-of locale))
-                                                       (awhen (first it)
-                                                         (return it))))))
-                                                 stream number))))))
-                            (funcall formatter stream number currency-code))
+                                              (compile-number-pattern/decimal
+                                               (replace-currency-sign-considering-quotes
+                                                pattern
+                                                (do-current-locales locale
+                                                  (awhen (gethash currency-code (currencies-of locale))
+                                                    (awhen (second it)
+                                                      (return it))))
+                                                (symbol-name currency-code)
+                                                (do-current-locales locale
+                                                  (awhen (gethash currency-code (currencies-of locale))
+                                                    (awhen (first it)
+                                                      (return it))))))))))
+                            (funcall formatter stream number))
                           )))))))
 
 

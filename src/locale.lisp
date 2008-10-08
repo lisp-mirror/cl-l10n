@@ -49,10 +49,6 @@
    (number-symbols
     :initform (list)
     :accessor number-symbols-of)
-   (number-formatter
-    :initform nil
-    :initarg :number-formatter
-    :accessor number-formatter-of)
    (currencies
     :initform (make-hash-table :test #'eq)
     :accessor currencies-of)
@@ -84,7 +80,10 @@
     :accessor initialized-p)
    (decimal-formatter
     :initform nil
-    :accessor decimal-formatter-of)))
+    :accessor decimal-formatter-of)
+   (percent-formatter
+    :initform nil
+    :accessor percent-formatter-of)))
 
 (defmethod print-object ((obj locale) stream)
   (print-unreadable-object (obj stream :type t :identity t)

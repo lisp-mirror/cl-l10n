@@ -202,6 +202,9 @@
    #:many
    #:other
    #:unit-pattern
+   #:percent-formats
+   #:percent-format-length
+   #:percent-format
    
 #|
    #:locale-display-names

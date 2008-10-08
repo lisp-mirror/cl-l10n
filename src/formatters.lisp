@@ -10,7 +10,7 @@
     (:long   'ldml:long)
     (:full   'ldml:full)))
 
-(defun format-date/gregorian-calendar (stream date &key (verbosity 'ldml:medium))
+(defun format-stub (stream verbosity implementation-lambda fallback-lambda)
   (declare (optimize speed))
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
   (bind ((to-string? (null stream)))
@@ -18,60 +18,61 @@
       (setf stream (make-string-output-stream)))
     (block iterating-locales
       (do-current-locales locale
-        (when-bind gregorian-calendar (gregorian-calendar-of locale)
-          (bind ((formatter-entry (getf (date-formatters-of gregorian-calendar) verbosity))
-                 (formatter (getf formatter-entry :formatter)))
-            (when formatter
-              (funcall formatter stream date)
-              (return-from iterating-locales)))))
-      (warn "No Gregorian calendar date formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
-            verbosity (current-locale))
-      (local-time:format-timestring stream date :format '((:year 4) #\- (:month 2) #\- (:day 2))))
+        (awhen (funcall implementation-lambda stream verbosity locale)
+          (return-from iterating-locales)))
+      (funcall fallback-lambda stream verbosity))
    (if to-string?
        (get-output-stream-string stream)
        stream)))
 
-(defun format-number/decimal (stream number &key (verbosity 'ldml:medium))
-  (declare (optimize speed))
-  (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
-  (bind ((to-string? (null stream)))
-    (unless stream
-      (setf stream (make-string-output-stream)))
-    (block iterating-locales
-      (do-current-locales locale
-        (awhen (or (getf (decimal-formatter-of locale) verbosity)
-                   (getf (decimal-formatter-of locale) nil))
-          (when-bind formatter (getf it :formatter)
-            (funcall formatter stream number)
-            (return-from iterating-locales))))
-      (warn "No decimal number formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
-            verbosity (current-locale))
-      (format stream "~A" number))
-   (if to-string?
-       (get-output-stream-string stream)
-       stream)))
+
+(defun format-date/gregorian-calendar (stream date &key (verbosity 'ldml:medium))
+  (format-stub stream verbosity
+               (named-lambda impl (stream verbosity locale)
+                 (when-bind gregorian-calendar (gregorian-calendar-of locale)
+                   (bind ((formatter-entry (getf (date-formatters-of gregorian-calendar) verbosity))
+                          (formatter (getf formatter-entry :formatter)))
+                     (when formatter
+                       (funcall formatter stream date)
+                       t))))
+               (named-lambda fallback (stream verbosity)
+                 (warn "No Gregorian calendar date formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+                       verbosity (current-locale))
+                 (local-time:format-timestring stream date :format '((:year 4) #\- (:month 2) #\- (:day 2))))))
 
 (defun format-number/currency (stream number currency-code &key (verbosity 'ldml:medium))
-  (declare (optimize speed))
-  (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
-  (bind ((to-string? (null stream)))
-    (unless stream
-      (setf stream (make-string-output-stream)))
-    (block iterating-locales
-      (do-current-locales locale
-        (awhen (currency-formatter-of locale)
-          (awhen (pattern-verbosity-list-of it)
-            (awhen (or (getf it verbosity)
-                       (getf it nil))
-              (when-bind formatter (getf it :formatter)
-                (funcall formatter stream number currency-code)
-                (return-from iterating-locales))))))
-      (warn "No currency formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
-            verbosity (current-locale))
-      (format stream "~A ~A" number currency-code))
-    (if to-string?
-        (get-output-stream-string stream)
-        stream)))
+  (format-stub stream verbosity
+               (named-lambda impl (stream verbosity locale)
+                 (awhen (currency-formatter-of locale)
+                   (awhen (pattern-verbosity-list-of it)
+                     (awhen (or (getf it verbosity)
+                                (getf it nil))
+                       (when-bind formatter (getf it :formatter)
+                         (funcall formatter stream number currency-code)
+                         t)))))
+               (named-lambda fallback (stream verbosity)
+                 (warn "No currency formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+                       verbosity (current-locale))
+                 (format stream "~A ~A" number currency-code))))
+
+(defun simple-number-format-stub (stream number verbosity formatter-accessor formatter-name fallback-format-pattern)
+  (format-stub stream verbosity
+               (named-lambda impl (stream verbosity locale)
+                 (awhen (or (getf (funcall formatter-accessor locale) verbosity)
+                            (getf (funcall formatter-accessor  locale) nil))
+                   (when-bind formatter (getf it :formatter)
+                     (funcall formatter stream number)
+                     t)))
+               (named-lambda fallback (stream verbosity)
+                 (warn "No ~A was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+                       formatter-name verbosity (current-locale))
+                 (format stream fallback-format-pattern number))))
+
+(defun format-number/decimal (stream number &key (verbosity 'ldml:medium))
+  (simple-number-format-stub stream number verbosity #'decimal-formatter-of "decimal number formatter" "~A"))
+
+(defun format-number/percent (stream number &key (verbosity 'ldml:medium))
+  (simple-number-format-stub stream number verbosity #'percent-formatter-of "percent number formatter" "~A%"))
 
 #|
 
