@@ -127,89 +127,86 @@
               (setf res call
                     val x)))))))
 
-(defun float-part (float)
+;; From sbcl sources (src/code/print.lisp)
+(defconstant +single-float-min-e+
+  (nth-value 1 (decode-float least-positive-single-float)))
+(defconstant +double-float-min-e+
+  (nth-value 1 (decode-float least-positive-double-float)))
+(define-constant +digit-characters+ (coerce "0123456789" 'simple-base-string)
+  :test #'string=)
+
+(defun flonum-to-digits (value)
+  ;;(declare (optimize speed))
+  (bind ((print-base 10)                     ; B
+         (float-radix 2)                     ; b
+         (float-digits (float-digits value)) ; p
+         (min-e (etypecase value
+                  (single-float +single-float-min-e+)
+                  (double-float +double-float-min-e+)))
+         ((:values f e) (integer-decode-float value))
+         (high-ok (evenp f))
+         (low-ok (evenp f))
+         (result (make-array 50 :element-type 'base-char :fill-pointer 0 :adjustable t)))
+    (declare (dynamic-extent result))
+    (labels ((scale (r s m+ m-)
+               (do ((k 0 (1+ k))
+                    (s s (* s print-base)))
+                   ((not (or (> (+ r m+) s)
+                             (and high-ok (= (+ r m+) s))))
+                    (do ((k k (1- k))
+                         (r r (* r print-base))
+                         (m+ m+ (* m+ print-base))
+                         (m- m- (* m- print-base)))
+                        ((not (or (< (* (+ r m+) print-base) s)
+                                  (and (not high-ok) (= (* (+ r m+) print-base) s))))
+                         (values k (generate r s m+ m-)))))))
+             (generate (r s m+ m-)
+               (let (d tc1 tc2)
+                 (tagbody
+                  loop
+                    (setf (values d r) (truncate (* r print-base) s))
+                    (setf m+ (* m+ print-base))
+                    (setf m- (* m- print-base))
+                    (setf tc1 (or (< r m-) (and low-ok (= r m-))))
+                    (setf tc2 (or (> (+ r m+) s)
+                                  (and high-ok (= (+ r m+) s))))
+                    (when (or tc1 tc2)
+                      (go end))
+                    (vector-push-extend (char +digit-characters+ d) result)
+                    (go loop)
+                  end
+                    (let ((d (cond
+                               ((and (not tc1) tc2) (1+ d))
+                               ((and tc1 (not tc2)) d)
+                               (t       ; (and tc1 tc2)
+                                (if (< (* r 2) s) d (1+ d))))))
+                      (vector-push-extend (char +digit-characters+ d) result)
+                      (return-from generate
+                        (coerce result 'simple-base-string)))))))
+      (if (>= e 0)
+          (if (/= f (expt float-radix (1- float-digits)))
+              (let ((be (expt float-radix e)))
+                (scale (* f be 2) 2 be be))
+              (let* ((be (expt float-radix e))
+                     (be1 (* be float-radix)))
+                (scale (* f be1 2) (* float-radix 2) be1 be)))
+          (if (or (= e min-e) (/= f (expt float-radix (1- float-digits))))
+              (scale (* f 2) (* (expt float-radix (- e)) 2) 1 1)
+              (scale (* f float-radix 2)
+                     (* (expt float-radix (- 1 e)) 2) float-radix 1))))))
+
+(defun float-part-of-string-representation (float)
+  (declare (type float float))
   (if (zerop float)
       ""
-      (multiple-value-call 'extract-float-part (flonum-to-digits float))))
-
-(defun extract-float-part (dp-pos aft)
-  (let ((length (length aft)))
-    (if (> dp-pos length)
-        ""
-        (with-output-to-string (x)
-          (cond ((minusp dp-pos)
-                 (dotimes (z (abs dp-pos))
-                   (princ 0 x))
-                 (princ aft x))
-                (t (princ (subseq aft dp-pos)
-                          x)))))))
-
-;; From sbcl sources (src/code/print.lisp)
-(defconstant single-float-min-e
-  (nth-value 1 (decode-float least-positive-single-float)))
-(defconstant double-float-min-e
-  (nth-value 1 (decode-float least-positive-double-float)))
-
-(defun flonum-to-digits (v)
-  (let ((print-base 10)                 ; B
-        (float-radix 2)                 ; b
-        (float-digits (float-digits v)) ; p
-        (digit-characters "0123456789")
-        (min-e
-         (etypecase v
-           (single-float single-float-min-e)
-           (double-float double-float-min-e))))
-    (multiple-value-bind (f e)
-        (integer-decode-float v)
-      (let ((high-ok (evenp f))
-            (low-ok (evenp f))
-            (result (make-array 50 :element-type 'base-char
-                                :fill-pointer 0 :adjustable t)))
-        (labels ((scale (r s m+ m-)
-                   (do ((k 0 (1+ k))
-                        (s s (* s print-base)))
-                       ((not (or (> (+ r m+) s)
-                                 (and high-ok (= (+ r m+) s))))
-                        (do ((k k (1- k))
-                             (r r (* r print-base))
-                             (m+ m+ (* m+ print-base))
-                             (m- m- (* m- print-base)))
-                            ((not (or (< (* (+ r m+) print-base) s)
-                                      (and (not high-ok) (= (* (+ r m+) print-base) s))))
-                             (values k (generate r s m+ m-)))))))
-                 (generate (r s m+ m-)
-                   (let (d tc1 tc2)
-                     (tagbody
-                      loop
-                       (setf (values d r) (truncate (* r print-base) s))
-                       (setf m+ (* m+ print-base))
-                       (setf m- (* m- print-base))
-                       (setf tc1 (or (< r m-) (and low-ok (= r m-))))
-                       (setf tc2 (or (> (+ r m+) s)
-                                     (and high-ok (= (+ r m+) s))))
-                       (when (or tc1 tc2)
-                         (go end))
-                       (vector-push-extend (char digit-characters d) result)
-                       (go loop)
-                      end
-                       (let ((d (cond
-                                  ((and (not tc1) tc2) (1+ d))
-                                  ((and tc1 (not tc2)) d)
-                                  (t    ; (and tc1 tc2)
-                                   (if (< (* r 2) s) d (1+ d))))))
-                         (vector-push-extend (char digit-characters d) result)
-                         (return-from generate result))))))
-          (if (>= e 0)
-              (if (/= f (expt float-radix (1- float-digits)))
-                  (let ((be (expt float-radix e)))
-                    (scale (* f be 2) 2 be be))
-                  (let* ((be (expt float-radix e))
-                         (be1 (* be float-radix)))
-                    (scale (* f be1 2) (* float-radix 2) be1 be)))
-              (if (or (= e min-e) (/= f (expt float-radix (1- float-digits))))
-                  (scale (* f 2) (* (expt float-radix (- e)) 2) 1 1)
-                  (scale (* f float-radix 2)
-                         (* (expt float-radix (- 1 e)) 2) float-radix 1))))))))
+      (bind (((:values decimal-point-position string) (flonum-to-digits float)))
+        (if (minusp decimal-point-position)
+            (bind ((length (length string))
+                   (decimal-length (abs decimal-point-position))
+                   (result (make-string (+ decimal-length length) :element-type 'base-char :initial-element #\0)))
+              (replace result string :start1 decimal-length)
+              result)
+            (subseq string decimal-point-position)))))
 
 #+(or) 
 (defun flonum-to-digits (v &optional position relativep)
