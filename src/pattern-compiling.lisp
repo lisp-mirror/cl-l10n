@@ -166,7 +166,7 @@
 
                             ;;integer part
                             (iter
-                              (with grouping-size = (if (null primary-grouping-size) 0 primary-grouping-size))
+                              (with grouping-size = (or primary-grouping-size 0))
                               (with remainder = rounded-integer-part)
                               (with number-of-digits = 0)
                               (with group)
@@ -179,9 +179,13 @@
                               (iter
                                 (with digit)
                                 (with count = 0)
-                                (until (and (zerop group)
-                                            (or (and (not (zerop grouping-size))
-                                                     (>= count grouping-size))
+                                (until (or (and (plusp grouping-size)
+                                                (or (>= count grouping-size)
+                                                    (and (zerop remainder)
+                                                         (zerop group)
+                                                         (>= number-of-digits minimum-digits))))
+                                           (and (zerop grouping-size)
+                                                (zerop group)
                                                 (>= number-of-digits minimum-digits))))
                                 (setf (values group digit) (truncate group 10))
                                 (localize-and-collect digit)

@@ -13,6 +13,12 @@
                          :test (lambda (file)
                                  (string= "xml" (pathname-type file)))))
 
+(deftest test/cldr/number-formatter ()
+    (with-locale "en"
+      (is (string= (format-number/decimal nil 1000)
+                   "1,000"))))
+
+
 (macrolet ((define (&body entries)
              `(progn
                 ,@(iter (for entry :in entries)
@@ -246,6 +252,8 @@
    (REVISED   "Átdolgozott helyesírás")
    (ROZAJ     "Reziján")
    (POSIX     "Számítógép")))
+
+
 
 #+nil
 (
