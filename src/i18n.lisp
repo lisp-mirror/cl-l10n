@@ -116,7 +116,7 @@ An example usage:
                            ((and (listp spec)
                                  (= 1 (length spec)))
                             (first spec))
-                           (t `(strcat-separated-by "." ,@spec))))
+                           (t `(concatenate-separated-by "." ,@spec))))
           (collect `(,@wrapper
                      (setf ,key-tmp ,key)
                      (multiple-value-bind (,resource ,foundp)

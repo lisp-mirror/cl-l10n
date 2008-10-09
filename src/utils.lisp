@@ -2,27 +2,10 @@
 ;; See the file LICENCE for licence information.
 (in-package #:cl-l10n)
 
-;;  Macros
-;;;;;;;;;;;
+(declaim (inline trim))
 
-;; dont worry it's nothing like if*
-(defmacro or* (&rest vals)
-  "(or* (string= foo a b) (char= foo b)) == 
-  (or (string= foo a) (string= foo b) (char= foo b))"
-  `(or ,@(mappend #'(lambda (x)
-                      (destructuring-bind (test val &rest args) x
-                        (if (singlep args)
-                            `((,test ,val ,@args))
-                            (mapcar #'(lambda (y) 
-                                        `(,test ,val ,y))
-                                    args))))
-                  vals)))
-
-
-;; Functions
-;;;;;;;;;;;;;;
-
-(defun write-decimal-digits (stream number &key minimum-column-count (maximum-digit-count most-positive-fixnum))
+(defun write-decimal-digits (stream number &key minimum-column-count (maximum-digit-count most-positive-fixnum)
+                             (padding-character #\0))
   (declare (optimize speed)
            (type (or null fixnum) minimum-column-count)
            (type fixnum maximum-digit-count))
@@ -41,14 +24,15 @@
       (bind ((padding-length (- minimum-column-count number-of-digits)))
         (when (plusp padding-length)
           (iter (repeat padding-length)
-                (write-char #\0 stream)))))
+                (write-char padding-character stream)))))
     (dolist (digit digits)
       (write-char (code-char (+ #x30 digit)) stream)))
   (values))
 
-(defun slot-value-unless-nil (instance slot-name)
-  (when instance
-    (slot-value instance slot-name)))
+(defmacro slot-value-unless-nil (instance slot-name)
+  (once-only (instance)
+    `(when ,instance
+       (slot-value ,instance ,slot-name))))
 
 (defun project-relative-pathname (file)
   (asdf:system-relative-pathname :cl-l10n file))
@@ -80,6 +64,9 @@
             (setf (gethash singular result) plural)
             (finally (return result))))))
 
+(defun required-arg (name)
+  (error "~A is a required argument" name))
+
 (defun capitalize-first-letter (str)
   (if (and (> (length str) 0)
            (not (upper-case-p (elt str 0))))
@@ -90,224 +77,19 @@
   (setf (aref str 0) (char-upcase (aref str 0)))
   str)
 
-(defun required-arg (name)
-  (error "~A is a required argument" name))
+(defun concatenate-separated-by (separator &rest args)
+  (with-output-to-string (out)
+    (iter (for el :in args)
+          (when el
+            (unless (first-time-p)
+              (princ separator out))
+            (princ separator out)))))
 
-(defvar *whitespace* (list #\Space #\Tab))
+(define-constant +whitespaces+ (list #\Space #\Tab)
+  :test #'equal)
 
-(defun strcat-separated-by (separator &rest args)
-  (iter (for el in args)
-        (unless el
-          (next-iteration))
-        (unless (first-time-p)
-          (collect separator into components))
-        (collect el into components)
-        (finally (return (apply #'strcat components)))))
-
-(defun trim (string &optional (bag *whitespace*))
+(defun trim (string &optional (bag +whitespaces+))
   (string-trim bag string))
-
-(defun group (list n)
-  (assert (> n 0))
-  (labels ((rec (source acc)
-             (let ((rest (nthcdr n source)))
-               (if (consp rest)
-                   (rec rest (cons (subseq source 0 n) acc))
-                   (nreverse (cons source acc))))))
-    (if list (rec list nil) nil)))
-
-(defun winner (test get seq)
-  (if (null seq)
-      nil
-      (let* ((val (elt seq 0))
-             (res (funcall get val)))
-        (dolist (x (subseq seq 1) (values val res))
-          (let ((call (funcall get x)))
-            (when (funcall test call res)
-              (setf res call
-                    val x)))))))
-
-;; From sbcl sources (src/code/print.lisp)
-(defconstant +single-float-min-e+
-  (nth-value 1 (decode-float least-positive-single-float)))
-(defconstant +double-float-min-e+
-  (nth-value 1 (decode-float least-positive-double-float)))
-(define-constant +digit-characters+ (coerce "0123456789" 'simple-base-string)
-  :test #'string=)
-
-(defun flonum-to-digits (value)
-  ;;(declare (optimize speed))
-  (bind ((print-base 10)                     ; B
-         (float-radix 2)                     ; b
-         (float-digits (float-digits value)) ; p
-         (min-e (etypecase value
-                  (single-float +single-float-min-e+)
-                  (double-float +double-float-min-e+)))
-         ((:values f e) (integer-decode-float value))
-         (high-ok (evenp f))
-         (low-ok (evenp f))
-         (result (make-array 50 :element-type 'base-char :fill-pointer 0 :adjustable t)))
-    (declare (dynamic-extent result))
-    (labels ((scale (r s m+ m-)
-               (do ((k 0 (1+ k))
-                    (s s (* s print-base)))
-                   ((not (or (> (+ r m+) s)
-                             (and high-ok (= (+ r m+) s))))
-                    (do ((k k (1- k))
-                         (r r (* r print-base))
-                         (m+ m+ (* m+ print-base))
-                         (m- m- (* m- print-base)))
-                        ((not (or (< (* (+ r m+) print-base) s)
-                                  (and (not high-ok) (= (* (+ r m+) print-base) s))))
-                         (values k (generate r s m+ m-)))))))
-             (generate (r s m+ m-)
-               (let (d tc1 tc2)
-                 (tagbody
-                  loop
-                    (setf (values d r) (truncate (* r print-base) s))
-                    (setf m+ (* m+ print-base))
-                    (setf m- (* m- print-base))
-                    (setf tc1 (or (< r m-) (and low-ok (= r m-))))
-                    (setf tc2 (or (> (+ r m+) s)
-                                  (and high-ok (= (+ r m+) s))))
-                    (when (or tc1 tc2)
-                      (go end))
-                    (vector-push-extend (char +digit-characters+ d) result)
-                    (go loop)
-                  end
-                    (let ((d (cond
-                               ((and (not tc1) tc2) (1+ d))
-                               ((and tc1 (not tc2)) d)
-                               (t       ; (and tc1 tc2)
-                                (if (< (* r 2) s) d (1+ d))))))
-                      (vector-push-extend (char +digit-characters+ d) result)
-                      (return-from generate
-                        (coerce result 'simple-base-string)))))))
-      (if (>= e 0)
-          (if (/= f (expt float-radix (1- float-digits)))
-              (let ((be (expt float-radix e)))
-                (scale (* f be 2) 2 be be))
-              (let* ((be (expt float-radix e))
-                     (be1 (* be float-radix)))
-                (scale (* f be1 2) (* float-radix 2) be1 be)))
-          (if (or (= e min-e) (/= f (expt float-radix (1- float-digits))))
-              (scale (* f 2) (* (expt float-radix (- e)) 2) 1 1)
-              (scale (* f float-radix 2)
-                     (* (expt float-radix (- 1 e)) 2) float-radix 1))))))
-
-(defun float-part-of-string-representation (float)
-  (declare (type float float))
-  (if (zerop float)
-      ""
-      (bind (((:values decimal-point-position string) (flonum-to-digits float)))
-        (if (minusp decimal-point-position)
-            (bind ((length (length string))
-                   (decimal-length (abs decimal-point-position))
-                   (result (make-string (+ decimal-length length) :element-type 'base-char :initial-element #\0)))
-              (replace result string :start1 decimal-length)
-              result)
-            (subseq string decimal-point-position)))))
-
-#+(or) 
-(defun flonum-to-digits (v &optional position relativep)
-  (let ((print-base 10) ; B
-        (float-radix 2) ; b
-        (float-digits (float-digits v)) ; p
-        (digit-characters "0123456789")
-        (min-e
-         (etypecase v
-           (single-float single-float-min-e)
-           (double-float double-float-min-e))))
-    (multiple-value-bind (f e)
-        (integer-decode-float v)
-      (let (;; FIXME: these even tests assume normal IEEE rounding
-            ;; mode.  I wonder if we should cater for non-normal?
-            (high-ok (evenp f))
-            (low-ok (evenp f))
-            (result (make-array 50 :element-type 'base-char
-                                :fill-pointer 0 :adjustable t)))
-        (labels ((scale (r s m+ m-)
-                   (do ((k 0 (1+ k))
-                        (s s (* s print-base)))
-                       ((not (or (> (+ r m+) s)
-                                 (and high-ok (= (+ r m+) s))))
-                        (do ((k k (1- k))
-                             (r r (* r print-base))
-                             (m+ m+ (* m+ print-base))
-                             (m- m- (* m- print-base)))
-                            ((not (or (< (* (+ r m+) print-base) s)
-                                      (and (not high-ok)
-                                           (= (* (+ r m+) print-base) s))))
-                             (values k (generate r s m+ m-)))))))
-                 (generate (r s m+ m-)
-                   (let (d tc1 tc2)
-                     (tagbody
-                      loop
-                        (setf (values d r) (truncate (* r print-base) s))
-                        (setf m+ (* m+ print-base))
-                        (setf m- (* m- print-base))
-                        (setf tc1 (or (< r m-) (and low-ok (= r m-))))
-                        (setf tc2 (or (> (+ r m+) s)
-                                      (and high-ok (= (+ r m+) s))))
-                        (when (or tc1 tc2)
-                          (go end))
-                        (vector-push-extend (char digit-characters d) result)
-                        (go loop)
-                      end
-                        (let ((d (cond
-                                   ((and (not tc1) tc2) (1+ d))
-                                   ((and tc1 (not tc2)) d)
-                                   (t ; (and tc1 tc2)
-                                    (if (< (* r 2) s) d (1+ d))))))
-                          (vector-push-extend (char digit-characters d) result)
-                          (return-from generate result)))))
-                 (initialize ()
-                   (let (r s m+ m-)
-                     (if (>= e 0)
-                         (let* ((be (expt float-radix e))
-                                (be1 (* be float-radix)))
-                           (if (/= f (expt float-radix (1- float-digits)))
-                               (setf r (* f be 2)
-                                     s 2
-                                     m+ be
-                                     m- be)
-                               (setf r (* f be1 2)
-                                     s (* float-radix 2)
-                                     m+ be1
-                                     m- be)))
-                         (if (or (= e min-e)
-                                 (/= f (expt float-radix (1- float-digits))))
-                             (setf r (* f 2)
-                                   s (* (expt float-radix (- e)) 2)
-                                   m+ 1
-                                   m- 1)
-                             (setf r (* f float-radix 2)
-                                   s (* (expt float-radix (- 1 e)) 2)
-                                   m+ float-radix
-                                   m- 1)))
-                     (when position
-                       (when relativep
-                         (assert (> position 0))
-                         (do ((k 0 (1+ k))
-                              ;; running out of letters here
-                              (l 1 (* l print-base)))
-                             ((>= (* s l) (+ r m+))
-                              ;; k is now \hat{k}
-                              (if (< (+ r (* s (/ (expt print-base (- k position)) 2)))
-                                     (* s (expt print-base k)))
-                                  (setf position (- k position))
-                                  (setf position (- k position 1))))))
-                       (let ((low (max m- (/ (* s (expt print-base position)) 2)))
-                             (high (max m+ (/ (* s (expt print-base position)) 2))))
-                         (when (<= m- low)
-                           (setf m- low)
-                           (setf low-ok t))
-                         (when (<= m+ high)
-                           (setf m+ high)
-                           (setf high-ok t))))
-                     (values r s m+ m-))))
-          (multiple-value-bind (r s m+ m-) (initialize)
-            (scale r s m+ m-)))))))
 
 (defmacro do-locales ((var locales &optional return-value) &rest body)
   "Iterate all locale in LOCALES and all their precedence lists in the locale precedence order."
@@ -393,19 +175,6 @@ are discarded \(that is, the body is an implicit PROGN)."
                             `(let (,,@temps)
                                ,,@body))))))
 
-(defmacro dotree ((name tree &optional ret-val) &body body)
-  "Evaluate BODY with NAME bound to every element in TREE. Return RET-VAL."
-  (with-unique-names (traverser list list-element)
-    `(progn
-      (labels ((,traverser (,list)
-                 (dolist (,list-element ,list)
-                   (if (consp ,list-element)
-                       (,traverser ,list-element)
-                       (let ((,name ,list-element))
-                         ,@body)))))
-        (,traverser ,tree)
-        ,ret-val))))
-
 (defun handle-otherwise (otherwise)
   (cond
     ((eq otherwise :error)
@@ -420,51 +189,8 @@ are discarded \(that is, the body is an implicit PROGN)."
     (t
      otherwise)))
 
-(defun strcat (&rest items)
-  "Returns a fresh string consisting of ITEMS concat'd together."
-  (strcat* items))
-  
-(defun strcat* (string-designators)
-  "Concatenate all the strings in STRING-DESIGNATORS."
-  (with-output-to-string (strcat)
-    (dotree (s string-designators)
-      (when s (princ s strcat)))))
-
 (defun singlep (list)
   (and (consp list) (not (cdr list))))
-
-(defun concatenate-symbol (&rest args)
-  "DWIM symbol concatenate, see CONCATENATE-SYMBOL* for details."
-  (concatenate-symbol* args))
-
-(defun concatenate-symbol* (symbol-parts &key when-exists)
-  "DWIM symbol concatenate: SYMBOL-PARTS will be converted to string and be concatenated
-to form the resulting symbol with one exception: when a package is encountered then
-it is stored as the target package to use at intern. If there was no package
-among the args then the symbol-package of the first symbol encountered will be
-used. If there are neither packages nor symbols among the args then the result will
-be interned into the current package at the time of calling."
-  (let* ((package nil) ; by intention
-         (symbol-name (string-upcase
-                       (with-output-to-string (str)
-                         (dolist (part symbol-parts)
-                           (typecase part
-                             (string (write-string part str))
-                             (package (setf package part))
-                             (symbol (unless package
-                                       (setf package (symbol-package part)))
-                                     (write-string (symbol-name part) str))
-                             (integer (write-string (princ-to-string part) str))
-                             (character (write-char part) str)
-                             (t (error "Cannot convert argument ~S to symbol" part))))))))
-    (setf package (or package *package*))
-    (when (find-symbol symbol-name package)
-      (when when-exists
-        (case when-exists
-          ((:error :warn) (funcall (if (eq when-exists :error) 'error 'warn)
-                                   "Symbol ~S already exists in package ~A" symbol-name package))
-          (t (return-from concatenate-symbol* (funcall when-exists symbol-name package))))))
-    (intern symbol-name package)))
 
 (defmacro if-bind (var test &body then/else)
   "Anaphoric IF control structure.
@@ -520,5 +246,3 @@ ELSE will be executed."
 
   #-(or allegro clisp cmu lispworks openmcl openmcl sbcl)
   (error "Could not define `getenv'."))
-
-;; EOF

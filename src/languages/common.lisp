@@ -100,11 +100,11 @@
         (finding char :such-that (vowelp char))))
 
 (macrolet ((define (variant)
-               `(defun ,(concatenate-symbol "VOWEL-" variant "-VARIANT-OF") (char)
+               `(defun ,(symbolicate '#:vowel- variant '#:-variant-of) (char)
                  (declare (type character char)
                   (optimize (speed 3) (debug 0)))
                  (awhen (vowel-entry-for char)
-                   (,(concatenate-symbol "VOWEL-" variant "-VARIANT") it)))))
+                   (,(symbolicate '#:vowel- variant '#:-variant) it)))))
   (define normal)
   (define acute)
   (define double-acute))

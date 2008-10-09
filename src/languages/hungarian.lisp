@@ -20,7 +20,7 @@
           it)))
   (let ((length (length word)))
     (when (< length 3)
-      (setf word (strcat word "-k"))
+      (setf word (concatenate 'string word "-k"))
       (return-from hungarian-plural-of
         (if uppercase
             (string-upcase word)
