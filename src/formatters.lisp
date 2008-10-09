@@ -81,9 +81,9 @@
 ;;; Customized format directives
 
 (define-constant +directive-replacements+ '((#\M . "/cl-l10n:%format-money/")
+                                            (#\N . "/cl-l10n:%format-number/")
                                             (#\U . "/cl-l10n:%format-timestamp/")
-                                            (#\L . "/cl-l10n:%format-date/")
-                                            (#\N . "/cl-l10n:%format-number/"))
+                                            (#\L . "/cl-l10n:%format-date/"))
   :test 'equal)
 
 (define-compiler-macro format (&whole form destination format-control &rest format-arguments)
@@ -104,50 +104,93 @@
          format-arguments))
 
 (defun shadow-format (&optional (package *package*))
+  "Shadowing import the CL-L10N:FORMAT symbol into PACKAGE."
   (shadowing-import '(cl-l10n::format cl-l10n::formatter) package))
 
-(defun needs-parsing? (string)
-  (declare (optimize speed)
-           (type string string))
-  (cl-ppcre:scan (load-time-value (cl-ppcre:create-scanner
-                                   (cl:format nil "~~[@V,:]*[~{~A~^|~}]" (mapcar 'first +directive-replacements+))))
-                 (string-upcase string)))
+(defun %format-money (stream number colon-modifier? no-thousand-separator &optional currency-code)
+  ;; FIXME this is probably not going to work... should be able to pass in the currency code
+  ;; somehow, but the format syntax only allows numeric or character arguments.
+  (bind ((print-decimal-point? (not colon-modifier?))
+         (print-thousand-separator? (not no-thousand-separator)))
+    (unless print-thousand-separator?
+      (cerror "ignore" "Turning off thousand separators is not yet supported"))
+    (unless print-decimal-point?
+      (cerror "ignore" "Turning off the decimal point is not yet supported"))
+    (unless (ldml-symbol-p currency-code)
+      (error "You need to specify the currency-code (e.g. 'ldml:usd) when formatting currencies"))
+    (format-number/currency stream number currency-code))
+  (values))
 
-(defun parse-format-string (string)
-  (if (needs-parsing? string)
-      (really-parse-format-string (coerce string 'simple-string))
-      string))
+(defun %format-number (stream number colon-modifier? at-modifier?)
+  (bind ((print-decimal-point? (not colon-modifier?))
+         (print-thousand-separator? (not at-modifier?)))
+    (unless print-decimal-point?
+      (cerror "ignore" "Turning off the decimal point is not yet supported"))
+    (unless print-thousand-separator?
+      (cerror "ignore" "Turning off thousand separators is not yet supported"))
+    (format-number/decimal stream number))
+  (values))
 
 (defun %format-date (stream date colon-modifier? at-modifier?)
   (declare (ignore colon-modifier? at-modifier?))
-  (format-date/gregorian-calendar stream date))
+  (format-date/gregorian-calendar stream date)
+  (values))
 
-(defun really-parse-format-string (string)
+(defun %format-timestamp (stream timestamp colon-modifier? at-modifier?)
+  (bind ((show-timezone? (not colon-modifier?))
+         (in-utc-zone? at-modifier?)
+         (timezone (if in-utc-zone? local-time:+utc-zone+ local-time:*default-timezone*))
+         (format (if show-timezone?
+                     '((:year 4) #\- (:month 2) #\- (:day 2) #\T
+                       (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
+                       (:usec 6) :gmt-offset-or-z)
+                     '((:year 4) #\- (:month 2) #\- (:day 2) #\T
+                       (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
+                       (:usec 6)))))
+    ;; TODO KLUDGE finish this part: should use the cldr date formatter
+    ;; (format-date/gregorian-calendar stream timestamp)
+    (local-time:format-timestring stream timestamp :timezone timezone :format format))
+  (values))
+
+(defun parse-format-string (string)
   (declare (optimize speed)
-           (type simple-string string))
-  (flet ((get-replacement (char)
-           (or (when (typep char 'base-char)
-                 (cdr (assoc (char-upcase (the base-char char))
-                             +directive-replacements+)))
-               char)))
-    (declare (inline get-replacement))
-    (bind ((*print-pretty* nil)
-           (*print-circle* nil))
-      (with-output-to-string (result)
-        (loop
-           :for char :across string
-           :with tilde = nil
-           :do (case char
-                 ((#\@ #\v #\, #\:)
-                  (princ char result))
-                 (#\~
-                  (princ char result)
-                  (if tilde
-                      (setf tilde nil)
-                      (setf tilde t)))
-                 (t
-                  (if tilde
-                      (progn
-                        (setf tilde nil)
-                        (princ (get-replacement char) result))
-                      (princ char result)))))))))
+           (type string string))
+  (flet ((needs-parsing? (string)
+           (cl-ppcre:scan (load-time-value (cl-ppcre:create-scanner
+                                            (cl:format nil "~~[@V,:\\d]*[~{~A~^|~}]" (mapcar 'first +directive-replacements+))))
+                          (string-upcase string)))
+         (really-parse-format-string (string)
+           (declare (optimize speed)
+                    (type simple-string string))
+           (flet ((get-replacement (char)
+                    (or (when (typep char 'base-char)
+                          (cdr (assoc (char-upcase (the base-char char))
+                                      +directive-replacements+)))
+                        char)))
+             (declare (inline get-replacement))
+             (bind ((*print-pretty* nil)
+                    (*print-circle* nil))
+               (with-output-to-string (result)
+                 (loop
+                    :for char :across string
+                    :with tilde = nil
+                    :do (case char
+                          ((#\@ #\v #\, #\:)
+                           (princ char result))
+                          (#\~
+                           (princ char result)
+                           (if tilde
+                               (setf tilde nil)
+                               (setf tilde t)))
+                          (t
+                           (if tilde
+                               (if (or (digit-char-p char)
+                                       (member char '(#\' #\,)))
+                                   (princ char result)
+                                   (progn
+                                     (setf tilde nil)
+                                     (princ (get-replacement char) result)))
+                               (princ char result))))))))))
+    (if (needs-parsing? string)
+        (really-parse-format-string (coerce string 'simple-string))
+        string)))
