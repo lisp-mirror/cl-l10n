@@ -26,8 +26,6 @@
                                      (:file "calendar" :depends-on ("utils"))
                                      (:file "load-locale" :depends-on ("locale" "cldr-parsing"))
                                      (:file "formatters" :depends-on ("load-locale"))
-                                     (:file "parsers" :depends-on ("formatters" "parse-number"))
-                                     (:file "parse-time" :depends-on ("load-locale"))
                                      (:file "i18n" :depends-on ("locale"))
                                      (:module :languages
                                               :components ((:file "common")
