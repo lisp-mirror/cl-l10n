@@ -18,7 +18,8 @@
   :components ((:file "flexml")
                (:module :src
                         :components ((:file "package")
-                                     (:file "utils" :depends-on ("package"))
+                                     (:file "variables" :depends-on ("package"))
+                                     (:file "utils" :depends-on ("package" "variables"))
                                      (:file "pattern-compiling" :depends-on ("utils"))
                                      (:file "cldr-parsing" :depends-on ("package" "parse-number" "utils" "locale" "i18n" "pattern-compiling"))
                                      (:file "parse-number" :depends-on ("package"))

@@ -34,9 +34,6 @@
     `(when ,instance
        (slot-value ,instance ,slot-name))))
 
-(defun project-relative-pathname (file)
-  (asdf:system-relative-pathname :cl-l10n file))
-
 (defun read-key->value-text-file-into-hashtable (file)
   (with-open-file (file-stream file :element-type '(unsigned-byte 8))
     (let ((stream (make-flexi-stream file-stream :external-format :utf-8)))

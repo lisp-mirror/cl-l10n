@@ -3,16 +3,6 @@
 
 (in-package :cl-l10n )
 
-(defvar *locale*)
-
-(setf (documentation '*locale* 'variable)
-      "A list of locales that specifies the order of resource lookup. Please note that there's inheritance between the locales (e.g. 'en_US' inherits for 'en'), but this order here is to specify language preferences, like you can find in web browsers.")
-
-(defvar *root-locale*)
-
-(setf (documentation '*root-locale* 'variable)
-      "The root locale found in cldr/main/root.xml. All locales inherit from this, it contains the definitions that are shared for most locales.")
-
 ;; Conditions
 (define-condition locale-error (simple-error)
   ())
@@ -129,13 +119,6 @@
       (push *root-locale* result))
     (nreverse result)))
 
-;;;
-;;; Caching parsed locale instances
-;;;
-;; TODO locking with a spinlock
-(defparameter *locale-cache* (make-hash-table :test #'equal)
-  "Hashtable containing all loaded locales keyed on LOCALE-NAME (eg. \"af_ZA\")")
-
 (defun clear-locale-cache ()
   (prog1
       (hash-table-count *locale-cache*)
@@ -143,12 +126,3 @@
     (makunbound '*root-locale*)
     (load-root-locale)
     (load-default-locale)))
-
-(declaim (inline cached-locale (setf cached-locale)))
-
-(defun cached-locale (name)
-  (gethash name *locale-cache*))
-
-(defun (setf cached-locale) (new-val name)
-  (setf (gethash name *locale-cache*)
-        new-val))

@@ -25,8 +25,6 @@
 (defun make-cldr-parser ()
   (make-instance 'cldr-parser :default-package "CL-L10N.LDML"))
 
-(defparameter *cldr-root-directory* (project-relative-pathname "cldr/main/"))
-
 (defun cldr-pathname-for (locale-name)
   (merge-pathnames (concatenate 'string locale-name ".xml") *cldr-root-directory*))
 
