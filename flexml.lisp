@@ -62,6 +62,11 @@
    (id-attributes :initform (make-hash-table :test 'equal) :accessor id-attributes-of :documentation "Hashtable of (namespace-uri name) -> id-attribute-entry")
    (element-stack :initform nil :accessor element-stack-of)
    (root :accessor root-of)
+   (default-node-class :initform nil
+                       :initarg :default-node-class
+                       :accessor default-node-class-of
+                       :type (or symbol class)
+                       :documentation "The default value for CLASS-FOR-NODE-NAME. When NIL an error is thrown when an unknown tag is encountered, otherwise its value is used to instantiate the node.")
    (include-default-values :initform t
                            :initarg :include-default-values
                            :type boolean
@@ -183,15 +188,17 @@
 
 (defgeneric class-for-node-name (builder namespace-uri package local-name qualified-name)
   (:method (builder namespace-uri package (local-name string) qualified-name)
-    (let ((class-name (class-name-for-node-name builder namespace-uri package local-name qualified-name)))
-      (assert class-name)
-      (assert (symbolp class-name))
-      (let ((class (find-class class-name nil)))
-        (unless class
+    (let* ((class-name (class-name-for-node-name builder namespace-uri package local-name qualified-name))
+           (class (find-class class-name nil))
+           (default-node-class (default-node-class-of builder)))
+      (when (and default-node-class
+                 (symbolp default-node-class))
+        (setf default-node-class (find-class default-node-class)))
+      (or class
+          default-node-class
           (let ((*package* (find-package :cl-user)))
             (error "Did not find a class named ~S to represent the flexml node ~S in XML namespace ~S"
-                   class-name local-name (or namespace-uri :default))))
-        class))))
+                   class-name local-name (or namespace-uri :default)))))))
 
 (defmethod sax:start-element ((builder flexml-builder) namespace-uri local-name qname attributes)
   (let* ((include-default-values (include-default-values-p builder))
