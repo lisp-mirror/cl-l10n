@@ -72,38 +72,23 @@
 
   (:export
 
-   ;; <numbers> / <symbols>
-   #:number-symbol
-
    #:plural-of
 
-   #:decimal
-   #:group
    #:list
-   #:percent-sign
-   #:native-zero-digit
-   #:pattern-digit
-   #:plus-sign
-   #:minus-sign
-   #:exponential
-   #:per-mille
-   #:infinity
-   #:nan
 
+   #:number-symbol
    #:currency-symbol
    #:currency-name
    #:language
    #:script
    #:territory
    #:variant
-
-   #:with-indefinite-article
-   #:with-definite-article
-
-   #:today
    #:month
    #:day
    #:quarter
+
+   #:with-indefinite-article
+   #:with-definite-article
 
    #:january
    #:february
