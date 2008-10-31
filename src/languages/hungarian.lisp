@@ -68,6 +68,11 @@
                               (and (eq #\u last-letter2)
                                    (eq #\m last-letter)))
                       (emit word "ok"))
+                    ;; handle -ott
+                    (when (and (eq #\o last-letter3)
+                               (eq #\t last-letter2)
+                               (eq #\t last-letter))
+                      (emit word "ak"))
                     (emit word "ok")))))
         (emit word "-k")))))
 
