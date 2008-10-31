@@ -80,7 +80,7 @@
           (when el
             (unless (first-time-p)
               (princ separator out))
-            (princ separator out)))))
+            (princ el out)))))
 
 (define-constant +whitespaces+ (list #\Space #\Tab)
   :test #'equal)
