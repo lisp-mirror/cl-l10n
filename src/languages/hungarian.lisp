@@ -51,11 +51,11 @@
                          (or (and (or (eq #\a last-letter2)
                                       (eq #\e last-letter2))
                                   (eq #\t last-letter))
-                             (and (or (eq #.(code-char 225) last-letter2)
-                                      (eq #.(code-char 233) last-letter2))
+                             (and (or (eq #\á last-letter2)
+                                      (eq #\é last-letter2))
                                   (eq #\s last-letter))))
                 (emit word (if (or (eq #\a last-letter2)
-                                   (eq #.(code-char 225) last-letter2))
+                                   (eq #\á last-letter2))
                                "ok"
                                "ek")))
               ;; handle -at, -um
@@ -65,7 +65,7 @@
                              (eq #\m last-letter)))
                 (emit word "ok"))
               (if (high-vowel-p last-vowel)
-                  (cond ((eq last-vowel #.(code-char 246))
+                  (cond ((eq last-vowel #\ö)
                          (emit word "ök"))
                         (t (emit word "ek")))
                   (emit word "ok"))))
