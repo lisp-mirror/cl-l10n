@@ -8,10 +8,9 @@
                                              :name "hungarian-plural-overrides"
                                              :type "text"))))
 
-
 (defun hungarian-plural-of (word &optional (uppercase nil uppercase-provided-p))
   "Returns the hungarian plural of the given word."
-  (declare (type (simple-array character) word)
+  (declare (type (simple-array character (*)) word)
            (optimize (speed 3) (debug 0)))
   (awhen (gethash word *hungarian-plural-overrides*)
     (return-from hungarian-plural-of
@@ -58,17 +57,18 @@
                                    (eq #\á last-letter2))
                                "ok"
                                "ek")))
-              ;; handle -at, -um
-              (when (or (and (eq #\a last-letter2)
-                             (eq #\t last-letter))
-                        (and (eq #\u last-letter2)
-                             (eq #\m last-letter)))
-                (emit word "ok"))
               (if (high-vowel-p last-vowel)
                   (cond ((eq last-vowel #\ö)
                          (emit word "ök"))
                         (t (emit word "ek")))
-                  (emit word "ok"))))
+                  (progn
+                    ;; handle -at, -um
+                    (when (or (and (eq #\a last-letter2)
+                                   (eq #\t last-letter))
+                              (and (eq #\u last-letter2)
+                                   (eq #\m last-letter)))
+                      (emit word "ok"))
+                    (emit word "ok")))))
         (emit word "-k")))))
 
 (defun hungarian-definite-article-for (word)
