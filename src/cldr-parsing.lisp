@@ -29,7 +29,8 @@
   (merge-pathnames (concatenate 'string locale-name ".xml") *cldr-root-directory*))
 
 (defun parse-cldr-file (name)
-  (bind ((parser (make-cldr-parser))
+  (bind ((*package* (find-package :cl-l10n))
+         (parser (make-cldr-parser))
          (*locale* nil)
          (source-xml-file (cldr-pathname-for name)))
     (bind ((*parser* parser))
