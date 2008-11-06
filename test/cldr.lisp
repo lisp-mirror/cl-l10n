@@ -20,9 +20,11 @@
                                  (string= "xml" (pathname-type file)))))
 
 (deftest test/cldr/number-formatter ()
-    (with-locale "en"
-      (is (string= (format-number/decimal nil 1000)
-                   "1,000"))))
+  (with-locale "en"
+    (is (string= (format-number/decimal nil 1000)
+                 "1,000"))
+    (is (string= (format-number/decimal nil 1000.12345)
+                 "1,000.123"))))
 
 
 (macrolet ((define (&body entries)
@@ -116,9 +118,12 @@
                              ((member it '("NaN" "Infinity" "-Infinity") :test #'string=)
                               (setf *number-test-current-input* nil))
                              (t
-                              (if (find #\. it)
-                                  (setf it (concatenate 'string it "l0")))
-                              (setf *number-test-current-input* (parse-number:parse-real-number it)))))
+                              (setf *number-test-current-input*
+                                    (parse-number:parse-real-number (if (find #\. it)
+                                                                        (concatenate 'string it "l0")
+                                                                        it)))))
+                           ;; (format *debug-io* "~%    new input: ~S -> ~A~%" it *number-test-current-input*)
+                           )
                          (awhen (slot-value node 'ldml::numbertype)
                            (cond
                              ((null *number-test-current-input*))
