@@ -51,7 +51,10 @@
   (provide 'cl-l10n))
 
 (defsystem :cl-l10n.test
-  :depends-on (:cl-l10n :stefil)
+  :depends-on (:cl-l10n
+               :stefil
+               :parse-number
+               )
   :components
   ((:module "test"
             :components
@@ -69,5 +72,3 @@
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-l10n))))
   nil)
-
-;; EOF

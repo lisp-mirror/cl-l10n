@@ -112,7 +112,7 @@
                              (t
                               (if (find #\. it)
                                   (setf it (concatenate 'string it "l0")))
-                              (setf *number-test-current-input* (parse-real-number it)))))
+                              (setf *number-test-current-input* (parse-number:parse-real-number it)))))
                          (awhen (slot-value node 'ldml::numbertype)
                            (cond
                              ((null *number-test-current-input*))
