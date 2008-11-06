@@ -5,6 +5,12 @@
 
 (defsuite* (test/cldr :in test))
 
+;; with CLDR 1.6.1
+;;
+;; (without-debugging (test/cldr/run-cldr-tests))
+;;
+;; #<test-run: 2 tests, 11819 assertions, 1779 failures in 4.732 sec (1769 failed assertions, 10 errors, none expected)>
+
 (deftest (test/cldr/run-cldr-tests :auto-call nil) ()
   ;; don't run the cldr tests by default, we are just not there yet...
   (cl-fad:walk-directory (project-relative-pathname "cldr/test/")
