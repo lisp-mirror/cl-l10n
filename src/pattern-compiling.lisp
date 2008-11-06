@@ -126,45 +126,54 @@
                                  (aif (nil-if-zero (length fraction-part))
                                       (list (expt 10 (* -1 it)) it)
                                       (list 1 0))))
-                           (minimum-digits (funcall (lambda (x)
-                                                      (aif (position-if #'digit-char-p x)
-                                                           (- (length x) it)
-                                                           0))
-                                                    (remove #\, integer-part))))
-
+                           (minimum-digits (bind ((integer-part-without-grouping (remove #\, integer-part)))
+                                             (aif (position-if #'digit-char-p integer-part-without-grouping)
+                                                  (- (length integer-part-without-grouping) it)
+                                                  0))))
                       (lambda (number)
                         (setf number (abs number))
                         (bind ((formatted-digits (list))
+                               ;; the next two lookups could be moved to compile time if all formatters
+                               ;; were compiled for all locales, IOW doing the inheritance at
+                               ;; compile time. TODO?
+                               (localized-decimal-separator (localize-number-symbol-character #\.))
+                               (localized-thousand-separator (localize-number-symbol-character #\,))
                                ;; caution: there are rounding errors with floating point arithmetics
                                (rounded-integer-part
                                 (truncate (* rounding-increment (round (/ number rounding-increment)))))
                                (rounded-fraction-part
                                 (* rounding-increment (round (/ (- number (truncate number)) rounding-increment)))))
                           ;; fraction part
-                          (flet ((localize-and-collect (stuff)
-                                   (typecase stuff
-                                     (character
-                                      (setf stuff (localize-number-symbol-character stuff)))
-                                     (number
-                                      (setf stuff (localize-number-symbol-character (digit-char stuff)))))
-                                   (typecase stuff
-                                     (sequence
-                                      (iter (for i from (length stuff) downto 1)
-                                            (push (elt stuff (- i 1)) formatted-digits)))
-                                     (t
-                                      (push stuff formatted-digits)))))
-                            ;;fraction part
-                            (iter (generating digit :in
-                                              (iter (for i from 1 to rounding-fraction-length)
-                                                    (with rest = rounded-fraction-part)
-                                                    (with digit)
-                                                    (setf (values digit rest) (truncate (* rest 10)))
-                                                    (collect digit at beginning)))
-                                  (localize-and-collect (next digit)))
-
-                            (localize-and-collect #\.)
-
-                            ;;integer part
+                          (macrolet ((emit (stuff)
+                                       (once-only (stuff)
+                                         `(etypecase ,stuff
+                                            (character
+                                             (push ,stuff formatted-digits))
+                                            (sequence
+                                             (setf formatted-digits (nconc (nreverse (coerce ,stuff 'list))
+                                                                           formatted-digits)))))))
+                            ;; fraction part
+                            (bind ((fraction-digits (list)))
+                              ;; collect a reverse list of fraction digits
+                              (iter (with rest = rounded-fraction-part)
+                                    (with digit)
+                                    (repeat rounding-fraction-length)
+                                    (setf (values digit rest) (truncate (* rest 10)))
+                                    (push digit fraction-digits))
+                              ;; pop leading zeros
+                              (iter (while fraction-digits)
+                                    (for digit = (first fraction-digits))
+                                    (while (zerop digit))
+                                    (pop fraction-digits))
+                              (when fraction-digits
+                                (setf formatted-digits
+                                      (iter (for digit :in fraction-digits)
+                                            (for localized-digit = (localize-number-symbol-character (digit-char digit)))
+                                            (etypecase localized-digit
+                                              (character (collect localized-digit :at beginning))
+                                              (string (nconcing (coerce localized-digit 'list) :at beginning)))))
+                                (emit localized-decimal-separator)))
+                            ;; integer part
                             (iter
                               (with grouping-size = (or primary-grouping-size 0))
                               (with remainder = rounded-integer-part)
@@ -188,20 +197,18 @@
                                                 (zerop group)
                                                 (>= number-of-digits minimum-digits))))
                                 (setf (values group digit) (truncate group 10))
-                                (localize-and-collect digit)
+                                (emit (localize-number-symbol-character (digit-char digit)))
                                 (incf number-of-digits)
                                 (incf count))
-                              (if (and (> grouping-size 0)
-                                       (or (not (zerop remainder))
-                                           (< number-of-digits minimum-digits)))
-                                  (localize-and-collect #\,))
+                              (when (and (> grouping-size 0)
+                                         (or (not (zerop remainder))
+                                             (< number-of-digits minimum-digits)))
+                                (emit localized-thousand-separator))
                               (when (and (first-time-p)
                                          (not (or (null secondary-grouping-size)
                                                   (zerop secondary-grouping-size))))
                                 (setf grouping-size secondary-grouping-size))))
-                          (string-right-trim (localize-number-symbol-character #\.)
-                           (string-right-trim (localize-number-symbol-character #\0)
-                                              (coerce formatted-digits 'string)))))))))))))))
+                          (coerce formatted-digits 'string)))))))))))))
 
 (defun compile-number-pattern/decimal (pattern)
   (bind ((pos-subpat-prefix nil)
