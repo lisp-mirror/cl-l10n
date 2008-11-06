@@ -79,7 +79,7 @@
                         (list verbosity (list :formatter formatter :pattern pattern)))
                       verbosities
                       patterns
-                      (apply 'compile-date-pattern/gregorian-calendar patterns)))))))
+                      (compile-date-patterns/gregorian-calendar patterns)))))))
 
 
 (defun compile-simple-number-formatters (locale formatter-accessor pattern-compiler)

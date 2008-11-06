@@ -296,7 +296,10 @@
     (lambda (stream number)
       (funcall formatter stream (* number 100)))))
 
-(defun compile-date-pattern/gregorian-calendar (&rest patterns)
+(defun compile-date-pattern/gregorian-calendar (pattern)
+  (first (compile-date-patterns/gregorian-calendar (list pattern))))
+
+(defun compile-date-patterns/gregorian-calendar (patterns)
   (declare (optimize speed))
   (macrolet ((piece-formatter (&body body)
                `(lambda (stream date year month day day-of-week)
@@ -387,6 +390,8 @@
                   (collect (piece-formatter (write-string outer-piece stream))))))
           (nreversef piece-formatters)
           (push (named-lambda date-formatter (stream date)
+                  ;; TODO should we compare the value of *locale* at compile/runtime?
+                  ;; if yes, then check the other formatters, too!
                   (local-time:with-decoded-timestamp (:year year :month month :day day :day-of-week day-of-week) date
                     (dolist (formatter piece-formatters)
                       (funcall (the function formatter) stream date year month day day-of-week))))
