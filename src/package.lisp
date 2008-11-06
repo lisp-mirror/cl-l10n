@@ -25,18 +25,11 @@
 
    #:locale-not-found-error
 
-   #:format-number
-   #:print-number
-   #:format-money
-   #:print-money
-   #:format-time
-   #:print-time
-   #:parse-number
+   #:format-number/decimal
+   #:format-number/percent
+   #:format-number/currency
 
-   #:*float-digits*
    #:shadow-format
-   #:parse-time
-
    #:reload-resources
 
    #:capitalize-first-letter
@@ -190,24 +183,6 @@
    #:percent-formats
    #:percent-format-length
    #:percent-format
-   
-#|
-   #:locale-display-names
-   #:layout
-   #:orientation
-   #:in-text
-   #:characters
-   #:exemplar-characters
-   #:delimiters
-   #:quotation-start
-   #:quotation-end
-   #:alternate-quotation-start
-   #:alternate-quotation-end
-   #:dates
-   #:localized-pattern-chars
-   #:date-range-pattern
-   #:calendars
-|#
    ))
 
 (block check-lisp-source-file-encoding

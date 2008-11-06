@@ -80,7 +80,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Customized format directives
 
-(define-constant +directive-replacements+ '((#\M . "/cl-l10n:%format-money/")
+(define-constant +directive-replacements+ '((#\M . "/cl-l10n:%format-currency/")
                                             (#\N . "/cl-l10n:%format-number/")
                                             (#\U . "/cl-l10n:%format-timestamp/")
                                             (#\L . "/cl-l10n:%format-date/"))
@@ -107,7 +107,7 @@
   "Shadowing import the CL-L10N:FORMAT symbol into PACKAGE."
   (shadowing-import '(cl-l10n::format cl-l10n::formatter) package))
 
-(defun %format-money (stream number colon-modifier? no-thousand-separator &optional currency-code)
+(defun %format-currency (stream number colon-modifier? no-thousand-separator &optional currency-code)
   ;; FIXME this is probably not going to work... should be able to pass in the currency code
   ;; somehow, but the format syntax only allows numeric or character arguments.
   (bind ((print-decimal-point? (not colon-modifier?))

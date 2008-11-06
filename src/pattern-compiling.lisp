@@ -49,7 +49,7 @@
             ((not (zerop (length piece)))
              (collect (cl-ppcre:split scanner piece :with-registers-p t :omit-unmatched-p t)))))))
 
-(defun parse-prefix (a-pattern &optional terminating-characters invalid-characters)
+(defun parse-pattern-prefix (a-pattern &optional terminating-characters invalid-characters)
   (bind ((next-char nil)
          (quoting? nil)
          (prefix nil)
@@ -84,7 +84,7 @@
            (setf split-at i)))
     (values-list (list prefix (subseq a-pattern split-at)))))
 
-(defun parse-padding (a-pattern)
+(defun parse-pattern-padding (a-pattern)
   (bind ((pad nil))
     (cl-ppcre:register-groups-bind (nil the-quote quoted-directive ordinary-char) ("(^\\*'(')|^\\*'([^'])'|^\\*([^']))" a-pattern)
       (cond
@@ -107,9 +107,9 @@
 (defun compile-number-absolute-value-pattern/decimal (number-format)
   (bind ((integer-fraction-with-dot-? (find #\. number-format :test #'char=))
          (significant-digit-count-? (find #\@ number-format :test #'char=)))
-    (if (and integer-fraction-with-dot-?
-             significant-digit-count-?)
-        (error "Significant digit count number format (@) and integer/fraction digit format (.) cannot be used simultaneously."))
+    (when (and integer-fraction-with-dot-?
+               significant-digit-count-?)
+      (error "Significant digit count number format (@) and integer/fraction digit format (.) cannot be used simultaneously."))
     (if significant-digit-count-?
         (error "Not implemented yet!")
         ;;integer/fraction format
@@ -213,18 +213,18 @@
          (number-format-size nil)
          (number-formatter nil))
     (macrolet ((handle-padding-if-applicable (position)
-                 `(bind (((:values pad tail) (parse-padding pattern)))
-                    (unless (null pad)
-                      (if (not (null pad-char))
-                          (error "Padding cannot be specified more than once."))
+                 `(bind (((:values padding tail) (parse-pattern-padding pattern)))
+                    (when padding
+                      (when pad-char
+                        (error "Padding cannot be specified more than once."))
                       (setf pad-pos ,position)
-                      (setf pad-char (elt pad 0)))
+                      (setf pad-char (elt padding 0)))
                     (setf pattern tail))))
       ;; pad before prefix
       (handle-padding-if-applicable 'before-prefix)
 
       ;; prefix
-      (setf (values pos-subpat-prefix pattern) (parse-prefix pattern "*@#0123456789" ".,;"))
+      (setf (values pos-subpat-prefix pattern) (parse-pattern-prefix pattern "*@#0123456789" ".,;"))
 
       ;; pad after prefix
       (handle-padding-if-applicable 'after-prefix)
@@ -242,7 +242,7 @@
       (handle-padding-if-applicable 'before-suffix)
 
       ;;positive subpattern suffix
-      (setf (values pos-subpat-suffix pattern) (parse-prefix pattern ";*" ".,"))
+      (setf (values pos-subpat-suffix pattern) (parse-pattern-prefix pattern ";*" ".,"))
 
       ;; pad after suffix
       (handle-padding-if-applicable 'after-suffix)
@@ -252,12 +252,12 @@
             (string-right-trim ")" (string-left-trim ";(" pattern)))
 
       ;;negative subpattern prefix
-      (setf (values neg-subpat-prefix pattern) (parse-prefix pattern "@#0123456789" ",."))
+      (setf (values neg-subpat-prefix pattern) (parse-pattern-prefix pattern "@#0123456789" ",."))
 
       (setf pattern (string-left-trim "@#,.0123456789" pattern))
 
       ;;negative subpattern suffix
-      (setf (values neg-subpat-suffix pattern) (parse-prefix pattern))
+      (setf (values neg-subpat-suffix pattern) (parse-pattern-prefix pattern))
 
       (when (and
              (or (null neg-subpat-suffix)
@@ -441,8 +441,7 @@
                                                   (awhen (gethash currency-code (currencies-of locale))
                                                     (awhen (first it)
                                                       (return it))))))))))
-                            (funcall formatter stream number))
-                          )))))))
+                            (funcall formatter stream number)))))))))
 
 
 (defmacro replace-sign-considering-quotes (pattern char-to-replace &body body)
