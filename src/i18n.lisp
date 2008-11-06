@@ -297,6 +297,8 @@ Be careful when using in different situations, because it modifies *readtable*."
                                (#\+ 'ldml:plus-sign)
                                (#\- 'ldml:minus-sign)
                                (#\; 'ldml:list))))
+    ;; TODO at parse time, coerce stuff like ldml:native-zero-digit to character
+    ;; and update the pattern compilers, too!
     (if number-symbol-name
         (localize-number-symbol number-symbol-name)
         number-symbol-char)))

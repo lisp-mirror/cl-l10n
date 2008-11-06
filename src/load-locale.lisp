@@ -82,7 +82,7 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
                 (load-resource name)
                 locale)
               (when errorp
-                (locale-not-found-error  name)))))))
+                (locale-not-found-error name)))))))
 
 (defun load-resource (name)
   ;;(l10n-logger.debug "Trying to load resource ~A" name)

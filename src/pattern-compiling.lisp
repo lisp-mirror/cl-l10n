@@ -445,6 +445,7 @@
 
 
 (defmacro replace-sign-considering-quotes (pattern char-to-replace &body body)
+  ;; TODO user once-only to rebind
   `(bind ((pattern ,pattern)
           (char-to-replace ,char-to-replace))
      (flet ((char-at-? (pattern index character)
@@ -495,8 +496,8 @@
                                         (match (mismatch pattern (make-string length :initial-element #\'))))
                                    (and match (oddp match)))))
                          (collect #\')))
-                  (otherwise (collect char)))
-                ) 'string )))))
+                  (otherwise (collect char))))
+          'string)))))
 
 (defun replace-percent-considering-quotes (pattern localized-percent-string)
   (replace-sign-considering-quotes pattern #\%
