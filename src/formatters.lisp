@@ -72,10 +72,10 @@
      (format stream fallback-format-pattern number))))
 
 (defun format-number/decimal (stream number &key (verbosity 'ldml:medium))
-  (%format-number-iterating-locales stream number verbosity #'decimal-formatter-of "decimal number formatter" "~A"))
+  (%format-number-iterating-locales stream number verbosity #'decimal-formatters-of "decimal number formatter" "~A"))
 
 (defun format-number/percent (stream number &key (verbosity 'ldml:medium))
-  (%format-number-iterating-locales stream number verbosity #'percent-formatter-of "percent number formatter" "~A%"))
+  (%format-number-iterating-locales stream number verbosity #'percent-formatters-of "percent number formatter" "~A%"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Customized format directives

@@ -68,12 +68,12 @@
    (initialized
     :initform nil
     :accessor initialized-p)
-   (decimal-formatter
+   (decimal-formatters
     :initform nil
-    :accessor decimal-formatter-of)
-   (percent-formatter
+    :accessor decimal-formatters-of)
+   (percent-formatters
     :initform nil
-    :accessor percent-formatter-of)))
+    :accessor percent-formatters-of)))
 
 (defmethod print-object ((obj locale) stream)
   (print-unreadable-object (obj stream :type t :identity t)

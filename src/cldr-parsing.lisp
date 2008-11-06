@@ -82,8 +82,8 @@
                       (compile-date-patterns/gregorian-calendar patterns)))))))
 
 
-(defun compile-simple-number-formatters (locale formatter-accessor pattern-compiler)
-  (bind ((formatters (funcall formatter-accessor locale)))
+(defun compile-simple-number-formatters (locale formatters-accessor pattern-compiler)
+  (bind ((formatters (funcall formatters-accessor locale)))
     (iter (for verbosity in formatters by #'cddr)
           (with pattern = (getf (getf formatters verbosity) :pattern))
           (setf (getf formatters verbosity)
@@ -91,10 +91,10 @@
                       :pattern pattern)))))
 
 (defun compile-number-formatters/decimal (locale)
-  (compile-simple-number-formatters locale #'decimal-formatter-of #'compile-number-pattern/decimal))
+  (compile-simple-number-formatters locale #'decimal-formatters-of #'compile-number-pattern/decimal))
 
 (defun compile-number-formatters/percent (locale)
-  (compile-simple-number-formatters locale #'percent-formatter-of #'compile-number-pattern/percent))
+  (compile-simple-number-formatters locale #'percent-formatters-of #'compile-number-pattern/percent))
 
 (defun compile-number-formatters/currency (locale)
   (compile-number-pattern/currency locale))
@@ -303,10 +303,10 @@
           (process-ldml-gregorian-calendar-node parent node))
         (call-next-method)))
   (:method ((parent ldml:decimal-formats) (node ldml:decimal-format-length))
-    (process-simple-number-formatter-node node 'decimal-formatter-of))
+    (process-simple-number-formatter-node node 'decimal-formatters-of))
   
   (:method ((parent ldml:percent-formats) (node ldml:percent-format-length))
-    (process-simple-number-formatter-node node 'percent-formatter-of))
+    (process-simple-number-formatter-node node 'percent-formatters-of))
   )
 
 (defun process-simple-number-formatter-node (node formatter-accessor)
