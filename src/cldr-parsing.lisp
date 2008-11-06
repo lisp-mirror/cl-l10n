@@ -51,9 +51,10 @@
 (defun ensure-locale-is-initialized (locale)
   (unless (initialized-p locale)
     (setf (initialized-p locale) t)
-    (unless (equal (language-of locale) "root")
-      (compile-date-formatters/gregorian-calendar locale))
-    (compile-number-formatters locale)))
+    (bind ((*locale* (list locale)))
+      (unless (equal (language-of locale) "root")
+        (compile-date-formatters/gregorian-calendar locale))
+      (compile-number-formatters locale))))
 
 (defun compile-number-formatters (locale)
   (compile-number-formatters/decimal locale)
@@ -61,8 +62,7 @@
   (compile-number-formatters/currency locale))
 
 (defun compile-date-formatters/gregorian-calendar (locale)
-  (bind ((*locale* (list locale))
-         (gregorian-calendar (gregorian-calendar-of locale)))
+  (bind ((gregorian-calendar (gregorian-calendar-of locale)))
     (when gregorian-calendar
       (bind ((verbosities '(ldml:short ldml:medium ldml:long ldml:full))
              (patterns (iter (for verbosity :in verbosities)
