@@ -119,13 +119,21 @@
               (cl-ppcre:register-groups-bind (head (#'length primary-grouping-size) nil) ("(.*),([^,]*)$|(.?)" integer-part)
                 (cl-ppcre:register-groups-bind ((#'length secondary-grouping-size) nil) (".*,([^,]*)$|(.?)" head)
                   (flet ((nil-if-zero (value) (if (zerop value) nil value)))
-                    (bind (((rounding-increment rounding-fraction-length)
-                            (aif (nil-if-zero (parse-real-number (concatenate
-                                                                  'string rounding-integer-number-part "." rounding-fraction-number-part)))
-                                 (list it (length rounding-fraction-number-part))
+                    (bind (((:values rounding-increment rounding-fraction-length)
+                            (aif (nil-if-zero (bind ((integer-part (if rounding-integer-number-part
+                                                                       (parse-integer rounding-integer-number-part)
+                                                                       0))
+                                                     (fraction-part (unless (zerop (length rounding-fraction-number-part))
+                                                                      (parse-integer rounding-fraction-number-part))))
+                                                (if fraction-part
+                                                    (coerce (+ integer-part (/ fraction-part
+                                                                               (expt 10 (length rounding-fraction-number-part))))
+                                                            'long-float)
+                                                    integer-part)))
+                                 (values it (length rounding-fraction-number-part))
                                  (aif (nil-if-zero (length fraction-part))
-                                      (list (expt 10 (* -1 it)) it)
-                                      (list 1 0))))
+                                      (values (expt 10 (* -1 it)) it)
+                                      (values 1 0))))
                            (minimum-digits (bind ((integer-part-without-grouping (remove #\, integer-part)))
                                              (aif (position-if #'digit-char-p integer-part-without-grouping)
                                                   (- (length integer-part-without-grouping) it)
