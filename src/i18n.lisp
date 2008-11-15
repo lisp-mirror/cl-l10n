@@ -15,15 +15,12 @@
      (cl:format stream "The resource ~S is missing for ~A"
                 (name-of condition) (locale-of condition)))))
 
-(defun resource-missing (name &optional (warn-if-missing t) (fallback-to-name nil))
-  (when warn-if-missing
-    (warn 'resource-missing :name name))
-  (values (when fallback-to-name
-            (string-downcase (string name)))
-          nil))
+(defun resource-missing (name)
+  (warn 'resource-missing :name name)
+  name)
 
-(defun ensure-resource-lookup-function (name)
-  (unless (get name 'cl-l10n-entry-function)
+(defun ensure-resource-lookup-stub (name)
+  (unless (get name 'resource-lookup-stub)
     ;; define a function with this name that'll look at the *locale* list and call the first
     ;; locale specific lambda it finds while walking the locales
     (when (fboundp name)
@@ -32,7 +29,7 @@
           (lambda (&rest args)
             (lookup-resource name :arguments args)))
     ;; leave a mark that it's been defined by us
-    (setf (get name 'cl-l10n-entry-function) t)))
+    (setf (get name 'resource-lookup-stub) t)))
 
 (defun %set-resource (locale name resource)
   "Store RESOURCE in the resource map at the given locale. When RESOURCE
@@ -42,7 +39,7 @@ and funcall the resource registered for the current locale."
   (check-type locale locale)
   (setf (gethash (resource-key name) (resources-of locale)) resource)
   (when (functionp resource)
-    (ensure-resource-lookup-function name))
+    (ensure-resource-lookup-stub name))
   name)
 
 (defun %lookup-resource (locale name args)
@@ -60,12 +57,28 @@ and funcall the resource registered for the current locale."
                (values resource t)))    ; a simple literal
         (values nil nil))))
 
-(defun lookup-resource (name &key arguments (warn-if-missing t) (fallback-to-name t))
+(defun lookup-resource (name &key arguments (otherwise (if arguments :error name) otherwise-provided?))
   (do-current-locales locale
     (multiple-value-bind (result foundp) (funcall '%lookup-resource locale name arguments)
       (when foundp
         (return-from lookup-resource (values result t)))))
-  (resource-missing name warn-if-missing fallback-to-name))
+  (cond
+    ((not otherwise-provided?)
+     (resource-missing name)
+     name)
+    ((eq otherwise :error)
+     (error "LOOKUP-RESOURCE unexpectedly failed for ~S with arguments ~S and locale ~A" name arguments *locale*))
+    ((and (consp otherwise)
+          (member (first otherwise) '(:error :warn) :test #'eq))
+     (assert (not (null (rest otherwise))))
+     (apply (ecase (first otherwise)
+              (:error #'error)
+              (:warn  #'warn))
+            (rest otherwise)))
+    ((functionp otherwise)
+     (funcall otherwise))
+    (t
+     otherwise)))
 
 (defun (setf lookup-resource) (value name)
   (%set-resource *locale* name value))
@@ -73,16 +86,11 @@ and funcall the resource registered for the current locale."
 (defmacro defresources (locale-designator &body resources)
   (with-unique-names (locale)
     `(progn
-       ;; TODO think, cleanup. this defun may be superfluous in the current setup
-       ;; TODO what about 'cl-l10n-entry-function, is it really needed/useful?
-       ,@(iter (for resource in resources)
-               (for name = (first resource))
-               (when (> (length resource) 2)
-                 (collect `(unless (and (get ',name 'cl-l10n-entry-function)
-                                        (fboundp ',name))
-                             (defun ,name (&rest args)
-                               (lookup-resource ',name :arguments args))
-                             (setf (get ',name 'cl-l10n-entry-function) t)))))
+       (eval-when (:compile-toplevel)
+         ,@(iter (for resource in resources)
+                 (for name = (first resource))
+                 (when (> (length resource) 2)
+                   (collect `(ensure-resource-lookup-stub ',name)))))
        (eval-when (:load-toplevel :execute)
          (let ((,locale (locale ,(canonical-locale-name-from locale-designator))))
            (declare (ignorable ,locale))
@@ -120,7 +128,7 @@ An example usage:
           (collect `(,@wrapper
                      (setf ,key-tmp ,key)
                      (multiple-value-bind (,resource ,foundp)
-                         (lookup-resource ,key-tmp :warn-if-missing nil :fallback-to-name nil)
+                         (lookup-resource ,key-tmp :otherwise nil)
                        (unless ,fallback
                          (setf ,fallback ,key-tmp))
                        (when ,foundp
