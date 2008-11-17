@@ -32,37 +32,34 @@
 (defun format-date/gregorian-calendar (stream date &key (verbosity 'ldml:medium) pattern)
   (check-type pattern (or null string function))
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
-  (if pattern
-      (with-handling-special-stream-values stream
-        (funcall (compile-date-pattern/gregorian-calendar pattern) stream date))
-      (%format-iterating-locales
-       stream
-       (if pattern
-           (lambda (stream locale)
-             (declare (ignore locale))
-             (funcall (etypecase pattern
-                        (string
-                         ;; NOTE: this code path is about 5 times slower and conses about 10 times more...
-                         ;; OPTIMIZATION: we could implement some per-locale caching here, but it must be
-                         ;; carefully keyed (a compiled lambda captures stuff at compile time from the compile time value of *locale*)
-                         ;; and the cache must be properly locked to support threading.
-                         (compile-date-pattern/gregorian-calendar pattern))
-                        (function pattern))
-                      stream date)
-             t)
-           (named-lambda date-format-locale-visitor (stream locale)
-             (when-bind gregorian-calendar (gregorian-calendar-of locale)
-               (bind ((formatter-entry (getf (date-formatters-of gregorian-calendar) verbosity))
-                      (formatter (getf formatter-entry :formatter)))
-                 (if formatter
-                     (progn
-                       (funcall formatter stream date)
-                       t)
-                     nil)))))
-       (named-lambda date-format-fallback (stream)
-         (warn "No Gregorian calendar date formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
-               verbosity (current-locale))
-         (local-time:format-timestring stream date :format '((:year 4) #\- (:month 2) #\- (:day 2)))))))
+  (%format-iterating-locales
+   stream
+   (if pattern
+       (lambda (stream locale)
+         (declare (ignore locale))
+         (funcall (etypecase pattern
+                    (string
+                     ;; NOTE: this code path is about 5 times slower and conses about 10 times more...
+                     ;; OPTIMIZATION: we could implement some per-locale caching here, but it must be
+                     ;; carefully keyed (a compiled lambda captures stuff at compile time from the compile time value of *locale*)
+                     ;; and the cache must be properly locked to support threading.
+                     (compile-date-pattern/gregorian-calendar pattern))
+                    (function pattern))
+                  stream date)
+         t)
+       (named-lambda date-format-locale-visitor (stream locale)
+         (when-bind gregorian-calendar (gregorian-calendar-of locale)
+           (bind ((formatter-entry (getf (date-formatters-of gregorian-calendar) verbosity))
+                  (formatter (getf formatter-entry :formatter)))
+             (if formatter
+                 (progn
+                   (funcall formatter stream date)
+                   t)
+                 nil)))))
+   (named-lambda date-format-fallback (stream)
+     (warn "No Gregorian calendar date formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+           verbosity (current-locale))
+     (local-time:format-timestring stream date :format '((:year 4) #\- (:month 2) #\- (:day 2))))))
 
 (defun format-number/currency (stream number currency-code &key (verbosity 'ldml:medium))
   ;; TODO support a :pattern keyword arg
