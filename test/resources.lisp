@@ -34,11 +34,21 @@
 
 (def-resource-test test/resources/hu/month-names
     (cl-l10n.lang:month "hu" "hu_HU")
-  (0   "január")
-  (1   "február")
-  (2   "március")
-  (11  "december")
+  (0          "január")
+  (january    "január")
+  (1          "február")
+  (2          "március")
+  (11         "december")
+  (december   "december")
   ((11 :capitalize-first-letter t) "December"))
+
+(def-resource-test test/resources/hu/day-names
+    (cl-l10n.lang:day "hu" "hu_HU")
+  (0          "vasárnap")
+  (1          "hétfő")
+  (monday     "hétfő")
+  (6          "szombat")
+  ((0 :capitalize-first-letter t) "Vasárnap"))
 
 ;;;
 ;;; English
