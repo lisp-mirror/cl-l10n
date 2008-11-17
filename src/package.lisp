@@ -83,6 +83,21 @@
    #:with-indefinite-article
    #:with-definite-article
 
+   #:localize-currency-symbol
+   #:localize-currency-name
+   #:localize-language-name
+   #:localize-script-name
+   #:localize-territory-name
+   #:localize-variant-name
+   #:localize-month-name
+   #:localize-day-name
+   #:localize-quarter-name
+   #:localize-number-symbol
+   ))
+
+(defpackage :cl-l10n.ldml
+  (:nicknames :ldml)
+  (:export
    #:january
    #:february
    #:marc
@@ -108,11 +123,7 @@
    #:thursday
    #:friday
    #:saturday
-   ))
 
-(defpackage :cl-l10n.ldml
-  (:nicknames :ldml)
-  (:export
    #:node
 
    #:ldml

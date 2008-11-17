@@ -203,82 +203,85 @@ Be careful when using in different situations, because it modifies *readtable*."
                    str)
                foundp))))
 
-(defun-with-capitalizer localize-currency-symbol (name)
+(defun-with-capitalizer cl-l10n.lang:localize-currency-symbol (name)
   (assert (ldml-symbol-p name))
   (do-current-locales-for-resource name locale
     (awhen (gethash name (currencies-of locale))
       (return (second it)))))
 
-(defun-with-capitalizer localize-currency-name (name)
+(defun-with-capitalizer cl-l10n.lang:localize-currency-name (name)
   (assert (ldml-symbol-p name))
   (do-current-locales-for-resource name locale
     (awhen (gethash name (currencies-of locale))
       (return (first it)))))
 
-(defun-with-capitalizer localize-language-name (name)
+(defun-with-capitalizer cl-l10n.lang:localize-language-name (name)
   (assert (ldml-symbol-p name))
   (do-current-locales-for-resource name locale
     (awhen (gethash name (languages-of locale))
       (return (values it t)))))
 
-(defun-with-capitalizer localize-script-name (name)
+(defun-with-capitalizer cl-l10n.lang:localize-script-name (name)
   (assert (ldml-symbol-p name))
   (do-current-locales-for-resource name locale
     (awhen (gethash name (scripts-of locale))
       (return (values it t)))))
 
-(defun-with-capitalizer localize-territory-name (name)
+(defun-with-capitalizer cl-l10n.lang:localize-territory-name (name)
   (assert (ldml-symbol-p name))
   (do-current-locales-for-resource name locale
     (awhen (gethash name (territories-of locale))
       (return (values it t)))))
 
-(defun-with-capitalizer localize-variant-name (name)
+(defun-with-capitalizer cl-l10n.lang:localize-variant-name (name)
   (assert (ldml-symbol-p name))
   (do-current-locales-for-resource name locale
     (awhen (gethash name (variants-of locale))
       (return (values it t)))))
 
-(defun-with-capitalizer localize-month-name (name &key abbreviated)
+(defun-with-capitalizer cl-l10n.lang:localize-month-name (name &key abbreviated)
   (bind ((index name))
     (unless (integerp name)
-      (assert (ldml-symbol-p name))
-      (setf index (position name '(cl-l10n.lang:january cl-l10n.lang:february cl-l10n.lang:marc
-                                   cl-l10n.lang:april   cl-l10n.lang:may      cl-l10n.lang:june
-                                   cl-l10n.lang:july    cl-l10n.lang:august   cl-l10n.lang:september
-                                   cl-l10n.lang:october cl-l10n.lang:november cl-l10n.lang:december))))
-   (assert (<= 0 index 11))
-   (do-current-locales-for-resource "<a month name>" locale
-     (when-bind calendar (gregorian-calendar-of locale)
-       (when-bind vector (if abbreviated
-                             (abbreviated-month-names-of calendar)
-                             (month-names-of calendar))
-         (awhen (aref vector index)
-           (return (values it t))))))))
+      (setf index (position name '(cl-l10n.ldml:january cl-l10n.ldml:february cl-l10n.ldml:marc
+                                   cl-l10n.ldml:april   cl-l10n.ldml:may      cl-l10n.ldml:june
+                                   cl-l10n.ldml:july    cl-l10n.ldml:august   cl-l10n.ldml:september
+                                   cl-l10n.ldml:october cl-l10n.ldml:november cl-l10n.ldml:december))))
+    (unless (and index
+                 (<= 0 index 11))
+      (error "~S is not a valid month name, it should be either an integer between 0 and 11 or a symbol like 'CL-L10N.LDML:JANUARY" name))
+    (do-current-locales-for-resource "<a month name>" locale
+      (when-bind calendar (gregorian-calendar-of locale)
+        (when-bind vector (if abbreviated
+                              (abbreviated-month-names-of calendar)
+                              (month-names-of calendar))
+          (awhen (aref vector index)
+            (return (values it t))))))))
 
-(defun-with-capitalizer localize-day-name (name &key abbreviated)
+(defun-with-capitalizer cl-l10n.lang:localize-day-name (name &key abbreviated)
   (bind ((index name))
     (unless (integerp name)
-      (assert (ldml-symbol-p name))
-      (setf index (position name '(cl-l10n.lang:sunday    cl-l10n.lang:monday   cl-l10n.lang:tuesday
-                                   cl-l10n.lang:wednesday cl-l10n.lang:thursday cl-l10n.lang:friday
-                                   cl-l10n.lang:saturday))))
-   (assert (<= 0 index 6))
-   (do-current-locales-for-resource "<a day name>" locale
-     (when-bind calendar (gregorian-calendar-of locale)
-       (when-bind vector (if abbreviated
-                             (abbreviated-day-names-of calendar)
-                             (day-names-of calendar))
-         (awhen (aref vector index)
-           (return (values it t))))))))
+      (setf index (position name '(cl-l10n.ldml:sunday    cl-l10n.ldml:monday   cl-l10n.ldml:tuesday
+                                   cl-l10n.ldml:wednesday cl-l10n.ldml:thursday cl-l10n.ldml:friday
+                                   cl-l10n.ldml:saturday))))
+    (unless (and index
+                 (<= 0 index 6))
+      (error "~S is not a valid day name, it should be either an integer between 0 and 6 (0 is Sunday) or a symbol like 'CL-L10N.LDML:SUNDAY" name))
+    (do-current-locales-for-resource "<a day name>" locale
+      (when-bind calendar (gregorian-calendar-of locale)
+        (when-bind vector (if abbreviated
+                              (abbreviated-day-names-of calendar)
+                              (day-names-of calendar))
+          (awhen (aref vector index)
+            (return (values it t))))))))
 
-(defun-with-capitalizer localize-quarter-name (name &key abbreviated)
+(defun-with-capitalizer cl-l10n.lang:localize-quarter-name (name &key abbreviated)
   (bind ((index name))
     (unless (integerp name)
-      (assert (ldml-symbol-p name))
-      (setf index (position name '(cl-l10n.lang:first-quarter cl-l10n.lang:second-quarter
-                                   cl-l10n.lang:third-quarter cl-l10n.lang:fourth-quarter))))
-    (assert (<= 0 index 3))
+      (setf index (position name '(cl-l10n.ldml:first-quarter cl-l10n.ldml:second-quarter
+                                   cl-l10n.ldml:third-quarter cl-l10n.ldml:fourth-quarter))))
+    (unless (and index
+                 (<= 0 index 3))
+      (error "~S is not a valid quarter name, it should be either an integer between 0 and 3 or a symbol like 'CL-L10N.LDML:FIRST-QUARTER" name))
     (do-current-locales-for-resource "<a quarter name>" locale
       (when-bind calendar (gregorian-calendar-of locale)
         (when-bind vector (if abbreviated
@@ -287,7 +290,7 @@ Be careful when using in different situations, because it modifies *readtable*."
           (awhen (aref vector index)
             (return (values it t))))))))
 
-(defun-with-capitalizer localize-number-symbol (name)
+(defun-with-capitalizer cl-l10n.lang:localize-number-symbol (name)
   (assert (ldml-symbol-p name))
   (do-current-locales-for-resource name locale
     (awhen (assoc name (number-symbols-of locale) :test #'eq)
@@ -308,5 +311,5 @@ Be careful when using in different situations, because it modifies *readtable*."
     ;; TODO at parse time, coerce stuff like ldml:native-zero-digit to character
     ;; and update the pattern compilers, too!
     (if number-symbol-name
-        (localize-number-symbol number-symbol-name)
+        (cl-l10n.lang:localize-number-symbol number-symbol-name)
         number-symbol-char)))
