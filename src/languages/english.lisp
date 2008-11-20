@@ -13,7 +13,7 @@
   "Returns the english plural of the given word."
   ;; http://www.reference.com/browse/wiki/English_plural
   ;; http://www.csse.monash.edu.au/~damian/papers/HTML/Plurals.html
-  (declare (type (simple-array character) word)
+  (declare (type string word)
            (optimize (speed 3) (debug 0)))
   (let ((length (length word)))
     (when (< length 2)

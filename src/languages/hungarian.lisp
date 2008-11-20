@@ -10,7 +10,7 @@
 
 (defun hungarian-plural-of (word &optional (uppercase nil uppercase-provided-p))
   "Returns the hungarian plural of the given word."
-  (declare (type (simple-array character (*)) word)
+  (declare (type string word)
            (optimize (speed 3) (debug 0)))
   (awhen (gethash word *hungarian-plural-overrides*)
     (return-from hungarian-plural-of
