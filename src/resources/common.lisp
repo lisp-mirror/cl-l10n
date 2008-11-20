@@ -18,49 +18,55 @@
                  (list #\Space)
                  str)))
 
+(defun ensure-ldml-symbol-or-form (thing)
+  (if (and thing
+           (symbolp thing))
+      (cl-l10n::ensure-ldml-symbol thing)
+      thing))
+
 (defmacro number-symbol (name)
   `(cl-l10n.lang:localize-number-symbol
-    ',(cl-l10n::ensure-ldml-symbol name)))
+    ',(ensure-ldml-symbol-or-form name)))
 
 (defmacro currency-symbol (name)
   `(cl-l10n.lang:localize-currency-symbol
-    ',(cl-l10n::ensure-ldml-symbol name)))
+    ',(ensure-ldml-symbol-or-form name)))
 
 (defmacro currency-name (name)
   `(cl-l10n.lang:localize-currency-name
-    ',(cl-l10n::ensure-ldml-symbol name)))
+    ',(ensure-ldml-symbol-or-form name)))
 
 (defmacro language (name)
   `(cl-l10n.lang:localize-language-name
-    ',(cl-l10n::ensure-ldml-symbol name)))
+    ',(ensure-ldml-symbol-or-form name)))
 
 (defmacro script (name)
   `(cl-l10n.lang:localize-script-name
-    ',(cl-l10n::ensure-ldml-symbol name)))
+    ',(ensure-ldml-symbol-or-form name)))
 
 (defmacro territory (name)
   `(cl-l10n.lang:localize-territory-name
-    ',(cl-l10n::ensure-ldml-symbol name)))
+    ',(ensure-ldml-symbol-or-form name)))
 
 (defmacro variant (name)
   `(cl-l10n.lang:localize-variant-name
-    ',(cl-l10n::ensure-ldml-symbol name)))
+    ',(ensure-ldml-symbol-or-form name)))
 
 (defmacro month (name &key abbreviated capitalize-first-letter)
   `(cl-l10n.lang:localize-month-name
-    ',(cl-l10n::ensure-ldml-symbol name)
+    ',(ensure-ldml-symbol-or-form name)
     :abbreviated ,abbreviated
     :capitalize-first-letter ,capitalize-first-letter))
 
 (defmacro day (name &key abbreviated capitalize-first-letter)
   `(cl-l10n.lang:localize-day-name
-    ',(cl-l10n::ensure-ldml-symbol name)
+    ',(ensure-ldml-symbol-or-form name)
     :abbreviated ,abbreviated
     :capitalize-first-letter ,capitalize-first-letter))
 
 (defmacro quarter (name &key abbreviated capitalize-first-letter)
   `(cl-l10n.lang:localize-quarter-name
-    ',(cl-l10n::ensure-ldml-symbol name)
+    ',(ensure-ldml-symbol-or-form name)
     :abbreviated ,abbreviated
     :capitalize-first-letter ,capitalize-first-letter))
 
