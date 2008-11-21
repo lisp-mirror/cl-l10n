@@ -46,7 +46,7 @@
 
 (defun english-indefinite-article-for (word)
   "Returns a/an for the given word."
-  (declare (type (simple-array character) word)
+  (declare (type string word)
            (optimize (speed 3) (debug 0)))
   (if (> (length word) 1)
       (if (vowelp (elt word 0))

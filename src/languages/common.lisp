@@ -93,7 +93,7 @@
        (vowel-low-p it)))
 
 (defun last-vowel-of (str)
-  (declare (type (simple-array character) str)
+  (declare (type string str)
            (optimize (speed 3) (debug 0)))
   (iter (for i from (1- (length str)) downto 0)
         (for char = (elt str i))
@@ -110,14 +110,14 @@
   (define double-acute))
 
 (defun starts-with-consonant-p (str)
-  (declare (type (simple-array character) str)
+  (declare (type string str)
            (optimize (speed 3) (debug 0))
            (inline))
   (unless (zerop (length str))
     (consonantp (elt str 0))))
 
 (defun starts-with-vowel-p (str)
-  (declare (type (simple-array character) str)
+  (declare (type string str)
            (optimize (speed 3) (debug 0))
            (inline))
   (unless (zerop (length str))
