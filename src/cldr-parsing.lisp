@@ -11,7 +11,7 @@
   ((parser :initform *parser* :initarg :parser :accessor parser-of))
   (:report (lambda (c stream)
              (bind ((source-xml-file (source-xml-file-of (parser-of c))))
-               (apply #'format stream (concatenate 'string "~A.~A: " (simple-condition-format-control c))
+               (apply #'cl:format stream (concatenate 'string "~A.~A: " (simple-condition-format-control c))
                       (pathname-name source-xml-file)
                       (pathname-type source-xml-file)
                       (simple-condition-format-arguments c))))))

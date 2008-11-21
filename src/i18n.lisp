@@ -52,7 +52,7 @@ and funcall the resource registered for the current locale."
         (cond ((functionp resource)
                (values (apply resource args) t))
               (args
-               (values (apply #'format nil resource args) t))
+               (values (apply #'cl:format nil resource args) t))
               (t
                (values resource t)))    ; a simple literal
         (values nil nil))))

@@ -80,7 +80,7 @@
    (named-lambda currency-format-fallback (stream)
      (warn "No currency formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
            verbosity (current-locale))
-     (format stream "~A ~A" number currency-code))))
+     (cl:format stream "~A ~A" number currency-code))))
 
 (defun %format-number-iterating-locales (stream number verbosity
                                          pattern pattern-compiler
@@ -113,7 +113,7 @@
    (named-lambda number-format-fallback (stream)
      (warn "No ~A was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
            formatter-name verbosity (current-locale))
-     (format stream fallback-format-pattern number))))
+     (cl:format stream fallback-format-pattern number))))
 
 (defun format-number/decimal (stream number &key (verbosity 'ldml:medium) pattern)
   (%format-number-iterating-locales stream number verbosity
