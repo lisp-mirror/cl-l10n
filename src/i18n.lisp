@@ -24,7 +24,7 @@
     ;; define a function with this name that'll look at the *locale* list and call the first
     ;; locale specific lambda it finds while walking the locales
     (when (fboundp name)
-      (warn "Redefining function definiton of ~S while adding locale specific resource" name))
+      (simple-style-warning "Redefining function definiton of ~S while adding a functional locale specific resource" name))
     (setf (symbol-function name)
           (lambda (&rest args)
             (lookup-resource name :arguments args)))
@@ -32,21 +32,27 @@
     (setf (get name 'resource-lookup-stub) t)))
 
 (defun %set-resource (locale name resource)
-  "Store RESOURCE in the resource map at the given locale. When RESOURCE
-is functionp then define a function on NAME that will dispatch on *locale* when called
-and funcall the resource registered for the current locale."
+  "Store RESOURCE in the resource map at the given locale. When RESOURCE is functionp then define a function on NAME that will dispatch on *locale* when called and funcall the resource registered for the current locale."
   (check-type name (or string symbol))
   (check-type locale locale)
-  (setf (gethash (resource-key name) (resources-of locale)) resource)
-  (when (functionp resource)
-    (ensure-resource-lookup-stub name))
+  (let ((key (if (functionp resource)
+                 (progn
+                   (unless (symbolp name)
+                     (error "~S: Please use symbols to name functional resources." name))
+                   (ensure-resource-lookup-stub name)
+                   name)
+                 (string-downcase name))))
+    (setf (gethash key (resources-of locale)) resource))
   name)
 
 (defun %lookup-resource (locale name args)
   (check-type name (or symbol string))
   (check-type locale locale)
-  (bind ((key (resource-key name))
-         ((:values resource foundp) (gethash key (resources-of locale))))
+  (bind ((resources (resources-of locale))
+         ((:values resource foundp) (gethash name resources)))
+    (when (and (not foundp)
+               (symbolp name))
+      (setf (values resource foundp) (gethash (string-downcase name) resources)))
     (if foundp
         ;; dispatch on resource type
         (cond ((functionp resource)

@@ -66,6 +66,8 @@
   (:export
 
    #:plural-of
+   #:indefinite-article-for
+   #:definite-article-for
 
    #:list
 
