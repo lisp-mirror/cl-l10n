@@ -50,8 +50,7 @@
   (check-type locale locale)
   (bind ((resources (resources-of locale))
          ((:values resource foundp) (gethash name resources)))
-    (when (and (not foundp)
-               (symbolp name))
+    (unless foundp
       (setf (values resource foundp) (gethash (string-downcase name) resources)))
     (if foundp
         ;; dispatch on resource type
