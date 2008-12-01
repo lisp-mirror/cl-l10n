@@ -4,10 +4,10 @@
 
 (declaim (inline trim))
 
-(defun write-decimal-digits (stream number &key minimum-column-count (maximum-digit-count most-positive-fixnum)
+(defun write-decimal-digits (stream number &key minimum-digit-count (maximum-digit-count most-positive-fixnum)
                              (padding-character #\0))
   (declare (optimize speed)
-           (type (or null fixnum) minimum-column-count)
+           (type (or null fixnum) minimum-digit-count)
            (type fixnum maximum-digit-count))
   (bind ((remainder number)
          (digit 0)
@@ -20,8 +20,8 @@
           (push digit digits)
           (incf number-of-digits)
           (until (zerop remainder)))
-    (when minimum-column-count
-      (bind ((padding-length (- minimum-column-count number-of-digits)))
+    (when minimum-digit-count
+      (bind ((padding-length (- minimum-digit-count number-of-digits)))
         (when (plusp padding-length)
           (iter (repeat padding-length)
                 (write-char padding-character stream)))))

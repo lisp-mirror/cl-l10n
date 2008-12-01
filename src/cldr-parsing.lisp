@@ -171,6 +171,8 @@
    ldml:pm
    ldml:date-formats
    ldml:date-format-length
+   ldml:time-formats
+   ldml:time-format-length
    ldml:era-names
    ldml:era-abbr
    ldml:era-narrow
@@ -378,6 +380,15 @@
         (cldr-parser-warning "LDML node ~A has multiple children, using the first one" inbetween-node))
       (bind ((pattern (flexml:string-content-of (flexml:first-child inbetween-node))))
         (setf (getf (date-formatters-of (gregorian-calendar-of *locale*)) name)
+              (list :formatter 'dummy-formatter :pattern pattern)))))
+
+  (:method ((parent ldml:time-formats) (node ldml:time-format-length))
+    (bind ((name (ldml-intern (slot-value node 'ldml::type)))
+           (inbetween-node (flexml:the-only-child node)))
+      (unless (length= 1 (flexml:children-of inbetween-node))
+        (cldr-parser-warning "LDML node ~A has multiple children, using the first one" inbetween-node))
+      (bind ((pattern (flexml:string-content-of (flexml:first-child inbetween-node))))
+        (setf (getf (time-formatters-of (gregorian-calendar-of *locale*)) name)
               (list :formatter 'dummy-formatter :pattern pattern))))))
 
 (defun parse-era-ldml-node (node reader)

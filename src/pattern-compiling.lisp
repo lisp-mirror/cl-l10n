@@ -317,9 +317,9 @@
 (defun compile-date-patterns/gregorian-calendar (patterns)
   (declare (optimize speed))
   (macrolet ((piece-formatter (&body body)
-               `(lambda (stream date year month day day-of-week)
-                  (declare (ignorable date year month day day-of-week)
-                           (type non-negative-fixnum year month day day-of-week))
+               `(lambda (stream date year month day day-of-week hour minute second nano-second)
+                  (declare (ignorable date year month day day-of-week hour minute second nano-second)
+                           (type non-negative-fixnum year month day day-of-week hour minute second nano-second))
                   (bind ((month-1 (1- month))
                          (day-1 (1- day)))
                     (declare (ignorable date month-1 day-1 day-of-week)
@@ -355,61 +355,91 @@
                       (unless (zerop length)
                         ;;(format *debug-io* "  processing inner piece ~S~%" piece)
                         (bind ((directive-character (char piece 0)))
-                          (switch (directive-character :test #'char=)
-                            (#\y (cond
-                                   ((= length 1)
-                                    (collect (piece-formatter (write-decimal-digits stream year))))
-                                   ((= length 2)
-                                    (collect (piece-formatter (write-decimal-digits stream year :maximum-digit-count 2))))
-                                   (t (collect (piece-formatter (write-decimal-digits stream year :minimum-column-count length))))))
-                            (#\M (cond
-                                   ((= length 3)
-                                    (collect (piece-formatter (write-string (aref abbreviated-month-names month-1) stream))))
-                                   ((= length 4)
-                                    (collect (piece-formatter (write-string (aref month-names month-1) stream))))
-                                   ((= length 5)
-                                    (collect (piece-formatter (write-string (aref narrow-month-names month-1) stream))))
-                                   ((<= length 2)
-                                    (collect (piece-formatter (write-decimal-digits stream month :minimum-column-count length))))
-                                   (t
-                                    (invalid-number-of-directives))))
-                            (#\E (cond
-                                   ((= length 4)
-                                    (collect (piece-formatter (write-string (aref day-names day-of-week) stream))))
-                                   ((= length 5)
-                                    (collect (piece-formatter (write-string (aref narrow-day-names day-of-week) stream))))
-                                   ((<= length 3)
-                                    (collect (piece-formatter (write-string (aref abbreviated-day-names day-of-week) stream))))
-                                   (t
-                                    (invalid-number-of-directives))))
-                            (#\G (cond
-                                   ((= length 4)
-                                    (collect (era-formatter era-names)))
-                                   ((= length 5)
-                                    (unless narrow-era-names
-                                      (error "Locale ~A does not have narrow era names for the Gregorian calendar" *locale*))
-                                    (collect (era-formatter narrow-era-names)))
-                                   ((<= length 3)
-                                    (collect (era-formatter abbreviated-era-names)))
-                                   (t
-                                    (invalid-number-of-directives))))
-                            (#\d (unless (or (= 1 length)
-                                             (= 2 length))
-                                   (invalid-number-of-directives))
-                                 (collect (piece-formatter (write-decimal-digits stream day :minimum-column-count length))))
-                            (otherwise
-                             (when (find directive-character +date-pattern-characters/gregorian-calendar+ :test #'char=)
-                               (cerror "Print it unprocessed" "Unexpected or not yet implemented directive in Gregorian calendar date format: \"~A\", character ~A"
-                                       pattern directive-character))
-                             (collect (piece-formatter (write-string piece stream)))))))))
+                          (flet ((process-hour-directive (&key offset modulo)
+                                   (if (or (= length 1)
+                                           (= length 2))
+                                       (collect (piece-formatter (bind ((hour (if modulo
+                                                                                  (mod hour modulo)
+                                                                                  hour)))
+                                                                   (when offset
+                                                                     (incf hour offset))
+                                                                   (write-decimal-digits stream hour
+                                                                                         :minimum-digit-count length))))
+                                       (invalid-number-of-directives))))
+                            (declare (inline process-hour-directive))
+                            (switch (directive-character :test #'char=)
+                              (#\y (cond
+                                     ((= length 1)
+                                      (collect (piece-formatter (write-decimal-digits stream year))))
+                                     ((= length 2)
+                                      (collect (piece-formatter (write-decimal-digits stream year :maximum-digit-count 2))))
+                                     (t (collect (piece-formatter (write-decimal-digits stream year :minimum-digit-count length))))))
+                              (#\M (cond
+                                     ((= length 3)
+                                      (collect (piece-formatter (write-string (aref abbreviated-month-names month-1) stream))))
+                                     ((= length 4)
+                                      (collect (piece-formatter (write-string (aref month-names month-1) stream))))
+                                     ((= length 5)
+                                      (collect (piece-formatter (write-string (aref narrow-month-names month-1) stream))))
+                                     ((<= length 2)
+                                      (collect (piece-formatter (write-decimal-digits stream month :minimum-digit-count length))))
+                                     (t
+                                      (invalid-number-of-directives))))
+                              (#\E (cond
+                                     ((= length 4)
+                                      (collect (piece-formatter (write-string (aref day-names day-of-week) stream))))
+                                     ((= length 5)
+                                      (collect (piece-formatter (write-string (aref narrow-day-names day-of-week) stream))))
+                                     ((<= length 3)
+                                      (collect (piece-formatter (write-string (aref abbreviated-day-names day-of-week) stream))))
+                                     (t
+                                      (invalid-number-of-directives))))
+                              (#\G (cond
+                                     ((= length 4)
+                                      (collect (era-formatter era-names)))
+                                     ((= length 5)
+                                      (unless narrow-era-names
+                                        (error "Locale ~A does not have narrow era names for the Gregorian calendar" *locale*))
+                                      (collect (era-formatter narrow-era-names)))
+                                     ((<= length 3)
+                                      (collect (era-formatter abbreviated-era-names)))
+                                     (t
+                                      (invalid-number-of-directives))))
+                              (#\d (unless (or (= 1 length)
+                                               (= 2 length))
+                                     (invalid-number-of-directives))
+                                   (collect (piece-formatter (write-decimal-digits stream day :minimum-digit-count length))))
+                              (#\h (process-hour-directive :offset 1 :modulo 12))
+                              (#\H (process-hour-directive))
+                              (#\K (process-hour-directive :modulo 12))
+                              (#\k (process-hour-directive :offset 1))
+                              (#\m (unless (or (= 1 length)
+                                               (= 2 length))
+                                     (invalid-number-of-directives))
+                                   (collect (piece-formatter (write-decimal-digits stream minute :minimum-digit-count length))))
+                              (#\s (unless (or (= 1 length)
+                                               (= 2 length))
+                                     (invalid-number-of-directives))
+                                   (collect (piece-formatter (write-decimal-digits stream second :minimum-digit-count length))))
+                              (#\S (bind ((rounding-divisor (expt 10 (- length))))
+                                     (collect (piece-formatter
+                                               (bind ((fraction (round (/ nano-second 1000000000d0) rounding-divisor)))
+                                                 (write-decimal-digits stream fraction :minimum-digit-count length))))))
+                              (otherwise
+                               (when (find directive-character +date-pattern-characters/gregorian-calendar+ :test #'char=)
+                                 (cerror "Print it unprocessed" "Unexpected or not yet implemented directive in Gregorian calendar date format: \"~A\", character ~A"
+                                         pattern directive-character))
+                               (collect (piece-formatter (write-string piece stream))))))))))
                   (collect (piece-formatter (write-string outer-piece stream))))))
           (nreversef piece-formatters)
           (push (named-lambda date-formatter (stream date)
                   ;; TODO should we compare the value of *locale* at compile/runtime?
                   ;; if yes, then check the other formatters, too!
-                  (local-time:with-decoded-timestamp (:year year :month month :day day :day-of-week day-of-week) date
+                  (local-time:with-decoded-timestamp (:year year :month month :day day :day-of-week day-of-week
+                                                      :hour hour :minute minute :sec second :nsec nano-second)
+                      date
                     (dolist (formatter piece-formatters)
-                      (funcall (the function formatter) stream date year month day day-of-week))))
+                      (funcall (the function formatter) stream date year month day day-of-week hour minute second nano-second))))
                 formatters)))
       (nreverse formatters))))
 

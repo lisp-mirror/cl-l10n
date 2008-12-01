@@ -61,7 +61,10 @@
     :accessor pm-of)
    (date-formatters
     :initform nil
-    :accessor date-formatters-of)))
+    :accessor date-formatters-of)
+   (time-formatters
+    :initform nil
+    :accessor time-formatters-of)))
 
 (defun effective-date-related-names (calendar-slot-reader name-vector-slot-reader &optional defaults)
   (setf calendar-slot-reader (ensure-function calendar-slot-reader))

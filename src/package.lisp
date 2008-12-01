@@ -165,6 +165,8 @@
    #:pm
    #:date-formats
    #:date-format-length
+   #:time-formats
+   #:time-format-length
    #:era-names
    #:era-abbr
    #:era-narrow
