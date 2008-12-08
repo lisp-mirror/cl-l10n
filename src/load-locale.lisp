@@ -12,6 +12,9 @@
      (locale-name locale))
     ((stringp locale) ;; (member locale '("root" "en_US_POSIX") :test #'string=)
      locale)
+    ((and (symbolp locale)
+          (equalp (symbol-name locale) "root"))
+     "root")
     (t
      (bind ((name locale)
             (language nil)
