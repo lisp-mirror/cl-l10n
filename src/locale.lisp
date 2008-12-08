@@ -101,7 +101,7 @@
   "Calculate the precedence list for a locale that should be searched for definitions. For example: (locale-precedence-list (locale \"en_US_POSIX\")) => (en_US_POSIX en_US en root)"
   (let ((result (list locale)))
     (flet ((try (locale-name)
-             (awhen (locale locale-name :errorp nil)
+             (awhen (locale locale-name :otherwise nil)
                (push it result))))
       (when (variant-of locale)
         (try (locale-name locale

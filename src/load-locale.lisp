@@ -65,7 +65,7 @@
 (defun locale-not-found-error (locale-name)
   (error 'locale-not-found-error :locale-name locale-name))
 
-(defun locale (locale-designator &key (use-cache t) (errorp t))
+(defun locale (locale-designator &key (use-cache t) (otherwise nil otherwise-p))
   "Find locale named by the specification LOCALE-DESIGNATOR. If USE-CACHE
 is non-nil forcefully reload/reparse the cldr locale else
 the locale is first looked for in *locale-cache*. If ERRORP is non-nil
@@ -84,8 +84,9 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
                 (setf (cached-locale name) locale)
                 (load-resource name)
                 locale)
-              (when errorp
-                (locale-not-found-error name)))))))
+              (handle-otherwise (if otherwise-p
+                                    otherwise
+                                    `(:error "Locale with name ~S was not found" ,locale-designator))))))))
 
 (defun load-resource (name)
   ;;(l10n-logger.debug "Trying to load resource ~A" name)
@@ -140,7 +141,7 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
                  (setf locale-name (subseq locale-name 0 it)))
                (when (member locale-name '("C" "posix" "POSIX") :test #'string=)
                  (setf locale-name "en_US_POSIX"))
-               (locale locale-name :errorp nil)))))
+               (locale locale-name :otherwise nil)))))
     (let ((locale (or (try "CL_LOCALE")
                       (try "LC_CTYPE")
                       (try "LANG")
