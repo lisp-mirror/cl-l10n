@@ -78,30 +78,39 @@
 
 (defclass id-attribute-entry ()
   ((id->node :initform (make-hash-table :test 'equal) :accessor id->node-of)
-   (namespace-uri :accessor namespace-uri-of :initarg namespace-uri)
-   (name :accessor name-of :initarg name)))
+   (namespace-uri :accessor namespace-uri-of :initarg :namespace-uri)
+   (name :accessor name-of :initarg :name)))
+
+(defmethod initialize-instance :after ((self flexml-builder) &key id-attributes)
+  (etypecase id-attributes
+    (null)
+    (cons
+     (dolist (entry id-attributes)
+       (let ((namespace-uri nil)
+             (name nil))
+         (if (consp entry)
+             (progn
+               (assert (= 2 (length entry)))
+               (setf namespace-uri (first entry))
+               (setf name (second entry)))
+             (progn
+               (assert (stringp entry))
+               (setf name entry)))
+         (setf (gethash (list namespace-uri name) (id-attributes-of self))
+               (make-instance 'id-attribute-entry
+                              :namespace-uri namespace-uri
+                              :name name)))))
+    (hash-table
+     ;; let's assume the user knows what they want and it's fine as it is...
+     (setf (id-attributes-of self) id-attributes))))
 
 (defun make-flexml-builder (&key (default-package nil default-package-p) (include-default-values t)
                             id-attributes)
   (let ((builder (make-instance 'flexml-builder
-                                :include-default-values include-default-values)))
+                                :include-default-values include-default-values
+                                :id-attributes id-attributes)))
     (when default-package-p
       (setf (default-package-of builder) default-package))
-    (dolist (entry id-attributes)
-      (let ((namespace-uri nil)
-            (name nil))
-        (if (consp entry)
-            (progn
-              (assert (= 2 (length entry)))
-              (setf namespace-uri (first entry))
-              (setf name (second entry)))
-            (progn
-              (assert (and entry (symbolp entry)))
-              (setf name entry)))
-        (setf (gethash (list namespace-uri name) (id-attributes-of builder))
-              (make-instance 'id-attribute-entry
-                             :namespace-uri namespace-uri
-                             :name name))))
     builder))
 
 (defclass flexml-node ()
