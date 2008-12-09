@@ -36,7 +36,7 @@
 
 (defun read-key->value-text-file-into-hashtable (file)
   (with-open-file (file-stream file :element-type '(unsigned-byte 8))
-    (let ((stream (make-flexi-stream file-stream :external-format :utf-8)))
+    (let ((stream (flexi-streams:make-flexi-stream file-stream :external-format :utf-8)))
       (iter (with result = (make-hash-table :test #'equal))
             (for line in-stream stream :using (lambda (stream eof-error-p eof-value)
                                                 (let ((result (read-line stream eof-error-p eof-value)))
@@ -47,9 +47,9 @@
             (when (or (zerop (length line))
                       (eql (aref line 0) #\;))
               (next-iteration))
-            (for pieces = (split (load-time-value
-                                  (create-scanner
-                                   (concatenate 'string "[ |" (list #\Tab) "]+")))
+            (for pieces = (cl-ppcre:split (load-time-value
+                                           (cl-ppcre:create-scanner
+                                            (concatenate 'string "[ |" (list #\Tab) "]+")))
                                  line))
             (for split-count = (length pieces))
             (when (> split-count 2)

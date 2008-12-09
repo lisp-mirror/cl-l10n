@@ -7,8 +7,6 @@
    :common-lisp
    :metabang-bind
    :alexandria
-   :cl-ppcre
-   :flexi-streams
    :iterate
    )
   (:shadow
