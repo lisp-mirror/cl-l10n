@@ -27,3 +27,21 @@
 (defun (setf cached-locale) (new-val name)
   (setf (gethash name *locale-cache*)
         new-val))
+
+;; TODO locking for thread safety
+(defvar *locale-loaded-listeners* ())
+
+(defun register-locale-loaded-listener (fn)
+  (check-type fn symbol)
+  (unless (find fn *locale-loaded-listeners*)
+    (push fn *locale-loaded-listeners*)
+    ;; TODO locking
+    ;; call it for the already loaded locales
+    (dolist (locale (hash-table-values *locale-cache*))
+      (funcall fn (locale-name locale))))
+  fn)
+
+(defun unregister-locale-loaded-listener (fn)
+  (check-type fn symbol)
+  (deletef *locale-loaded-listeners* fn)
+  (values))

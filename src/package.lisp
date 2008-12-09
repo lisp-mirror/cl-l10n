@@ -31,6 +31,8 @@
 
    #:shadow-format
    #:reload-resources
+   #:register-locale-loaded-listener
+   #:unregister-locale-loaded-listener
 
    #:capitalize-first-letter
    #:capitalize-first-letter!

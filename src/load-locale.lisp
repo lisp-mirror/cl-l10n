@@ -82,14 +82,16 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
           (if (probe-file file)
               (let ((locale (parse-cldr-file name)))
                 (setf (cached-locale name) locale)
-                (load-resource name)
+                (dolist (listener *locale-loaded-listeners*)
+                  (funcall listener name))
                 locale)
               (handle-otherwise (if otherwise-p
                                     otherwise
                                     `(:error "Locale with name ~S was not found" ,locale-designator))))))))
 
+(register-locale-loaded-listener 'load-resource)
+
 (defun load-resource (name)
-  ;;(l10n-logger.debug "Trying to load resource ~A" name)
   (let ((resource-file (project-relative-pathname
                         (make-pathname :directory
                                        '(:relative "src" "resources")
@@ -97,7 +99,6 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
                                        :type "lisp"))))
     (awhen (probe-file resource-file)
       (when (pathname-name it)
-        ;;(l10n-logger.debug "Resource found at ~A" it)
         (load it)))))
 
 (defun reload-resources ()
