@@ -59,7 +59,7 @@
 (define-condition locale-not-found-error (error)
   ((locale-name :initarg :locale-name :accessor locale-name-of))
   (:report (lambda (condition stream)
-             (cl:format stream "Could not find locale definition for ~S among the CLDR files. (Hint: cl-l10n/bin/update-cldr.sh)"
+             (cl:format stream "Could not find locale definition for ~S among the CLDR files. (Hint: did you run 'cl-l10n/bin/update-cldr.sh' to download the CLDR files?)"
                         (locale-name-of condition)))))
 
 (defun locale-not-found-error (locale-name)
@@ -87,7 +87,8 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
                 locale)
               (handle-otherwise (if otherwise-p
                                     otherwise
-                                    `(:error "Locale with name ~S was not found" ,locale-designator))))))))
+                                    (lambda ()
+                                      (locale-not-found-error locale-designator)))))))))
 
 (register-locale-loaded-listener 'load-resource)
 
