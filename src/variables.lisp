@@ -31,17 +31,17 @@
 ;; TODO locking for thread safety
 (defvar *locale-loaded-listeners* ())
 
-(defun register-locale-loaded-listener (fn)
-  (check-type fn symbol)
-  (unless (find fn *locale-loaded-listeners*)
-    (push fn *locale-loaded-listeners*)
+(defun register-locale-loaded-listener (fn-name)
+  (check-type fn-name symbol) ; to enforce using symbols, so that we can guard against double registration
+  (unless (find fn-name *locale-loaded-listeners*)
+    (push fn-name *locale-loaded-listeners*)
     ;; TODO locking
     ;; call it for the already loaded locales
     (dolist (locale (hash-table-values *locale-cache*))
-      (funcall fn (locale-name locale))))
-  fn)
+      (funcall fn-name (locale-name locale))))
+  fn-name)
 
-(defun unregister-locale-loaded-listener (fn)
-  (check-type fn symbol)
-  (deletef *locale-loaded-listeners* fn)
+(defun unregister-locale-loaded-listener (fn-name)
+  (check-type fn-name symbol)
+  (deletef *locale-loaded-listeners* fn-name)
   (values))

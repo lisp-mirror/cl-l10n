@@ -1,6 +1,6 @@
 README for Package CL-L10N
 Author: Sean Ross
-i18n stuff: Levente Mészáros, Attila Lendvai
+i18n, CLDR stuff: Levente Mészáros, Attila Lendvai
 Homepage: http://www.common-lisp.net/project/cl-l10n/
 CLDR: http://unicode.org/cldr/
 

@@ -139,6 +139,8 @@
                                                   (- (length integer-part-without-grouping) it)
                                                   0))))
                       (lambda (number)
+                        (declare (inline digit-char)
+                                 (optimize speed))
                         (setf number (abs number))
                         (bind ((formatted-digits (list))
                                ;; the next two lookups could be moved to compile time if all formatters
