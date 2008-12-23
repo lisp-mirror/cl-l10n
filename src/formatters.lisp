@@ -43,7 +43,7 @@
                      ;; OPTIMIZATION: we could implement some per-locale caching here, but it must be
                      ;; carefully keyed (a compiled lambda captures stuff at compile time from the compile time value of *locale*)
                      ;; and the cache must be properly locked to support threading.
-                     (compile-date-pattern/gregorian-calendar pattern))
+                     (compile-date-time-pattern/gregorian-calendar pattern))
                     (function pattern))
                   stream date)
          t)

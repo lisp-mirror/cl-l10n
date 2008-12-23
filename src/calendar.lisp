@@ -3,8 +3,11 @@
 
 (in-package :cl-l10n )
 
+(defclass calendar ()
+  ())
+
 ;; Classes
-(defclass gregorian-calendar ()
+(defclass gregorian-calendar (calendar)
   ((month-names
     :initform nil
     :type (or null (vector * 12))
@@ -18,6 +21,7 @@
     :type (or null (vector * 12))
     :accessor narrow-month-names-of)
 
+   ;; day names start from 0, which means Sunday regardless of the locale dependent first day of the week
    (day-names
     :initform nil
     :type (or null (vector * 7))

@@ -4,19 +4,23 @@
 (in-package :cl-l10n)
 
 ;;; http://www.unicode.org/reports/tr35/tr35-11.html#Date_Format_Patterns
-(define-constant +date-pattern-characters/gregorian-calendar+ "GyYuQqMLlwWdDFgEecahHKkjmsSAzZvV" :test #'string=)
+(define-constant +date-pattern-characters/gregorian-calendar+ "GyYuQqMLlwWdDFgEec" :test #'string=)
+(define-constant +time-pattern-characters/gregorian-calendar+ "ahHKkjmsSAzZvV" :test #'string=)
 
 (define-constant +number-pattern-characters+ "@#.-,E+;%‰¤*()0123456789" :test #'string=)
 
 (defun create-scanner-from-character-list (scanner-characters &optional appended-regexp)
   (cl-ppcre:create-scanner (coerce (append (iter (for char :in-sequence scanner-characters)
-                                          (unless (or (first-time-p))
-                                            (collect #\|))
-                                          (nconcing (nconc (list #\() (list char) (list #\+ #\))))) appended-regexp)
+                                                 (unless (first-time-p)
+                                                   (collect #\|))
+                                                 (nconcing (list #\( char #\+ #\))))
+                                           appended-regexp)
                                    'simple-string)))
 
-(defparameter +date-pattern-scanner/gregorian-calendar+
-  (create-scanner-from-character-list +date-pattern-characters/gregorian-calendar+))
+(defparameter +date-time-pattern-scanner/gregorian-calendar+
+  (create-scanner-from-character-list (concatenate 'string
+                                                   +date-pattern-characters/gregorian-calendar+
+                                                   +time-pattern-characters/gregorian-calendar+)))
 
 ;;; at the time these functions are called *locale* is bound the the locale for which the pattern should be compiled for
 
@@ -313,10 +317,16 @@
     (lambda (stream number)
       (funcall formatter stream (* number 100)))))
 
-(defun compile-date-pattern/gregorian-calendar (pattern)
-  (first (compile-date-patterns/gregorian-calendar (list pattern))))
 
-(defun compile-date-patterns/gregorian-calendar (patterns)
+;;;;;;
+;;; date and time formatter compilers. NOTE: i (attila) did not invest enough time in reading
+;;; the CLDR spec, so some of the code down here may be off a little bit on naming convention
+;;; and stuff like that. i've tried to mark every place where i know there's spece for improvement...
+
+(defun compile-date-time-pattern/gregorian-calendar (pattern)
+  (first (compile-date-time-patterns/gregorian-calendar (list pattern))))
+
+(defun compile-date-time-patterns/gregorian-calendar (patterns)
   (declare (optimize speed))
   (macrolet ((piece-formatter (&body body)
                `(lambda (stream date year month day day-of-week hour minute second nano-second)
@@ -336,6 +346,8 @@
              (invalid-number-of-directives ()
                `(error "Invalid number of consecutive '~A' directives in Gregorian calendar date format: \"~A\", piece \"~A\""
                        directive-character pattern piece)))
+    ;; TODO these effective vectors should be cached on the locale instance because they don't use much memory, but speed up pattern compilation
+    ;; TODO implement the more fine-grained inheritance rules described in http://www.unicode.org/reports/tr35/tr35-11.html#Date_Format_Patterns
     (bind ((day-names               (effective-date-related-names/gregorian-calendar 'day-names-of #("Sunday" "Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday")))
            (abbreviated-day-names   (effective-date-related-names/gregorian-calendar 'abbreviated-day-names-of #("Sun" "Mon" "Tue" "Wed" "Thu" "Fri" "Sat")))
            (narrow-day-names        (effective-date-related-names/gregorian-calendar 'narrow-day-names-of #("S" "M" "T" "W" "T" "F" "S")))
@@ -348,7 +360,7 @@
            (formatters (list)))
       (dolist (pattern patterns)
         (bind ((piece-formatters (list)))
-          (dolist (outer-piece (tokenize-format-pattern pattern +date-pattern-scanner/gregorian-calendar+))
+          (dolist (outer-piece (tokenize-format-pattern pattern +date-time-pattern-scanner/gregorian-calendar+))
             (unless (zerop (length outer-piece))
               ;;(format *debug-io* "processing outer piece ~S~%" outer-piece)
               (if (consp outer-piece)
