@@ -188,6 +188,9 @@ are discarded \(that is, the body is an implicit PROGN)."
     (t
      otherwise)))
 
+(defun not-yet-implemented (&optional message)
+  (cerror "try yo continue" (apply #'concatenate 'string "Not yet implemented" (when message (list ": " message)))))
+
 (defun singlep (list)
   (and (consp list) (not (cdr list))))
 

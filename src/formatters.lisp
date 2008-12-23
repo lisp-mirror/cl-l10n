@@ -29,6 +29,24 @@
         (get-output-stream-string stream)
         stream)))
 
+;; TODO this should be cleaned up and finished once local-time settles down on how to represent dates and time of day.
+;; for now format-date happily format timestamps and understands time format directives when passed in a custom pattern.
+(defun format-date (stream date &key (verbosity 'ldml:medium) pattern (calendar 'gregorian-calendar))
+  (unless (symbolp calendar)
+    (setf calendar (type-of calendar)))
+  (ecase calendar
+    (gregorian-calendar (format-date/gregorian-calendar stream date :verbosity verbosity :pattern pattern))))
+
+(defun format-time (stream time &key (verbosity 'ldml:medium) pattern (calendar 'gregorian-calendar))
+  (unless (symbolp calendar)
+    (setf calendar (type-of calendar)))
+  (not-yet-implemented))
+
+(defun format-timestamp (stream timestamp &key (verbosity 'ldml:medium) pattern (calendar 'gregorian-calendar))
+  (unless (symbolp calendar)
+    (setf calendar (type-of calendar)))
+  (not-yet-implemented))
+
 (defun format-date/gregorian-calendar (stream date &key (verbosity 'ldml:medium) pattern)
   (check-type pattern (or null string function))
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
@@ -61,8 +79,21 @@
            verbosity (current-locale))
      (local-time:format-timestring stream date :format '((:year 4) #\- (:month 2) #\- (:day 2))))))
 
-(defun format-number/currency (stream number currency-code &key (verbosity 'ldml:medium))
-  ;; TODO support a :pattern keyword arg
+(defun format-time/gregorian-calendar (stream timestamp &key (verbosity 'ldml:medium) pattern)
+  (declare (ignore stream timestamp))
+  (check-type pattern (or null string function))
+  (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
+  (not-yet-implemented))
+
+(defun format-timestamp/gregorian-calendar (stream timestamp &key (verbosity 'ldml:medium) pattern)
+  (declare (ignore stream timestamp))
+  (check-type pattern (or null string function))
+  (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
+  (not-yet-implemented))
+
+(defun format-number/currency (stream number currency-code &key (verbosity 'ldml:medium) pattern)
+  (when pattern
+    (not-yet-implemented "Custom pattern support for FORMAT-NUMBER/CURRENCY"))
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
   (%format-iterating-locales
    stream
@@ -128,10 +159,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Customized format directives
 
-(define-constant +directive-replacements+ '((#\M . "/cl-l10n:%format-currency/")
-                                            (#\N . "/cl-l10n:%format-number/")
+(define-constant +directive-replacements+ '((#\N . "/cl-l10n:%format-number.decimal/")
+                                            (#\Y . "/cl-l10n:%format-number.percent/")
+                                            (#\L . "/cl-l10n:%format-date/")
+                                            (#\M . "/cl-l10n:%format-time/")
                                             (#\U . "/cl-l10n:%format-timestamp/")
-                                            (#\L . "/cl-l10n:%format-date/"))
+                                            ;; currency support is pretty hopeless here because it needs the currency name as an argument,
+                                            ;; but the format syntax only allows numeric or character arguments...
+                                            )
   :test 'equal)
 
 (define-compiler-macro format (&whole form destination format-control &rest format-arguments)
@@ -155,28 +190,19 @@
   "Shadowing import the CL-L10N:FORMAT symbol into PACKAGE."
   (shadowing-import '(cl-l10n::format cl-l10n::formatter) package))
 
-(defun %format-currency (stream number colon-modifier? no-thousand-separator &optional currency-code)
-  ;; FIXME this is probably not going to work... should be able to pass in the currency code
-  ;; somehow, but the format syntax only allows numeric or character arguments.
-  (bind ((print-decimal-point? (not colon-modifier?))
-         (print-thousand-separator? (not no-thousand-separator)))
-    (unless print-thousand-separator?
-      (cerror "ignore" "Turning off thousand separators is not yet supported"))
-    (unless print-decimal-point?
-      (cerror "ignore" "Turning off the decimal point is not yet supported"))
-    (unless (ldml-symbol-p currency-code)
-      (error "You need to specify the currency-code (e.g. 'ldml:usd) when formatting currencies"))
-    (format-number/currency stream number currency-code))
-  (values))
-
-(defun %format-number (stream number colon-modifier? at-modifier?)
+(defun %format-number.decimal (stream number colon-modifier? at-modifier?)
   (bind ((print-decimal-point? (not colon-modifier?))
          (print-thousand-separator? (not at-modifier?)))
     (unless print-decimal-point?
-      (cerror "ignore" "Turning off the decimal point is not yet supported"))
+      (not-yet-implemented "Turning off the decimal point"))
     (unless print-thousand-separator?
-      (cerror "ignore" "Turning off thousand separators is not yet supported"))
+      (not-yet-implemented "Turning off thousand separators"))
     (format-number/decimal stream number))
+  (values))
+
+(defun %format-number.percent (stream number colon-modifier? at-modifier?)
+  (declare (ignore colon-modifier? at-modifier?))
+  (format-number/percent stream number)
   (values))
 
 (defun %format-date (stream date colon-modifier? at-modifier?)
@@ -184,20 +210,18 @@
   (format-date/gregorian-calendar stream date)
   (values))
 
+(defun %format-time (stream time colon-modifier? at-modifier?)
+  (declare (ignore colon-modifier? at-modifier?))
+  (format-time/gregorian-calendar stream time)
+  (values))
+
 (defun %format-timestamp (stream timestamp colon-modifier? at-modifier?)
   (bind ((show-timezone? (not colon-modifier?))
          (in-utc-zone? at-modifier?)
-         (timezone (if in-utc-zone? local-time:+utc-zone+ local-time:*default-timezone*))
-         (format (if show-timezone?
-                     '((:year 4) #\- (:month 2) #\- (:day 2) #\T
-                       (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
-                       (:usec 6) :gmt-offset-or-z)
-                     '((:year 4) #\- (:month 2) #\- (:day 2) #\T
-                       (:hour 2) #\: (:min 2) #\: (:sec 2) #\.
-                       (:usec 6)))))
-    ;; TODO KLUDGE finish this part: should use the cldr date formatter
-    ;; (format-date/gregorian-calendar stream timestamp)
-    (local-time:format-timestring stream timestamp :timezone timezone :format format))
+         (local-time:*default-timezone* (if in-utc-zone? local-time:+utc-zone+ local-time:*default-timezone*)))
+    (declare (ignore show-timezone?))
+    ;; TODO implement show-timezone?, or maybe just use colon-modifier? as a minimal control on verbosity...
+    (format-timestamp/gregorian-calendar stream timestamp))
   (values))
 
 (defun parse-format-string (string)

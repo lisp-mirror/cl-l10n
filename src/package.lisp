@@ -27,6 +27,10 @@
    #:format-number/percent
    #:format-number/currency
 
+   #:format-date
+   #:format-time
+   #:format-timestamp
+
    #:shadow-format
    #:reload-resources
    #:register-locale-loaded-listener
