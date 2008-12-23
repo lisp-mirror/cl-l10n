@@ -20,7 +20,8 @@
 
 (defun ensure-ldml-symbol-or-form (thing)
   (if (and thing
-           (symbolp thing))
+           (or (symbolp thing)
+               (stringp thing)))
       (cl-l10n::ensure-ldml-symbol thing)
       thing))
 

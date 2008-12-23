@@ -212,13 +212,13 @@ Be careful when using in different situations, because it modifies *readtable*."
   (assert (ldml-symbol-p name))
   (do-current-locales-for-resource name locale
     (awhen (gethash name (currencies-of locale))
-      (return (second it)))))
+      (return (values (second it) t)))))
 
 (defun-with-capitalizer cl-l10n.lang:localize-currency-name (name)
   (assert (ldml-symbol-p name))
   (do-current-locales-for-resource name locale
     (awhen (gethash name (currencies-of locale))
-      (return (first it)))))
+      (return (values (first it) t)))))
 
 (defun-with-capitalizer cl-l10n.lang:localize-language-name (name)
   (assert (ldml-symbol-p name))
