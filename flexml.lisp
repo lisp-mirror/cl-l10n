@@ -122,26 +122,75 @@
    (attributes :initform nil :initarg :attributes :accessor attributes-of)
    (local-name :initform nil :initarg :local-name :accessor local-name-of)))
 
-(defmethod slot-missing ((class t) (node flexml-node) slot-name operation &optional new-value)
+(defmethod print-object ((self flexml-node) *standard-output*)
+  (pprint-logical-block (nil nil :prefix "<" :suffix ">")
+    (princ (local-name-of self))
+    (when (attributes-of self)
+      (write-char #\Space)
+      (let* ((attributes (loop
+                            :for attribute :in (if (listp (attributes-of self))
+                                                   (attributes-of self)
+                                                   (hash-table-keys (attributes-of self)))
+                            :collect (list attribute (attribute-value self attribute))))
+             (width (loop
+                       :for attribute :in attributes
+                       :when (and (consp attribute)
+                                  (stringp (first attribute)))
+                       :maximize (length (first attribute))))
+             (format-control (concatenate 'string "~" (princ-to-string width) "A ~A")))
+        (pprint-logical-block (nil attributes :prefix "(" :suffix ")")
+          (pprint-exit-if-list-exhausted)
+          (loop
+             :with first? = t
+             :for (attribute-name attribute-value) = (pprint-pop)
+             :unless first? :do (pprint-newline :mandatory)
+             :do
+             (progn
+               (setf first? nil)
+               (format *standard-output* format-control attribute-name attribute-value)
+               (pprint-exit-if-list-exhausted))))))
+    (pprint-indent :block 2)
+    (when (children-of self)
+      (pprint-newline :mandatory)
+      (pprint-logical-block (nil (coerce (children-of self) 'list))
+        (pprint-exit-if-list-exhausted)
+        (loop
+           :with first? = t
+           :unless first? :do (pprint-newline :mandatory)
+           :do (progn
+                 (setf first? nil)
+                 (write (pprint-pop))
+                 (pprint-exit-if-list-exhausted)))))))
+
+(defun attribute-value (node attribute-name)
   (let ((attributes (attributes-of node)))
-    (ecase operation
-      (slot-value
-       (if (listp attributes)
-           (cdr (assoc slot-name attributes))
-           (gethash slot-name attributes)))
-      (setf
-       (if (listp attributes)
-           (let ((entry (assoc slot-name attributes)))
-             (if entry 
-                 (setf (cdr entry) new-value)
-                 (push (cons slot-name new-value) (attributes-of node))))
-           (if new-value
-               (setf (gethash slot-name attributes) new-value)
-               (remhash slot-name attributes))))
-      (slot-boundp
-       t)
-      (slot-makunbound
-       (error "FLEXML-NODE's don't support SLOT-MAKUNBOUND")))))
+    (if (listp attributes)
+        (let ((entry (assoc attribute-name attributes)))
+          (values (cdr entry) (not (null entry))))
+        (gethash attribute-name attributes))))
+
+(defun (setf attribute-value) (new-value node attribute-name)
+  (let ((attributes (attributes-of node)))
+    (if (listp attributes)
+        (let ((entry (assoc attribute-name attributes)))
+          (if entry
+              (setf (cdr entry) new-value)
+              (push (cons attribute-name new-value) (attributes-of node))))
+        (if new-value
+            (setf (gethash attribute-name attributes) new-value)
+            (remhash attribute-name attributes))))
+  new-value)
+
+(defmethod slot-missing ((class t) (node flexml-node) slot-name operation &optional new-value)
+  (ecase operation
+    (slot-value
+     (attribute-value node slot-name))
+    (setf
+     (setf (attribute-value node slot-name) new-value))
+    (slot-boundp
+     t)
+    (slot-makunbound
+     (error "FLEXML-NODE's don't support SLOT-MAKUNBOUND"))))
 
 (defun missing-cross-reference (node slot id)
   (unless (symbolp slot)
@@ -216,7 +265,10 @@
          (package (if namespace-uri
                       (find-lisp-package-for-xml-namespace namespace-uri)
                       (default-package-of builder)))
-         (class (class-for-node-name builder namespace-uri package local-name qname)))
+         (class (progn
+                  (unless package
+                    (error "Could not find a lisp package for the xml namespace ~S" namespace-uri))
+                  (class-for-node-name builder namespace-uri package local-name qname))))
     (assert class)
     (assert (subtypep class 'flexml-node))
     (let* ((parent (first (element-stack-of builder)))
@@ -336,3 +388,17 @@
                  otherwise))))
       result)))
 
+(defun maphash-keys (function table)
+  "Like MAPHASH, but calls FUNCTION with each key in the hash table TABLE."
+  (maphash (lambda (k v)
+             (declare (ignore v))
+             (funcall function k))
+           table))
+
+(defun hash-table-keys (table)
+  "Returns a list containing the keys of hash table TABLE."
+  (let ((keys nil))
+    (maphash-keys (lambda (k)
+                    (push k keys))
+                  table)
+    keys))
