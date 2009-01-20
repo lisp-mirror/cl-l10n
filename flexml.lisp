@@ -105,12 +105,14 @@
      (setf (id-attributes-of self) id-attributes))))
 
 (defun make-flexml-builder (&key (default-package nil default-package-p) (include-default-values t)
-                            id-attributes)
+                            (default-node-class nil default-node-class-p) id-attributes)
   (let ((builder (make-instance 'flexml-builder
                                 :include-default-values include-default-values
                                 :id-attributes id-attributes)))
     (when default-package-p
       (setf (default-package-of builder) default-package))
+    (when default-node-class-p
+      (setf (default-node-class-of builder) default-node-class))
     builder))
 
 (defclass flexml-node ()
