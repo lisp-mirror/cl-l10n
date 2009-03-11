@@ -381,7 +381,7 @@
                                                                                          :minimum-digit-count length))))
                                        (invalid-number-of-directives))))
                             (declare (inline process-hour-directive))
-                            (switch (directive-character :test #'char=)
+                            (case directive-character
                               (#\y (cond
                                      ((= length 1)
                                       (collect (piece-formatter (write-decimal-digits stream year))))
@@ -439,14 +439,21 @@
                                      (collect (piece-formatter
                                                (bind ((fraction (round (/ nano-second 1000000000d0) rounding-divisor)))
                                                  (write-decimal-digits stream fraction :minimum-digit-count length))))))
+                              ((#\z #\Z #\v #\V)
+                               ;; TODO timezone is not yet implemented
+                               (warn "Timezone processing is not yet implemented for time pattern compiler. Pattern is: ~S" pattern))
+                              (#\a
+                               ;; TODO am/pm is not yet implemented
+                               (warn "AM/PM processing is not yet implemented for time pattern compiler. Pattern is: ~S" pattern))
                               (otherwise
-                               (when (find directive-character +date-pattern-characters/gregorian-calendar+ :test #'char=)
+                               (when (or (find directive-character +date-pattern-characters/gregorian-calendar+ :test #'char=)
+                                         (find directive-character +time-pattern-characters/gregorian-calendar+ :test #'char=))
                                  (cerror "Print it unprocessed" "Unexpected or not yet implemented directive in Gregorian calendar date format: \"~A\", character ~A"
                                          pattern directive-character))
                                (collect (piece-formatter (write-string piece stream))))))))))
                   (collect (piece-formatter (write-string outer-piece stream))))))
           (nreversef piece-formatters)
-          (push (named-lambda date-formatter (stream date)
+          (push (named-lambda date/time-formatter (stream date)
                   ;; TODO should we compare the value of *locale* at compile/runtime?
                   ;; if yes, then check the other formatters, too!
                   (local-time:with-decoded-timestamp (:year year :month month :day day :day-of-week day-of-week

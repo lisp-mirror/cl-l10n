@@ -10,24 +10,29 @@
     (:long   'ldml:long)
     (:full   'ldml:full)))
 
+(defmacro with-normalized-stream-variable (stream &body body)
+  (with-unique-names (to-string?)
+    `(bind ((,to-string? nil))
+       (cond
+         ((null ,stream)
+          (setf ,stream (make-string-output-stream))
+          (setf ,to-string? t))
+         ((eq ,stream t)
+          (setf ,stream *standard-output*)))
+       ,@body
+       (if ,to-string?
+           (get-output-stream-string ,stream)
+           ,stream))))
+
 (defun %format-iterating-locales (stream locale-visitor fallback-fn)
   (declare (optimize speed)
            (type function locale-visitor fallback-fn))
-  (bind ((to-string? nil))
-    (cond
-      ((null stream)
-       (setf stream (make-string-output-stream))
-       (setf to-string? t))
-      ((eq stream t)
-       (setf stream *standard-output*)))
+  (with-normalized-stream-variable stream
     (block iterating-locales
       (do-current-locales locale
         (when (funcall locale-visitor stream locale)
           (return-from iterating-locales)))
-      (funcall fallback-fn stream))
-    (if to-string?
-        (get-output-stream-string stream)
-        stream)))
+      (funcall fallback-fn stream))))
 
 ;; TODO this should be cleaned up and finished once local-time settles down on how to represent dates and time of day.
 ;; for now format-date happily format timestamps and understands time format directives when passed in a custom pattern.
@@ -45,9 +50,19 @@
 (defun format-timestamp (stream timestamp &key (verbosity 'ldml:medium) pattern (calendar 'gregorian-calendar))
   (unless (symbolp calendar)
     (setf calendar (type-of calendar)))
-  (not-yet-implemented))
+  (unless verbosity
+    (setf verbosity 'ldml:medium))
+  (ecase calendar
+    (gregorian-calendar
+     (with-normalized-stream-variable stream
+       (if pattern
+           (format-date-or-time/gregorian-calendar stream timestamp "FORMAT-TIMESTAMP: Should not happen..." nil nil :verbosity verbosity :pattern pattern)
+           (progn
+             (format-date/gregorian-calendar stream timestamp :verbosity verbosity)
+             (write-char #\Space stream)
+             (format-time/gregorian-calendar stream timestamp :verbosity verbosity)))))))
 
-(defun format-date/gregorian-calendar (stream date &key (verbosity 'ldml:medium) pattern)
+(defun format-date-or-time/gregorian-calendar (stream value warning-string formatter-slot-reader fallback-pattern &key (verbosity 'ldml:medium) pattern )
   (check-type pattern (or null string function))
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
   (%format-iterating-locales
@@ -63,27 +78,30 @@
                      ;; and the cache must be properly locked to support threading.
                      (compile-date-time-pattern/gregorian-calendar pattern))
                     (function pattern))
-                  stream date)
+                  stream value)
          t)
-       (named-lambda date-format-locale-visitor (stream locale)
+       (named-lambda date-or-time-format-locale-visitor (stream locale)
          (when-bind gregorian-calendar (gregorian-calendar-of locale)
-           (bind ((formatter-entry (getf (date-formatters-of gregorian-calendar) verbosity))
+           (bind ((formatter-entry (getf (funcall formatter-slot-reader gregorian-calendar) verbosity))
                   (formatter (getf formatter-entry :formatter)))
              (if formatter
                  (progn
-                   (funcall formatter stream date)
+                   (funcall formatter stream value)
                    t)
                  nil)))))
-   (named-lambda date-format-fallback (stream)
-     (warn "No Gregorian calendar date formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
-           verbosity (current-locale))
-     (local-time:format-timestring stream date :format '((:year 4) #\- (:month 2) #\- (:day 2))))))
+   (named-lambda date-or-time-format-fallback (stream)
+     (warn warning-string verbosity (current-locale))
+     (local-time:format-timestring stream value :format fallback-pattern))))
+
+(defun format-date/gregorian-calendar (stream date &key (verbosity 'ldml:medium) pattern)
+  (format-date-or-time/gregorian-calendar stream date "No Gregorian calendar date formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+                                          'date-formatters-of '((:year 4) #\- (:month 2) #\- (:day 2))
+                                          :verbosity verbosity :pattern pattern))
 
 (defun format-time/gregorian-calendar (stream timestamp &key (verbosity 'ldml:medium) pattern)
-  (declare (ignore stream timestamp))
-  (check-type pattern (or null string function))
-  (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
-  (not-yet-implemented))
+  (format-date-or-time/gregorian-calendar stream timestamp "No Gregorian calendar time formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+                                          'time-formatters-of '((:hour 2) #\: (:min 2) #\: (:sec 2))
+                                          :verbosity verbosity :pattern pattern))
 
 (defun format-timestamp/gregorian-calendar (stream timestamp &key (verbosity 'ldml:medium) pattern)
   (declare (ignore stream timestamp))

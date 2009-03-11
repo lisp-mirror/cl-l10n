@@ -53,7 +53,8 @@
     (setf (initialized-p locale) t)
     (bind ((*locale* (list locale)))
       (unless (equal (language-of locale) "root")
-        (compile-date-formatters/gregorian-calendar locale))
+        (compile-date-formatters/gregorian-calendar locale)
+        (compile-time-formatters/gregorian-calendar locale))
       (compile-number-formatters locale))))
 
 (defun compile-number-formatters (locale)
@@ -61,7 +62,7 @@
   (compile-number-formatters/percent locale)
   (compile-number-formatters/currency locale))
 
-(defun compile-date-formatters/gregorian-calendar (locale)
+(defun compile-date-or-time-formatters/gregorian-calendar (locale formatter-slot-reader)
   (bind ((gregorian-calendar (gregorian-calendar-of locale)))
     (when gregorian-calendar
       (bind ((verbosities '(ldml:short ldml:medium ldml:long ldml:full))
@@ -69,18 +70,25 @@
                              (for pattern = (do-current-locales locale
                                               ;; find a pattern on the locale precedence list
                                               (awhen (gregorian-calendar-of locale)
-                                                (awhen (getf (date-formatters-of it) verbosity)
+                                                (awhen (getf (funcall formatter-slot-reader it) verbosity)
                                                   (awhen (getf it :pattern)
                                                     (return it))))))
                              (assert pattern) ; the root locale should have it at the very least
-                             (collect pattern))))
-        (setf (date-formatters-of gregorian-calendar)
-              (mapcan (lambda (verbosity pattern formatter)
-                        (list verbosity (list :formatter formatter :pattern pattern)))
-                      verbosities
-                      patterns
-                      (compile-date-time-patterns/gregorian-calendar patterns)))))))
+                             (collect pattern)))
+             (formatter-slot-writer (fdefinition `(setf ,formatter-slot-reader))))
+        (funcall formatter-slot-writer
+                 (mapcan (lambda (verbosity pattern formatter)
+                           (list verbosity (list :formatter formatter :pattern pattern)))
+                         verbosities
+                         patterns
+                         (compile-date-time-patterns/gregorian-calendar patterns))
+                 gregorian-calendar)))))
 
+(defun compile-date-formatters/gregorian-calendar (locale)
+  (compile-date-or-time-formatters/gregorian-calendar locale 'date-formatters-of))
+
+(defun compile-time-formatters/gregorian-calendar (locale)
+  (compile-date-or-time-formatters/gregorian-calendar locale 'time-formatters-of))
 
 (defun compile-simple-number-formatters (locale formatters-accessor pattern-compiler)
   (bind ((formatters (funcall formatters-accessor locale)))
