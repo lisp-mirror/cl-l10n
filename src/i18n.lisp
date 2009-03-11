@@ -102,7 +102,7 @@
            ,@(iter (for resource in resources)
                    (for name = (first resource))
                    (if (= 2 (length resource))
-                       (collect `(%set-resource ,locale ',name ',(second resource)))
+                       (collect `(%set-resource ,locale ',name ,(second resource)))
                        (collect `(%set-resource ,locale ',name (lambda ,(second resource)
                                                                  ,@(cddr resource)))))))))))
 
