@@ -20,12 +20,14 @@
   name)
 
 (defun ensure-resource-lookup-stub (name)
+  ;; avoid compile time warnings for the functional resources that are used in the same file as they are defined
+  #+sbcl(sb-c:%compiler-defun name nil t)
   (unless (get name 'resource-lookup-stub)
     ;; define a function with this name that'll look at the *locale* list and call the first
     ;; locale specific lambda it finds while walking the locales
     (when (fboundp name)
       (simple-style-warning "Redefining function definiton of ~S while adding a functional locale specific resource" name))
-    (setf (symbol-function name)
+    (setf (fdefinition name)
           (lambda (&rest args)
             (lookup-resource name :arguments args)))
     ;; leave a mark that it's been defined by us
