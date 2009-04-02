@@ -99,8 +99,15 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
                                        :name name
                                        :type "lisp"))))
     (awhen (probe-file resource-file)
-      (when (pathname-name it)
-        (load it)))))
+      (load-resource-file :cl-l10n it))))
+
+(defun load-resource-file (asdf-system resource-file)
+  (bind ((output-files (asdf:output-files (make-instance 'asdf::compile-op)
+                                          (make-instance 'asdf:cl-source-file :pathname resource-file :parent (asdf:find-system asdf-system)))))
+    (assert (length= 1 output-files))
+    (bind ((output-file (first output-files)))
+      (ensure-directories-exist output-file)
+      (load (compile-file resource-file :output-file output-file)))))
 
 (defun reload-resources ()
   (load-resource "common")
