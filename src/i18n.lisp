@@ -20,8 +20,6 @@
   name)
 
 (defun ensure-resource-lookup-stub (name)
-  ;; avoid compile time warnings for the functional resources that are used in the same file as they are defined
-  #+sbcl(sb-c:%compiler-defun name nil t)
   (unless (get name 'resource-lookup-stub)
     ;; define a function with this name that'll look at the *locale* list and call the first
     ;; locale specific lambda it finds while walking the locales
@@ -97,7 +95,9 @@
          ,@(iter (for resource in resources)
                  (for name = (first resource))
                  (when (> (length resource) 2)
-                   (collect `(ensure-resource-lookup-stub ',name)))))
+                   (collect `(ensure-resource-lookup-stub ',name))
+                   ;; avoid compile time warnings for the functional resources that are used in the same file as they are defined
+                   (collect `(declaim (ftype (function (*) *) ,name))))))
        (eval-when (:load-toplevel :execute)
          (let ((,locale (locale ,(canonical-locale-name-from locale-designator))))
            (declare (ignorable ,locale))
