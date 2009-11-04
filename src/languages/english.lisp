@@ -19,7 +19,7 @@
     (when (< length 2)
       (error "There's no English word with less then two letters"))
     (aif (gethash (string-downcase word) *english-plural-overrides*)
-         (return-from english-plural-of it)
+         (return-from english-plural-of (first it))
          (let* ((original-last-letter (elt word (1- length)))
                 (last-letter (char-downcase original-last-letter))
                 (last-letter2 (char-downcase (elt word (- length 2)))))

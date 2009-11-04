@@ -15,8 +15,8 @@
   (awhen (gethash word *hungarian-plural-overrides*)
     (return-from hungarian-plural-of
       (if uppercase
-          (string-upcase it)
-          it)))
+          (string-upcase (first it))
+          (first it))))
   (let ((length (length word)))
     (when (< length 3)
       (setf word (concatenate 'string word "-k"))

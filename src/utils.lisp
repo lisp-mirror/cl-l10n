@@ -52,13 +52,16 @@
                                             (concatenate 'string "[ |" (list #\Tab) "]+")))
                                  line))
             (for split-count = (length pieces))
-            (when (> split-count 2)
+            (when (> split-count 3)
               (warn "Syntax error at line ~A, too many pieces after split: ~A" line-number pieces))
             (for singular = (elt pieces 0))
             (for plural = (if (= split-count 1)
                               singular
                               (elt pieces 1)))
-            (setf (gethash singular result) plural)
+            (for article = (if (< split-count 3)
+                              ""
+                              (elt pieces 2)))
+            (setf (gethash singular result) (list plural article))
             (finally (return result))))))
 
 (defun required-arg (name)

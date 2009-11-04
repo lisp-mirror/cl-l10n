@@ -55,6 +55,10 @@
    #:starts-with-consonant-p
    #:starts-with-vowel-p
 
+   #:de-plural-of
+   #:de-indefinite-article-for
+   #:de-definite-article-for
+
    #:english-plural-of
    #:english-indefinite-article-for
    #:hungarian-definite-article-for

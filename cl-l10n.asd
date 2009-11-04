@@ -29,6 +29,7 @@
                                      (:file "i18n" :depends-on ("locale"))
                                      (:module :languages
                                               :components ((:file "common")
+                                                           (:file "de" :depends-on ("common"))
                                                            (:file "english" :depends-on ("common"))
                                                            (:file "hungarian" :depends-on ("common")))
                                               :depends-on ("package" "utils"))
