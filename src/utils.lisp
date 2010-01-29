@@ -78,12 +78,13 @@
   str)
 
 (defun concatenate-separated-by (separator &rest args)
-  (with-output-to-string (out)
-    (iter (for el :in args)
-          (when el
-            (unless (first-time-p)
-              (princ separator out))
-            (princ el out)))))
+  (let ((*print-pretty* nil))
+    (with-output-to-string (out)
+      (iter (for el :in args)
+            (when el
+              (unless (first-time-p)
+                (princ separator out))
+              (princ el out))))))
 
 (define-constant +whitespaces+ (list #\Space #\Tab)
   :test #'equal)
