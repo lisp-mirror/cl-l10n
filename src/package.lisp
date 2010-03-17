@@ -46,6 +46,7 @@
    #:enable-sharpquote-reader
    #:with-sharpquote-reader
    #:lookup-first-matching-resource
+   #:lookup-first-matching-resource*
 
    #:consonantp
    #:vowelp

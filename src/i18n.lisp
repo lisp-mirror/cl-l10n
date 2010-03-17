@@ -108,7 +108,7 @@
                        (collect `(%set-resource ,locale ',name (lambda ,(second resource)
                                                                  ,@(cddr resource)))))))))))
 
-(defmacro lookup-first-matching-resource (&body specs)
+(defmacro lookup-first-matching-resource* ((&key (default nil default?)) &body specs)
   "Try to look up the resource keys, return the first match, fallback to the first key.
 When a resource key is a list, its elements will be concatenated separated by dots and
 components evaluating to NIL are excluded from the constructed key.
@@ -119,7 +119,7 @@ An example usage:
       (name-of (state-machine-of state)) (name-of state))
     (\"state-name\" (name-of state))
     \"last-try\")"
-  (with-unique-names (fallback key-tmp block resource foundp)
+  (with-unique-names (fallback key-tmp block resource found?)
     (iter (for spec :in specs)
           (for wrapper = `(progn))
           (when (and (consp spec)
@@ -134,11 +134,11 @@ An example usage:
                            (t `(concatenate-separated-by "." ,@spec))))
           (collect `(,@wrapper
                      (setf ,key-tmp ,key)
-                     (multiple-value-bind (,resource ,foundp)
+                     (multiple-value-bind (,resource ,found?)
                          (lookup-resource ,key-tmp :otherwise nil)
                        (unless ,fallback
                          (setf ,fallback ,key-tmp))
-                       (when ,foundp
+                       (when ,found?
                          (return-from ,block (values ,resource t)))))
             :into lookups)
           (finally
@@ -147,7 +147,11 @@ An example usage:
                       (let ((,fallback nil)
                             (,key-tmp nil))
                         ,@lookups
-                        (return-from ,block (values ,fallback nil)))))))))
+                        (return-from ,block (values ,(if default? default fallback) nil)))))))))
+
+(defmacro lookup-first-matching-resource (&body specs)
+  "See LOOKUP-FIRST-MATCHING-RESOURCE*"
+  `(lookup-first-matching-resource* () ,@specs))
 
 (defmacro enable-sharpquote-reader ()
   "Enable quote reader for the rest of the file (being loaded or compiled).
