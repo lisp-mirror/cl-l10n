@@ -80,22 +80,24 @@
         (awhen (funcall name-vector-slot-reader it)
           (setf result it)
           (return))))
-    (when (some #'null result)
-      ;; if it's partial then make a copy and fill it in
-      (setf result (copy-seq result))
-      (iter (for index :from 0 :below (length result))
-            (unless (aref result index)
-              (bind ((inherited-name (do-current-locales locale
-                                       (awhen (funcall calendar-slot-reader locale)
-                                         (awhen (funcall name-vector-slot-reader it)
-                                           (awhen (aref it index)
-                                             (return it)))))))
-                (unless inherited-name
-                  (cldr-parser-warning "Locale ~A has no value at index ~A of gregorian date part name ~A"
-                                       (current-locale) index name-vector-slot-reader)
-                  (when defaults
-                    (setf inherited-name (aref defaults index))))
-                (setf (aref result index) inherited-name)))))
+    (if result
+        (when (some #'null result)
+          ;; if it's partial then make a copy and fill it in
+          (setf result (copy-seq result))
+          (iter (for index :from 0 :below (length result))
+                (unless (aref result index)
+                  (bind ((inherited-name (do-current-locales locale
+                                           (awhen (funcall calendar-slot-reader locale)
+                                             (awhen (funcall name-vector-slot-reader it)
+                                               (awhen (aref it index)
+                                                 (return it)))))))
+                    (unless inherited-name
+                      (cldr-parser-warning "Locale ~A has no value at index ~A of gregorian date part name ~A"
+                                           (current-locale) index name-vector-slot-reader)
+                      (when defaults
+                        (setf inherited-name (aref defaults index))))
+                    (setf (aref result index) inherited-name)))))
+        (setf result defaults))
     result))
 
 (defun effective-date-related-names/gregorian-calendar (name-vector-slot-reader &optional defaults)

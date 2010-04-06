@@ -11,18 +11,23 @@
     (:full   'ldml:full)))
 
 (defmacro with-normalized-stream-variable (stream &body body)
-  (with-unique-names (to-string?)
-    `(bind ((,to-string? nil))
-       (cond
-         ((null ,stream)
-          (setf ,stream (make-string-output-stream))
-          (setf ,to-string? t))
-         ((eq ,stream t)
-          (setf ,stream *standard-output*)))
-       ,@body
-       (if ,to-string?
-           (get-output-stream-string ,stream)
-           ,stream))))
+  (check-type stream (and symbol (not (member nil t))))
+  (with-unique-names (body-fn to-string?)
+    `(flet ((,body-fn ()
+              ,@body))
+       (if (streamp ,stream)
+           (,body-fn)
+           (bind ((,to-string? nil))
+             (cond
+               ((null ,stream)
+                (setf ,stream (make-string-output-stream))
+                (setf ,to-string? t))
+               ((eq ,stream t)
+                (setf ,stream *standard-output*)))
+             (,body-fn)
+             (if ,to-string?
+                 (get-output-stream-string ,stream)
+                 ,stream))))))
 
 (defun %format-iterating-locales (stream locale-visitor fallback-fn)
   (declare (optimize speed)
@@ -65,33 +70,32 @@
 (defun %format-date-or-time/gregorian-calendar (stream value warning-string formatter-slot-reader fallback-pattern &key (verbosity 'ldml:medium) pattern )
   (check-type pattern (or null string function))
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
-  (%format-iterating-locales
-   stream
-   (if pattern
-       (named-lambda %format-date-or-time/gregorian-calendar/visitor (stream locale)
-         (declare (ignore locale))
-         (funcall (etypecase pattern
-                    (string
-                     ;; NOTE: this code path is about 5 times slower and conses about 10 times more...
-                     ;; OPTIMIZATION: we could implement some per-locale caching here, but it must be
-                     ;; carefully keyed (a compiled lambda captures stuff at compile time from the compile time value of *locale*)
-                     ;; and the cache must be properly locked to support threading.
-                     (compile-date-time-pattern/gregorian-calendar pattern))
-                    (function pattern))
-                  stream value)
-         t)
-       (named-lambda %format-date-or-time/gregorian-calendar/visitor (stream locale)
-         (when-bind gregorian-calendar (gregorian-calendar-of locale)
-           (bind ((formatter-entry (getf (funcall formatter-slot-reader gregorian-calendar) verbosity))
-                  (formatter (getf formatter-entry :formatter)))
-             (if formatter
-                 (progn
-                   (funcall formatter stream value)
-                   t)
-                 nil)))))
-   (named-lambda %format-date-or-time/gregorian-calendar/fallback (stream)
-     (warn warning-string verbosity (current-locale))
-     (local-time:format-timestring stream value :format fallback-pattern))))
+  (etypecase pattern
+    (string
+     ;; NOTE: this code path is about 5 times slower and conses about 10 times more...
+     ;; OPTIMIZATION: we could implement some per-locale caching here, but it must be
+     ;; carefully keyed (a compiled lambda captures stuff at compile time from the compile time value of *locale*)
+     ;; and the cache must be properly locked to support threading.
+     (with-normalized-stream-variable stream
+       (funcall (compile-date-time-pattern/gregorian-calendar pattern) stream value)))
+    (compiled-pattern
+     (with-normalized-stream-variable stream
+       (funcall pattern stream value)))
+    (null
+     (%format-iterating-locales
+      stream
+      (named-lambda %format-date-or-time/gregorian-calendar/visitor (stream locale)
+        (when-bind gregorian-calendar (gregorian-calendar-of locale)
+          (bind ((formatter-entry (getf (funcall formatter-slot-reader gregorian-calendar) verbosity))
+                 (formatter (getf formatter-entry :formatter)))
+            (if formatter
+                (progn
+                  (funcall formatter stream value)
+                  t)
+                nil))))
+      (named-lambda %format-date-or-time/gregorian-calendar/fallback (stream)
+        (warn warning-string verbosity (current-locale))
+        (local-time:format-timestring stream value :format fallback-pattern))))))
 
 (defun format-date/gregorian-calendar (stream date &key (verbosity 'ldml:medium) pattern)
   (%format-date-or-time/gregorian-calendar stream date "No Gregorian calendar date formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
@@ -111,66 +115,58 @@
 
 (defun format-number/currency (stream number currency-code &key (verbosity 'ldml:medium) pattern)
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
-  (%format-iterating-locales
-   stream
-   (if pattern
-       (named-lambda format-number/currency/visitor (stream locale)
-         (declare (ignore locale))
-         (funcall (etypecase pattern
-                    (string
-                     ;; NOTE: this code path is A LOT slower. see similar notes around this file for more details.
-                     (compile-number-pattern/currency pattern))
-                    (function pattern))
-                  stream number currency-code)
-         t)
-       (named-lambda format-number/currency/visitor (stream locale)
-         (awhen (currency-formatter-of locale)
-           (awhen (pattern-verbosity-list-of it)
-             (awhen (or (getf it verbosity)
-                        (getf it nil))
-               (bind ((formatter (getf it :formatter)))
-                 (if formatter
-                     (progn
-                       (funcall formatter stream number currency-code)
-                       t)
-                     nil)))))))
-   (named-lambda format-number/currency/fallback (stream)
-     (warn "No currency formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
-           verbosity (current-locale))
-     (cl:format stream "~A ~A" number currency-code))))
+  (etypecase pattern
+    (compiled-pattern
+     (with-normalized-stream-variable stream
+       (funcall pattern stream number currency-code)))
+    (string
+     (with-normalized-stream-variable stream
+       (funcall (compile-number-pattern/currency pattern) stream number currency-code)))
+    (null
+     (%format-iterating-locales
+      stream
+      (named-lambda format-number/currency/visitor (stream locale)
+        (awhen (currency-formatter-of locale)
+          (bind ((entry (or (assoc-value (formatters-of it) verbosity)
+                            (assoc-value (formatters-of it) nil)))
+                 (formatter (getf entry :formatter)))
+            (if formatter
+                (progn
+                  (funcall formatter stream number currency-code)
+                  t)
+                nil))))
+      (named-lambda format-number/currency/fallback (stream)
+        (warn "No currency formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+              verbosity (current-locale))
+        (cl:format stream "~A ~A" number currency-code))))))
 
 (defun %format-number (stream number verbosity
                        pattern pattern-compiler
                        formatter-accessor formatter-name fallback-format-pattern)
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
-  (%format-iterating-locales
-   stream
-   (if pattern
-       (named-lambda %format-number/visitor (stream locale)
-             (declare (ignore locale))
-             (funcall (etypecase pattern
-                        (string
-                         ;; NOTE: this code path is about 10 times slower and conses about 10 times more...
-                         ;; OPTIMIZATION: we could implement some per-locale caching here, but it must be
-                         ;; carefully keyed (a compiled lambda captures stuff at compile time from the compile time value of *locale*)
-                         ;; and the cache must be properly locked to support threading.
-                         (funcall pattern-compiler pattern))
-                        (function pattern))
-                      stream number)
-             t)
-       (named-lambda %format-number/visitor (stream locale)
-         (awhen (or (getf (funcall formatter-accessor locale) verbosity)
-                    (getf (funcall formatter-accessor  locale) nil))
-           (bind ((formatter (getf it :formatter)))
-             (if formatter
-                 (progn
-                   (funcall formatter stream number)
-                   t)
-                 nil)))))
-   (named-lambda %format-number/fallback (stream)
-     (warn "No ~A was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
-           formatter-name verbosity (current-locale))
-     (cl:format stream fallback-format-pattern number))))
+  (etypecase pattern
+    (compiled-pattern
+     (with-normalized-stream-variable stream
+       (funcall pattern stream number)))
+    (string
+     (with-normalized-stream-variable stream
+       (funcall (funcall pattern-compiler pattern) stream number)))
+    (null
+     (%format-iterating-locales
+      stream
+      (named-lambda %format-number/visitor (stream locale)
+        (bind ((entry (or (assoc-value (funcall formatter-accessor locale) verbosity)
+                          (assoc-value (funcall formatter-accessor locale) nil)))
+               (formatter (getf entry :formatter)))
+          (if formatter
+              (progn
+                (funcall formatter stream number)
+                t)
+              nil)))
+      (named-lambda %format-number/fallback (stream)
+        (warn "No ~A was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
+              formatter-name verbosity (current-locale))
+        (cl:format stream fallback-format-pattern number))))))
 
 (defun format-number/decimal (stream number &key (verbosity 'ldml:medium) pattern)
   (%format-number stream number verbosity

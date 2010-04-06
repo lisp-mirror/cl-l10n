@@ -15,9 +15,9 @@
      (cl:format stream "The resource ~S is missing for ~A"
                 (name-of condition) (locale-of condition)))))
 
-(defun resource-missing (name)
+(defun resource-missing (name &optional (return-value name))
   (warn 'resource-missing :name name)
-  name)
+  return-value)
 
 (defun ensure-resource-lookup-stub (name)
   (unless (get name 'resource-lookup-stub)
@@ -216,37 +216,39 @@ Be careful when using in different situations, because it modifies *readtable*."
 
 (defun-with-capitalizer cl-l10n.lang:localize-currency-symbol (name)
   (assert (ldml-symbol-p name))
-  (do-current-locales-for-resource name locale
+  (do-current-locales-for-resource (name locale)
     (awhen (gethash name (currencies-of locale))
-      (return (values (second it) t)))))
+      (awhen (symbol-of it)
+        (return (values it t))))))
 
 (defun-with-capitalizer cl-l10n.lang:localize-currency-name (name)
   (assert (ldml-symbol-p name))
-  (do-current-locales-for-resource name locale
+  (do-current-locales-for-resource (name locale)
     (awhen (gethash name (currencies-of locale))
-      (return (values (first it) t)))))
+      (awhen (long-name-of it)
+        (return (values it t))))))
 
 (defun-with-capitalizer cl-l10n.lang:localize-language-name (name)
   (assert (ldml-symbol-p name))
-  (do-current-locales-for-resource name locale
+  (do-current-locales-for-resource (name locale)
     (awhen (gethash name (languages-of locale))
       (return (values it t)))))
 
 (defun-with-capitalizer cl-l10n.lang:localize-script-name (name)
   (assert (ldml-symbol-p name))
-  (do-current-locales-for-resource name locale
+  (do-current-locales-for-resource (name locale)
     (awhen (gethash name (scripts-of locale))
       (return (values it t)))))
 
 (defun-with-capitalizer cl-l10n.lang:localize-territory-name (name)
   (assert (ldml-symbol-p name))
-  (do-current-locales-for-resource name locale
+  (do-current-locales-for-resource (name locale)
     (awhen (gethash name (territories-of locale))
       (return (values it t)))))
 
 (defun-with-capitalizer cl-l10n.lang:localize-variant-name (name)
   (assert (ldml-symbol-p name))
-  (do-current-locales-for-resource name locale
+  (do-current-locales-for-resource (name locale)
     (awhen (gethash name (variants-of locale))
       (return (values it t)))))
 
@@ -260,7 +262,7 @@ Be careful when using in different situations, because it modifies *readtable*."
     (unless (and index
                  (<= 0 index 11))
       (error "~S is not a valid month name, it should be either an integer between 0 and 11 or a symbol like 'CL-L10N.LDML:JANUARY" name))
-    (do-current-locales-for-resource "<a month name>" locale
+    (do-current-locales-for-resource ("<a month name>" locale)
       (when-bind calendar (gregorian-calendar-of locale)
         (when-bind vector (if abbreviated
                               (abbreviated-month-names-of calendar)
@@ -277,7 +279,7 @@ Be careful when using in different situations, because it modifies *readtable*."
     (unless (and index
                  (<= 0 index 6))
       (error "~S is not a valid day name, it should be either an integer between 0 and 6 (0 is Sunday) or a symbol like 'CL-L10N.LDML:SUNDAY" name))
-    (do-current-locales-for-resource "<a day name>" locale
+    (do-current-locales-for-resource ("<a day name>" locale)
       (when-bind calendar (gregorian-calendar-of locale)
         (when-bind vector (if abbreviated
                               (abbreviated-day-names-of calendar)
@@ -293,7 +295,7 @@ Be careful when using in different situations, because it modifies *readtable*."
     (unless (and index
                  (<= 0 index 3))
       (error "~S is not a valid quarter name, it should be either an integer between 0 and 3 or a symbol like 'CL-L10N.LDML:FIRST-QUARTER" name))
-    (do-current-locales-for-resource "<a quarter name>" locale
+    (do-current-locales-for-resource ("<a quarter name>" locale)
       (when-bind calendar (gregorian-calendar-of locale)
         (when-bind vector (if abbreviated
                               (abbreviated-quarter-names-of calendar)
@@ -303,7 +305,7 @@ Be careful when using in different situations, because it modifies *readtable*."
 
 (defun-with-capitalizer cl-l10n.lang:localize-number-symbol (name)
   (assert (ldml-symbol-p name))
-  (do-current-locales-for-resource name locale
+  (do-current-locales-for-resource (name locale)
     (awhen (assoc name (number-symbols-of locale) :test #'eq)
       (return (values (cdr it) t)))))
 

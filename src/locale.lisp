@@ -79,6 +79,27 @@
   (print-unreadable-object (obj stream :type t :identity t)
     (princ (locale-name obj) stream)))
 
+(defclass currency ()
+  ((code
+    :initform (required-arg :code)
+    :initarg :code
+    :accessor code-of)
+   (symbol
+    :initform nil
+    :initarg :symbol
+    :accessor symbol-of)
+   (long-name
+    :initform nil
+    :initarg :long-name
+    :accessor long-name-of)))
+
+(defun ensure-currency (locale code)
+  (bind ((currency (gethash code (currencies-of locale))))
+    (unless currency
+      (setf currency (make-instance 'currency :code code))
+      (setf (gethash code (currencies-of locale)) currency))
+    currency))
+
 (defgeneric locale-name (locale &key ignore-script ignore-territory ignore-variant)
   (:method ((locale locale) &key ignore-variant ignore-territory ignore-script)
     (let ((*print-pretty* nil))

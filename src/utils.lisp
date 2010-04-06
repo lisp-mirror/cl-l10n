@@ -110,9 +110,10 @@
   `(do-locales (,var *locale*)
      ,@body))
 
-(defmacro do-current-locales-for-resource (name var &rest body)
+(defmacro do-current-locales-for-resource ((name var &key (return-value `(resource-missing ,name)))
+                                           &rest body)
   "DO-LOCALES on *LOCALE* that calls RESOURCE-MISSING unless there's a non-local exit in its body."
-  `(do-locales (,var *locale* (resource-missing ,name))
+  `(do-locales (,var *locale* ,return-value)
      ,@body))
 
 

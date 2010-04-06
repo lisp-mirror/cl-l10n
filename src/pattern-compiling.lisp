@@ -3,6 +3,16 @@
 
 (in-package :cl-l10n)
 
+(defclass compiled-pattern (closer-mop:funcallable-standard-object)
+  ()
+  (:metaclass closer-mop:funcallable-standard-class))
+
+(defmacro make-compiled-pattern (args &body body)
+  (with-unique-names (result)
+    `(bind ((,result (make-instance 'compiled-pattern)))
+       (closer-mop:set-funcallable-instance-function ,result (lambda ,args ,@body))
+       ,result)))
+
 ;;; http://www.unicode.org/reports/tr35/tr35-11.html#Date_Format_Patterns
 (define-constant +date-pattern-characters/gregorian-calendar+ "GyYuQqMLlwWdDFgEec" :test #'string=)
 (define-constant +time-pattern-characters/gregorian-calendar+ "ahHKkjmsSAzZvV" :test #'string=)
@@ -142,7 +152,7 @@
                                              (aif (position-if #'digit-char-p integer-part-without-grouping)
                                                   (- (length integer-part-without-grouping) it)
                                                   0))))
-                      (lambda (number)
+                      (make-compiled-pattern (number)
                         (declare (inline digit-char)
                                  (optimize speed))
                         (setf number (abs number))
@@ -225,6 +235,7 @@
                           (coerce formatted-digits 'string)))))))))))))
 
 (defun compile-number-pattern/decimal (pattern)
+  (check-type pattern string)
   (bind ((pos-subpat-prefix nil)
          (pos-subpat-suffix nil)
          (neg-subpat-prefix nil)
@@ -288,7 +299,8 @@
           (setf neg-subpat-prefix (concatenate 'string pos-subpat-prefix "-"))
           (setf neg-subpat-suffix pos-subpat-suffix))
 
-      (lambda (stream number)
+      (make-compiled-pattern (stream number)
+        (check-type stream stream)
         (bind ((prefix (if (minusp number) neg-subpat-prefix pos-subpat-prefix))
                (suffix (if (minusp number) neg-subpat-suffix pos-subpat-suffix))
                (formatted-number (funcall number-formatter number))
@@ -311,10 +323,12 @@
             (write-string padding stream)))))))
 
 (defun compile-number-pattern/percent (pattern)
+  (check-type pattern string)
   ;; TODO localize percent
   (bind ((pattern (replace-percent-considering-quotes pattern "%"))
          (formatter (compile-number-pattern/decimal pattern)))
-    (lambda (stream number)
+    (make-compiled-pattern (stream number)
+      (check-type stream stream)
       (funcall formatter stream (* number 100)))))
 
 
@@ -453,7 +467,8 @@
                                (collect (piece-formatter (write-string piece stream))))))))))
                   (collect (piece-formatter (write-string outer-piece stream))))))
           (nreversef piece-formatters)
-          (push (named-lambda date/time-formatter (stream date)
+          (push (make-compiled-pattern (stream date)
+                  (check-type stream stream)
                   ;; TODO should we compare the value of *locale* at compile/runtime?
                   ;; if yes, then check the other formatters, too!
                   (local-time:with-decoded-timestamp (:year year :month month :day day :day-of-week day-of-week
@@ -474,100 +489,125 @@
    (unit-pattern
     :initform nil
     :accessor unit-pattern-of)
-   (pattern-verbosity-list
+   (formatters
     :initform nil
-    :accessor pattern-verbosity-list-of)))
+    :accessor formatters-of)))
 
 ;; TODO for now, it's not implemented according to the cldr
-(defun compile-number-pattern/currency (pattern)
-  (lambda (stream number currency-code)
+(defun compile-number-pattern/currency (pattern &key currency-symbol currency-long-name)
+  (check-type pattern string)
+  (make-compiled-pattern (stream number currency-code)
+    (check-type stream stream)
     (assert (ldml-symbol-p currency-code))
-    ;; OPTIMIZATION we could have some memoization here...
-    (bind ((formatter (compile-number-pattern/decimal
-                       (replace-currency-sign-considering-quotes
-                        pattern
-                        (do-current-locales locale
-                          ;; TODO assert for a match here. check all usages all around...
-                          (awhen (gethash currency-code (currencies-of locale))
-                            (awhen (second it)
-                              (return it))))
-                        (symbol-name currency-code)
-                        (do-current-locales locale
-                          (awhen (gethash currency-code (currencies-of locale))
-                            (awhen (first it)
-                              (return it))))))))
-      (funcall formatter stream number))))
+    ;; OPTIMIZATION we could have some memoization here, but dut to the late-bound currency-code we cannot just simply capture stuff from the compile-time *locale*...
+    (funcall (compile-number-pattern/decimal
+              (replace-currency-marker-in-pattern
+               pattern
+               (or currency-symbol
+                   (do-current-locales locale
+                     ;; TODO assert for a match here. check all usages all around...
+                     (awhen (gethash currency-code (currencies-of locale))
+                       (awhen (symbol-of it)
+                         (return it)))))
+               (symbol-name currency-code)
+               (or currency-long-name
+                   (do-current-locales locale
+                     (awhen (gethash currency-code (currencies-of locale))
+                       (awhen (long-name-of it)
+                         (return it)))))))
+             stream number)))
 
-(defmacro replace-sign-considering-quotes (pattern char-to-replace &body body)
-  ;; TODO user once-only to rebind
-  `(bind ((pattern ,pattern)
-          (char-to-replace ,char-to-replace))
-     (flet ((char-at-? (pattern index character)
-              (if (and (<= 0 index) (< index (length pattern)))
-                  (char= (elt pattern index) character)
-                  nil)))
-       (macrolet ((collect-string (string)
-                    `(map 'list (lambda (c)
-                                  (collect c)
-                                  (if (char= c #\')
-                                      (collect c))) ,string)))
-         (coerce
-          (iter (generating char :in-sequence pattern :with-index index)
-                (with no-quote = t)
-                (next char)
-                (switch (char :test #'char=)
-                  (char-to-replace (if no-quote
-                                       (progn
-                                         (unless
-                                             (and
-                                              (char-at-? pattern (- index 1) #\')
-                                              (bind ((pattern (subseq pattern 0 index))
-                                                     (match (mismatch pattern (make-string index :initial-element #\') :from-end t)))
-                                                (and match (oddp (- index match)))))
-                                           (collect #\'))
-                                         ,@body
-                                         (unless
-                                             (and
-                                              (char-at-? pattern (+ index 1) #\')
-                                              (bind ((pattern (subseq pattern (+ index 1)))
-                                                     (length (length pattern))
-                                                     (match (mismatch pattern (make-string length :initial-element #\'))))
-                                                (and match (oddp match))))
-                                           (collect #\')))
-                                       (collect char)))
-                  (#\' (setf no-quote (not no-quote))
-                       (unless
-                           (or
-                            (and no-quote
-                                 (char-at-? pattern (+ index 1) char-to-replace)
-                                 (bind ((pattern (subseq pattern 0 index))
-                                        (match (mismatch pattern (make-string index :initial-element #\') :from-end t)))
-                                   (and match (evenp (- index match)))))
-                            (and (not no-quote)
-                                 (char-at-? pattern (- index 1) char-to-replace)
-                                 (bind ((pattern (subseq pattern index))
-                                        (length (length pattern))
-                                        (match (mismatch pattern (make-string length :initial-element #\'))))
-                                   (and match (oddp match)))))
-                         (collect #\')))
-                  (otherwise (collect char))))
-          'string)))))
+(defun find-replacement-marker-in-pattern (pattern marker-character &key (start 0) end)
+  (declare (optimize speed))
+  (check-type pattern string)
+  (check-type marker-character character)
+  (check-type start array-index)
+  (check-type end (or null array-index))
+  (block nil
+    (bind ((end (or end (length pattern)))
+           (index (1- start))
+           (first-match-index nil)
+           (number-of-matches 0))
+      (declare (type fixnum number-of-matches))
+      (labels ((finish ()
+                 (return (values first-match-index number-of-matches)))
+               (current ()
+                 (aref pattern index))
+               (peek ()
+                 (if (< (1+ index) end)
+                     (aref pattern (1+ index))
+                     (values)))
+               (next (&optional (drying-allowed? t))
+                 (incf index)
+                 (unless (< index end)
+                   (if drying-allowed?
+                       (finish)
+                       (error "~S: error while parsing pattern ~S starting from position ~A"
+                              'find-replacement-marker-in-pattern pattern start)))
+                 (current))
+               (parse ()
+                 (switch ((next) :test #'char=)
+                   (#\'
+                    (parse/in-quote))
+                   (marker-character
+                    (setf first-match-index index)
+                    (incf number-of-matches)
+                    (count-consecutive-matches))
+                   (otherwise
+                    (parse))))
+               (count-consecutive-matches ()
+                 (if (char= (next) marker-character)
+                     (progn
+                       (incf number-of-matches)
+                       (count-consecutive-matches))
+                     (finish)))
+               (parse/in-quote ()
+                 (case (next nil)
+                   (#\'
+                    (if (eql #\' (peek))
+                        (progn
+                          (next)
+                          (parse/in-quote))
+                        (parse)))
+                   (otherwise (parse/in-quote)))))
+        (declare (inline current peek next))
+        (parse)))))
+
+(defmacro do-replacement-markers-in-pattern ((pattern marker-character match-index-var match-count-var &optional return-value) &body body)
+  `(bind ((,match-index-var 0)
+          (,match-count-var 0))
+     (loop
+       (setf (values ,match-index-var ,match-count-var)
+             (find-replacement-marker-in-pattern ,pattern ,marker-character
+                                                 :start (+ ,match-index-var ,match-count-var)))
+       (if ,match-index-var
+           (progn
+             ,@body)
+           (return ,return-value)))))
 
 (defun replace-percent-considering-quotes (pattern localized-percent-string)
-  (replace-sign-considering-quotes pattern #\%
-    (collect-string localized-percent-string)))
+  (bind ((replacement-marker #\%)
+         (piece-start 0))
+    (with-output-to-string (output)
+      (do-replacement-markers-in-pattern (pattern replacement-marker match-index match-count)
+        (assert (= match-count 1))
+        (write-string pattern output :start piece-start :end match-index)
+        (write-string localized-percent-string output)
+        (setf piece-start (+ match-index match-count))))))
 
-(defun replace-currency-sign-considering-quotes (pattern currency-symbol currency-code currency-long-name)
-  (replace-sign-considering-quotes pattern #\¤
-    (if (not (char-at-? pattern (+ index 1) char-to-replace))
-        ;; currency symbol
-        (collect-string currency-symbol)
-        (progn
-          (next char)
-          (if (not (char-at-? pattern (+ index 1) char-to-replace))
-              ;; international currency symbol (3 letter code)
-              (collect-string currency-code)
-              (progn
-                ;; long form of decimal symbol
-                (next char)
-                (collect-string currency-long-name)))))))
+(defun replace-currency-marker-in-pattern (pattern currency-symbol international-currency-symbol currency-long-name)
+  (check-type currency-symbol string)
+  (check-type international-currency-symbol string)
+  (check-type currency-long-name string)
+  (bind ((replacement-marker #\¤)
+         (piece-start 0)
+         (*print-pretty* nil))
+    (with-output-to-string (output)
+      (do-replacement-markers-in-pattern (pattern replacement-marker match-index match-count)
+        (write-string pattern output :start piece-start :end match-index)
+        (write-string (ecase match-count
+                        (1 currency-symbol)
+                        (2 international-currency-symbol)
+                        (3 currency-long-name))
+                      output)
+        (setf piece-start (+ match-index match-count))))))
