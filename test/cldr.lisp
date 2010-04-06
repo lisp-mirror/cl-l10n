@@ -5,11 +5,17 @@
 
 (defsuite* (test/cldr :in test))
 
-;; with CLDR 1.6.1
-;;
-;; (without-debugging (test/cldr/run-cldr-tests))
-;;
-;; #<test-run: 2 tests, 11819 assertions, 1779 failures in 4.732 sec (1769 failed assertions, 10 errors, none expected)>
+#|
+
+(without-debugging (test/cldr/run-cldr-tests))
+
+with CLDR 1.6.1
+#<test-run: 2 tests, 11819 assertions, 1779 failures in 4.732 sec (1769 failed assertions, 10 errors, none expected)>
+
+with CLDR 1.6.1
+#<test-run: 2 tests, 16387 assertions, 1357 failures in 11.82 sec (1339 failed assertions, 18 errors, none expected)>
+
+|#
 
 (deftest (test/cldr/run-cldr-tests :auto-call nil) ()
   ;; don't run the cldr tests by default, we are just not there yet...
@@ -178,18 +184,18 @@
   (("en_US_POSIX" "en_US" "en_GB" "en")
 
    (usd   "US Dollar"              "$")
-   ("USN" "US Dollar (Next day)"   nil)
-   (uak   "Ukrainian Karbovanetz"  nil)
+   ("USN" "US Dollar (Next day)"   'ldml:usn)
+   (uak   "Ukrainian Karbovanets"  'ldml:uak)
    (huf   "Hungarian Forint"       "Ft")
    ("GBP" "British Pound Sterling" "£"))
 
   (("hu_HU" "hu")
 
-   (usd   "USA dollár"                  "USD")
-   ("USN" "USA dollár (következő napi)" nil)
-   (uak   "Ukrán karbovanec"            nil)
+   (usd   "USA dollár"                  "$")
+   ("USN" "USA dollár (következő napi)" 'ldml:usn)
+   (uak   "Ukrán karbovanec"            'ldml:uak)
    (huf   "Magyar forint"               "Ft")
-   ("GBP" "Brit font sterling"          "GBP")))
+   ("GBP" "Brit font sterling"          "£")))
 
 (defsuite* (test/cldr/languages :in test/cldr))
 
