@@ -105,7 +105,15 @@
   (compile-simple-number-formatters locale #'percent-formatters-of #'compile-number-pattern/percent))
 
 (defun compile-number-formatters/currency (locale)
-  (compile-number-pattern/currency locale))
+  (bind ((currency-formatter (currency-formatter-of locale)))
+    (when currency-formatter
+      (setf (pattern-verbosity-list-of currency-formatter)
+            (iter (for (verbosity entry) :on (pattern-verbosity-list-of currency-formatter) :by #'cddr)
+                  (for pattern = (getf entry :pattern))
+                  (assert pattern)
+                  (setf (getf entry :formatter) (compile-number-pattern/currency pattern))
+                  (collect verbosity)
+                  (collect entry))))))
 
 (defun dummy-formatter (&rest args)
   (declare (ignore args))

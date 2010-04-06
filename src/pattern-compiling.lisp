@@ -479,36 +479,24 @@
     :accessor pattern-verbosity-list-of)))
 
 ;; TODO for now, it's not implemented according to the cldr
-(defun compile-number-pattern/currency (locale)
-  (awhen (currency-formatter-of locale)
-    (awhen (pattern-verbosity-list-of it)
-      (iter (for verbosity :in it by #'cddr)
-            (with pattern = (getf (getf it verbosity) :pattern))
-            (with currency-specific-formatter = (make-hash-table))
-            (setf (getf it verbosity)
-                  (list :pattern pattern
-                        :currency-specific-formatter currency-specific-formatter
-                        :formatter
-                        (lambda (stream number currency-code)
-                          (assert (ldml-symbol-p currency-code))
-                          (bind ((formatter (or
-                                             (gethash currency-code currency-specific-formatter)
-                                             (setf
-                                              (gethash currency-code currency-specific-formatter)
-                                              (compile-number-pattern/decimal
-                                               (replace-currency-sign-considering-quotes
-                                                pattern
-                                                (do-current-locales locale
-                                                  (awhen (gethash currency-code (currencies-of locale))
-                                                    (awhen (second it)
-                                                      (return it))))
-                                                (symbol-name currency-code)
-                                                (do-current-locales locale
-                                                  (awhen (gethash currency-code (currencies-of locale))
-                                                    (awhen (first it)
-                                                      (return it))))))))))
-                            (funcall formatter stream number)))))))))
-
+(defun compile-number-pattern/currency (pattern)
+  (lambda (stream number currency-code)
+    (assert (ldml-symbol-p currency-code))
+    ;; OPTIMIZATION we could have some memoization here...
+    (bind ((formatter (compile-number-pattern/decimal
+                       (replace-currency-sign-considering-quotes
+                        pattern
+                        (do-current-locales locale
+                          ;; TODO assert for a match here. check all usages all around...
+                          (awhen (gethash currency-code (currencies-of locale))
+                            (awhen (second it)
+                              (return it))))
+                        (symbol-name currency-code)
+                        (do-current-locales locale
+                          (awhen (gethash currency-code (currencies-of locale))
+                            (awhen (first it)
+                              (return it))))))))
+      (funcall formatter stream number))))
 
 (defmacro replace-sign-considering-quotes (pattern char-to-replace &body body)
   ;; TODO user once-only to rebind
