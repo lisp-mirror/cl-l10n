@@ -53,7 +53,7 @@
 
 (defsystem :cl-l10n.test
   :depends-on (:cl-l10n
-               :stefil
+               :hu.dwim.stefil
                :parse-number
                )
   :components
@@ -69,7 +69,7 @@
   (pushnew :debug *features*)
   (declaim (optimize (debug 3)))
   (warn "Issued a (declaim (optimize (debug 3))) and changed *package* for C-cC-c/REPL convenience")
-  (eval (read-from-string "(stefil:funcall-test-with-feedback-message 'cl-l10n.test::test)")))
+  (eval (read-from-string "(hu.dwim.stefil:funcall-test-with-feedback-message 'cl-l10n.test::test)")))
 
 (defmethod operation-done-p ((op test-op) (system (eql (find-system :cl-l10n))))
   nil)

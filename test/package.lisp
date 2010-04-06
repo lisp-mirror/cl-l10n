@@ -5,7 +5,7 @@
         :cl-l10n
         :alexandria
         :iter
-        :stefil
+        :hu.dwim.stefil
         :metabang-bind
         )
   (:shadowing-import-from :cl-l10n
