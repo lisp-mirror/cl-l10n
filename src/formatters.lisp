@@ -110,22 +110,30 @@
   (not-yet-implemented))
 
 (defun format-number/currency (stream number currency-code &key (verbosity 'ldml:medium) pattern)
-  (when pattern
-    (not-yet-implemented "Custom pattern support for FORMAT-NUMBER/CURRENCY"))
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
   (%format-iterating-locales
    stream
-   (named-lambda currency-format-visitor (stream locale)
-     (awhen (currency-formatter-of locale)
-       (awhen (pattern-verbosity-list-of it)
-         (awhen (or (getf it verbosity)
-                    (getf it nil))
-           (bind ((formatter (getf it :formatter)))
-             (if formatter
-                 (progn
-                   (funcall formatter stream number currency-code)
-                   t)
-                 nil))))))
+   (if pattern
+       (lambda (stream locale)
+         (declare (ignore locale))
+         (funcall (etypecase pattern
+                    (string
+                     ;; NOTE: this code path is A LOT slower. see similar notes around this file for more details.
+                     (compile-number-pattern/currency pattern))
+                    (function pattern))
+                  stream number currency-code)
+         t)
+       (named-lambda currency-format-visitor (stream locale)
+         (awhen (currency-formatter-of locale)
+           (awhen (pattern-verbosity-list-of it)
+             (awhen (or (getf it verbosity)
+                        (getf it nil))
+               (bind ((formatter (getf it :formatter)))
+                 (if formatter
+                     (progn
+                       (funcall formatter stream number currency-code)
+                       t)
+                     nil)))))))
    (named-lambda currency-format-fallback (stream)
      (warn "No currency formatter was found with verbosity ~S for locale ~A. Ignoring the locale and printing in a fixed simple format."
            verbosity (current-locale))
