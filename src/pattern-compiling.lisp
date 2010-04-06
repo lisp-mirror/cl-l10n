@@ -22,7 +22,7 @@
                                                    +date-pattern-characters/gregorian-calendar+
                                                    +time-pattern-characters/gregorian-calendar+)))
 
-;;; at the time these functions are called *locale* is bound the the locale for which the pattern should be compiled for
+;;; the functions in this file use and capture the current value of *locale* while compiling a pattern for it
 
 (defun tokenize-format-pattern (pattern scanner)
   (bind ((quote-pieces (remove-if #'zerop
