@@ -351,12 +351,13 @@
 ;;; some useful helpers
 ;;;
 (defun string-content-of (node)
-  (unless (= 1 (length (children-of node)))
-    (error "Node ~A has more then one children while expecting a single string content" node))
-  (let ((value (elt (children-of node) 0)))
-    (unless (stringp value)
-      (error "Single child ~S of node ~A is not a string" value node))
-    value))
+  (let ((child-count (length (children-of node))))
+    (unless (= 1 child-count)
+      (error "Node ~A has ~A children while expecting a single string content" node child-count))
+    (let ((value (elt (children-of node) 0)))
+      (unless (stringp value)
+        (error "Single child ~S of node ~A is not a string" value node))
+      value)))
 
 (defun first-child (node)
   (elt (children-of node) 0))
