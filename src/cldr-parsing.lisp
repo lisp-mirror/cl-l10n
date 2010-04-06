@@ -118,11 +118,11 @@
   (declare (ignore public-id))
   (bind ((file (cond
                  ((puri:uri= system-id (load-time-value
-                                        (puri:parse-uri "http://www.unicode.org/cldr/dtd/1.6/ldml.dtd")))
-                  "cldr/ldml.dtd")
+                                        (puri:parse-uri "http://www.unicode.org/cldr/dtd/1.8.0/ldml.dtd")))
+                  "cldr/common/dtd/ldml.dtd")
                  ((puri:uri= system-id (load-time-value
-                                        (puri:parse-uri "http://www.unicode.org/cldr/dtd/1.6/cldrTest.dtd")))
-                  "cldr/cldrTest.dtd"))))
+                                        (puri:parse-uri "http://www.unicode.org/cldr/dtd/1.8.0/cldrTest.dtd")))
+                  "cldr/common/dtd/cldrTest.dtd"))))
     (when file
       (open (project-relative-pathname file) :element-type '(unsigned-byte 8) :direction :input))))
 
