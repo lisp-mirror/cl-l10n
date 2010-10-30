@@ -19,7 +19,7 @@ with CLDR 1.6.1
 
 (deftest (test/cldr/run-cldr-tests :auto-call nil) ()
   ;; don't run the cldr tests by default, we are just not there yet...
-  (cl-fad:walk-directory (project-relative-pathname "cldr/test/")
+  (cl-fad:walk-directory (cldr-relative-pathname "test/")
                          'test/cldr/run-cldr-test
                          :directories nil
                          :test (lambda (file)

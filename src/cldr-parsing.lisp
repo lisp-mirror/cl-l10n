@@ -124,7 +124,7 @@
                                         (puri:parse-uri "http://www.unicode.org/cldr/dtd/1.8.0/cldrTest.dtd")))
                   "cldr/common/dtd/cldrTest.dtd"))))
     (when file
-      (open (project-relative-pathname file) :element-type '(unsigned-byte 8) :direction :input))))
+      (open (cldr-relative-pathname file) :element-type '(unsigned-byte 8) :direction :input))))
 
 (defmethod flexml:class-name-for-node-name ((parser cldr-parser) namespace-uri package (local-name string) qualified-name)
   (let ((class-name (find-symbol (string-upcase (camel-case-to-hyphened local-name)) :ldml)))

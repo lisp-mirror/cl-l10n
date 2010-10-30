@@ -15,7 +15,10 @@
 (defun project-relative-pathname (file)
   (asdf:system-relative-pathname :cl-l10n file))
 
-(defparameter *cldr-root-directory* (project-relative-pathname "cldr/common/main/"))
+(defun cldr-relative-pathname (file)
+  (asdf:system-relative-pathname :cl-l10n-cldr file))
+
+(defparameter *cldr-root-directory* (cldr-relative-pathname "common/main/"))
 
 ;; TODO locking for thread safety
 (defparameter *locale-cache* (make-hash-table :test #'equal)

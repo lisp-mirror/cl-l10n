@@ -38,6 +38,7 @@
                                               :depends-on ("package" "utils" "load-locale")))
                         :depends-on ("flexml")))
   :depends-on (:alexandria
+               :cl-l10n-cldr
                :iterate
                :cl-ppcre
                :metabang-bind
