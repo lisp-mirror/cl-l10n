@@ -29,6 +29,8 @@ cl-l10n/bin/update-cldr.sh
 I have this in my init.el that, besides other things, adds better
 indentation for DEFRESOURCES.
 
+(require 'cl)
+
 (let ((overrides
        '((defclass* defclass)
          (defcondition* defcondition)
