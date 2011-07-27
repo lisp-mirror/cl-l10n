@@ -152,6 +152,8 @@
                                              (aif (position-if #'digit-char-p integer-part-without-grouping)
                                                   (- (length integer-part-without-grouping) it)
                                                   0))))
+                      (assert (<= rounding-increment 1) () "ROUNDING-INCREMENT should be <= 1, but it's ~A" rounding-increment)
+                      (assert (non-negative-integer-p rounding-fraction-length))
                       (make-compiled-pattern (number)
                         (declare (inline digit-char)
                                  (optimize speed))
@@ -162,11 +164,11 @@
                                ;; compile time. TODO?
                                (localized-decimal-separator (localize-number-symbol-character #\.))
                                (localized-thousand-separator (localize-number-symbol-character #\,))
-                               ;; caution: there are rounding errors with floating point arithmetics
-                               (rounded-integer-part
-                                (truncate (* rounding-increment (round (/ number rounding-increment)))))
-                               (rounded-fraction-part
-                                (* rounding-increment (round (/ (- number (truncate number)) rounding-increment)))))
+                               ;; FIXME? there are rounding errors with floating point arithmetics...
+                               ((:values rounded-integer-part rounded-fraction-part)
+                                (truncate (* rounding-increment (round number rounding-increment)))))
+                          (assert (and (<= 0 rounded-fraction-part)
+                                       (< rounded-fraction-part 1)))
                           ;; fraction part
                           (macrolet ((emit (stuff)
                                        (once-only (stuff)
