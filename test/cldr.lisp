@@ -215,14 +215,14 @@ with CLDR 1.6.1
    ("ace"     "achinéz")
    (zza       "zaza")
    ;; The next two may break until support for the cldr 'draft' attribute is implemented
-   (zh_Hans   "egyszerűsített kínai")
-   ("zh_Hant" "hagyományos kínai")
+   (zh_Hans   "kínai (egyszerűsített)")
+   ("zh_Hant" "kínai (hagyományos)")
    (zh        "kínai")))
 
 (def-symbol-test test/languages/script (cl-l10n.lang:script)
   (("en_US_POSIX" "en_US" "en_GB" "en")
 
-   (Arab      "Arabic")
+   (Arab      "Perso-Arabic")
    ("Zyyy"    "Common")
    (Tibt      "Tibetan")
    (Knda      "Kannada")
@@ -230,8 +230,8 @@ with CLDR 1.6.1
 
   (("hu_HU" "hu")
 
-   ;;(Arab      "Arabic") missing from the xml?!
-   ("Zyyy"    "Meghatározatlan")
+   (Arab      "Arab")
+   ("Zyyy"    "Általános")
    (Visp      "Látható beszéd")
    (Tibt      "Tibeti")
    (Knda      "Kannada")
