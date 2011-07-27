@@ -5,6 +5,8 @@
 
 ;;; see http://unicode.org/cldr/
 
+;; TODO use alists instead of plists...
+
 (defvar *parser*)
 
 (define-condition cldr-parser-warning (simple-warning)
@@ -110,6 +112,7 @@
             (setf (getf entry :formatter) (compile-number-pattern/currency (getf entry :pattern)))
             (setf (assoc-value (formatters-of currency-formatter) verbosity) entry)))))
 
+;; TODO get rid of this
 (defun dummy-formatter (&rest args)
   (declare (ignore args))
   (error "Seems like either the CLDR file parsing or the CLDR files themselves have a bug. This dummy formatter should have been replaced in the postprocessing phase."))

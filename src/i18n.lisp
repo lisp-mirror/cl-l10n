@@ -310,6 +310,7 @@ Be careful when using in different situations, because it modifies *readtable*."
       (return (values (cdr it) t)))))
 
 (defun localize-number-symbol-character (number-symbol-char)
+  (check-type number-symbol-char character)
   (bind ((number-symbol-name (case number-symbol-char
                                (#\. 'ldml:decimal)
                                (#\0 'ldml:native-zero-digit)
