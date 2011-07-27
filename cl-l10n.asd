@@ -62,6 +62,7 @@
             :components
             ((:file "package")
              (:file "cldr" :depends-on ("package"))
+             (:file "formatting" :depends-on ("package" "cldr"))
              (:file "resources" :depends-on ("package" "cldr"))))))
 
 (defmethod perform ((op test-op) (sys (eql (find-system :cl-l10n))))
