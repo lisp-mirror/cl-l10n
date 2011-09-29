@@ -71,6 +71,19 @@ write in your code (lang:plural-of #"foot") and it will return
 Resource lookup can fall back to less preferred languages when
 *locale* is a list.
 
+*** TODO/plans
+
+The CLDR files contain formatting patterns that could be used for
+generating/driving parsers, especially for date/time.
+
+http://www.unicode.org/reports/tr35/tr35-21.html#Lenient_Parsing
+
+Collation info should be used to generate locale sensitive string
+comparators. For the whole (quite complex!) story read this:
+http://www.unicode.org/reports/tr10/
+
+Consider reinstating a dwim-ish date/time parser, but it brings up
+more questions than i want to write up right now.
 
 *** Testing
 
