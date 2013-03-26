@@ -242,6 +242,7 @@ ELSE will be executed."
   "Just like cond-bind except the var is automatically IT."
   `(cond-bind it ,@clauses))
 
+;; TODO consider using UIOP:GETENV which is shipped with recent enough ASDF's
 (defun getenv (var)
   #+allegro (sys:getenv var)
   #+clisp (ext:getenv var)
@@ -250,6 +251,7 @@ ELSE will be executed."
   #+lispworks (lw:environment-variable var)
   #+openmcl (ccl::getenv var)
   #+sbcl (sb-ext:posix-getenv var)
+  #+abcl (ext:getenv var)
 
-  #-(or allegro clisp cmu lispworks openmcl openmcl sbcl)
+  #-(or allegro clisp cmu lispworks openmcl openmcl sbcl abcl)
   (error "Could not define `getenv'."))
