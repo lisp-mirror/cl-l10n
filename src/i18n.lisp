@@ -20,6 +20,7 @@
   return-value)
 
 (defun ensure-resource-lookup-stub (name)
+  "Make sure that there is a function to get a resource of the given name."
   (unless (get name 'resource-lookup-stub)
     ;; define a function with this name that'll look at the *locale* list and call the first
     ;; locale specific lambda it finds while walking the locales
@@ -63,6 +64,14 @@
         (values nil nil))))
 
 (defun lookup-resource (name &key arguments (otherwise (if arguments :error name) otherwise-provided?))
+  "Look up resource by the given name. If the resource is a function, then arguments are passed to that
+function. The otherwise parameter determines the behaviour if the resource is not found in the following way:
+If OTHERWISE is not provided, it throws a resource missing warning.
+If OTHERWISE is a list starting with :error or :warn, an error or warning is given with the specified parameters respecively.
+If OTHERWISE is a function, that function is called.
+Otherwise the value of otherwise is returned.
+
+If arguments are provided and the resource is a string, format is called on the string with the arguments passed."
   (do-current-locales locale
     (multiple-value-bind (result foundp) (funcall '%lookup-resource locale name arguments)
       (when foundp
@@ -89,6 +98,18 @@
   (%set-resource *locale* name value))
 
 (defmacro defresources (locale-designator &body resources)
+  "Define resources for a locale.
+A resource can be a simple value, or a function.
+
+For a simple value, the resource is a two-element list, where the first element is the resource key,
+as a string or unquoted symbol, and the second element is the value.
+
+For a function, the resource is a list where the first element is the resource key (an unquoted symbol), the second
+element is the lambda list for the function, and the rest of the list is the body of the function.
+
+The resource is available with lookup-resource. If the resource is a value, it can be accessed with localize,
+or the #\" macro. If the resource is a function, then a function is defined with the resources name that dispatches
+on the current locale."
   (with-unique-names (locale)
     `(progn
        (eval-when (:compile-toplevel)

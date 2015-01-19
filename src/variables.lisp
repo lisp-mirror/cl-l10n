@@ -35,6 +35,9 @@
 (defvar *locale-loaded-listeners* ())
 
 (defun register-locale-loaded-listener (fn-name)
+  "Register a listener for when locales are loaded. fn-name is a symbol for a function that
+will be funcalled with the name of the locale loaded. The function will be called
+for each locale already loaded when it is registered."
   (check-type fn-name symbol) ; to enforce using symbols, so that we can guard against double registration
   (unless (find fn-name *locale-loaded-listeners*)
     (push fn-name *locale-loaded-listeners*)
@@ -45,6 +48,7 @@
   fn-name)
 
 (defun unregister-locale-loaded-listener (fn-name)
+  "Unregister a listener previously added with register-locale-loaded-listener"
   (check-type fn-name symbol)
   (deletef *locale-loaded-listeners* fn-name)
   (values))

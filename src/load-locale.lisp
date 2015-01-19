@@ -68,9 +68,13 @@
 (defun locale (locale-designator &key (use-cache t) (otherwise nil otherwise-p))
   "Find locale named by the specification LOCALE-DESIGNATOR. If USE-CACHE
 is non-nil forcefully reload/reparse the cldr locale else
-the locale is first looked for in *locale-cache*. If ERRORP is non-nil
+the locale is first looked for in *locale-cache*. If OTHERWISE is not supplied
 signal an error that the locale file cannot be found.
-If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
+If OTHERWISE is a list starting with :ERROR or :WARN, an error or warning is
+thrown, repsecitively with the remaineder of the list as arguments.
+If OTHERWISE is a function, that function is called and the result is returned.
+Othterwise the value of OTHERWISE is returned.
+"
   (declare (type locale-designator locale-designator))
   (if (typep locale-designator 'locale)
       locale-designator
@@ -120,7 +124,7 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
         (load-resource name)))
 
 (defun load-all-locales (&key (ignore-errors nil) (use-cache t))
-  "Load all locale found in pathname designator PATH."
+  "Load all locales."
   (cl-fad:walk-directory
    *cldr-root-directory*
    (lambda (file-name)
@@ -175,14 +179,14 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
   ;; TODO: Quick workaround for buggy format in openmcl which prints the
   ;; commachar even when the : modifier is not present.
   #+openmcl (when no-ts (return-from create-number-fmt-string "~A~D~{~A~}"))
-  (cl:format nil "~~A~~,,'~A,~A~A~~{~~A~~}" 
+  (cl:format nil "~~A~~,,'~A,~A~A~~{~~A~~}"
              (thousands-sep-char (locale-thousands-sep locale))
              (if (minusp (locale-grouping locale)) 3 (max 1 (locale-grouping locale)))
              (if no-ts "D" ":D")))
 
 #+nil
 (defun create-money-fmt-string (locale no-ts minusp)
-  (multiple-value-bind (sep-by-space prec spos sign) 
+  (multiple-value-bind (sep-by-space prec spos sign)
       (get-descriptors minusp locale)
     (let ((sym-sep (if (zerop sep-by-space) "" " ")))
       (with-output-to-string (stream)
@@ -232,5 +236,3 @@ If LOADER is non-nil skip everything and call loader with LOCALE-DESIGNATOR."
                  (list :money-n-ts
                        (create-money-fmt-string locale nil t))
                  (printers locale)))))
-
-

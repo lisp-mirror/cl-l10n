@@ -42,12 +42,14 @@
 ;; TODO this should be cleaned up and finished once local-time settles down on how to represent dates and time of day.
 ;; for now format-date happily format timestamps and understands time format directives when passed in a custom pattern.
 (defun format-date (stream date &key (verbosity 'ldml:medium) pattern (calendar 'gregorian-calendar))
+  "Format date from local-time timestamp according to locale"
   (unless (symbolp calendar)
     (setf calendar (type-of calendar)))
   (ecase calendar
     (gregorian-calendar (format-date/gregorian-calendar stream date :verbosity verbosity :pattern pattern))))
 
 (defun format-time (stream time &key (verbosity 'ldml:medium) pattern (calendar 'gregorian-calendar))
+  "Format time form local-time timestamp according to locale"
   (unless (symbolp calendar)
     (setf calendar (type-of calendar)))
   (not-yet-implemented))
@@ -114,6 +116,7 @@
   (not-yet-implemented))
 
 (defun format-number/currency (stream number currency-code &key (verbosity 'ldml:medium) pattern)
+  "Format currency. number is the amount and currency-code is the currency code form the cl-l10n.ldml package."
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
   (etypecase pattern
     (compiled-pattern
@@ -169,11 +172,16 @@
         (cl:format stream fallback-format-pattern number))))))
 
 (defun format-number/decimal (stream number &key (verbosity 'ldml:medium) pattern)
+  "Format number as a decimal number proper format for the given locale. Pattern is a number pattern
+as specified here http://unicode.org/reports/tr35/tr35-numbers.html#Number_Format_Patterns.
+The stream is treated the same as in cl:format."
   (%format-number stream number verbosity
                   pattern 'compile-number-pattern/decimal
                   #'decimal-formatters-of "decimal number formatter" "~A"))
 
 (defun format-number/percent (stream number &key (verbosity 'ldml:medium) pattern)
+  "Format number as a percentage in the proper format for the current locale. For example in the en_US
+locale (format-number/percent nil 0.5) returns the string \"50%\""
   (%format-number stream number verbosity
                   pattern 'compile-number-pattern/percent
                   #'percent-formatters-of "percent number formatter" "~A%"))
@@ -189,7 +197,8 @@
                                             ;; currency support is pretty hopeless here because it needs the currency name as an argument,
                                             ;; but the format syntax only allows numeric or character arguments...
                                             )
-  :test 'equal)
+  :test 'equal
+  :documentation "alist mapping new format directives to formatting functions")
 
 (define-compiler-macro format (&whole form destination format-control &rest format-arguments)
   "Compiler macro to remove unnecessary calls to parse-format-string."
@@ -198,10 +207,19 @@
       form))
 
 (defmacro formatter (format-string)
+  "Shadow fromatter function that adds the same directives as the shadow format."
   (etypecase format-string
     (string `(cl:formatter ,(parse-format-string format-string)))))
 
 (defun format (stream format-control &rest format-arguments)
+  "Shadow format function, with additional directives for localized values.
+The following additional directives are added.
+~N -- Localized decimal number -- %format-number.decimal
+~Y -- Localized percent number -- %format-number.percent
+~L -- Localized date -- %format-date
+~M -- Localized time -- %format-time
+~U -- Localized timestamp -- %format-timestamp
+See appropriate format functions for details."
   (apply #'cl:format stream
          (etypecase format-control
            (function format-control)
@@ -209,10 +227,15 @@
          format-arguments))
 
 (defun shadow-format (&optional (package *package*))
-  "Shadowing import the CL-L10N:FORMAT symbol into PACKAGE."
+  "Shadowing import the CL-L10N::FORMAT and CL-L10N::FORMATTER symbols into PACKAGE."
   (shadowing-import '(cl-l10n::format cl-l10n::formatter) package))
 
 (defun %format-number.decimal (stream number colon-modifier? at-modifier?)
+  "Format function for localized numbers appropriate for using with the ~// format directive.
+
+Example:
+(format t \"~/cl-l10n:%format-number.decimal/\" 1002932)
+prints 1,002,932"
   (bind ((print-decimal-point? (not colon-modifier?))
          (print-thousand-separator? (not at-modifier?)))
     (unless print-decimal-point?
@@ -224,20 +247,26 @@
 
 (defun %format-number.percent (stream number colon-modifier? at-modifier?)
   (declare (ignore colon-modifier? at-modifier?))
+  "Format function for localized percentages appropriate for use with the ~// format directive."
   (format-number/percent stream number)
   (values))
 
 (defun %format-date (stream date colon-modifier? at-modifier?)
   (declare (ignore colon-modifier? at-modifier?))
+  "Format function for localized dates appropriate for use with the ~// format directive."
   (format-date/gregorian-calendar stream date)
   (values))
 
 (defun %format-time (stream time colon-modifier? at-modifier?)
   (declare (ignore colon-modifier? at-modifier?))
+  "Format function for localized times appropriate for use with the ~// format directive."
   (format-time/gregorian-calendar stream time)
   (values))
 
 (defun %format-timestamp (stream timestamp colon-modifier? at-modifier?)
+  "Format function for localized timestamps appropriate for use with the ~// format directive.
+If the colon modifier is used, the timestamp is not printed.
+If the at modifier is used, the UTC timezone is used"
   (bind ((show-timezone? (not colon-modifier?))
          (in-utc-zone? at-modifier?)
          (local-time:*default-timezone* (if in-utc-zone? local-time:+utc-zone+ local-time:*default-timezone*)))
