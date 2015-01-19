@@ -373,6 +373,8 @@
            (era-names               (effective-date-related-names/gregorian-calendar 'era-names-of #("BC" "AD")))
            (abbreviated-era-names   (effective-date-related-names/gregorian-calendar 'abbreviated-era-names-of #("BC" "AD")))
            (narrow-era-names        (effective-date-related-names/gregorian-calendar 'narrow-era-names-of #("BC" "AD")))
+           (am                      (effective-am/gregorian-calendar))
+           (pm                      (effective-pm/gregorian-calendar))
            (formatters (list)))
       (dolist (pattern patterns)
         (bind ((piece-formatters (list)))
@@ -385,14 +387,14 @@
                       (unless (zerop length)
                         ;;(format *debug-io* "  processing inner piece ~S~%" piece)
                         (bind ((directive-character (char piece 0)))
-                          (flet ((process-hour-directive (&key offset modulo)
+                          (flet ((process-hour-directive (&key no-zero-hour twelve-hour)
                                    (if (or (= length 1)
                                            (= length 2))
-                                       (collect (piece-formatter (bind ((hour (if modulo
-                                                                                  (mod hour modulo)
+                                       (collect (piece-formatter (bind ((hour (if twelve-hour
+                                                                                  (mod hour 12)
                                                                                   hour)))
-                                                                   (when offset
-                                                                     (incf hour offset))
+                                                                   (when (and no-zero-hour (zerop hour))
+                                                                     (incf hour (if twelve-hour 12 24)))
                                                                    (write-decimal-digits stream hour
                                                                                          :minimum-digit-count length))))
                                        (invalid-number-of-directives))))
@@ -439,10 +441,10 @@
                                                (= 2 length))
                                      (invalid-number-of-directives))
                                    (collect (piece-formatter (write-decimal-digits stream day :minimum-digit-count length))))
-                              (#\h (process-hour-directive :offset 1 :modulo 12))
+                              (#\h (process-hour-directive :no-zero-hour t :twelve-hour t))
                               (#\H (process-hour-directive))
-                              (#\K (process-hour-directive :modulo 12))
-                              (#\k (process-hour-directive :offset 1))
+                              (#\K (process-hour-directive :twelve-hour t))
+                              (#\k (process-hour-directive :no-zero-hour t))
                               (#\m (unless (or (= 1 length)
                                                (= 2 length))
                                      (invalid-number-of-directives))
@@ -458,9 +460,8 @@
                               ((#\z #\Z #\v #\V)
                                ;; TODO timezone is not yet implemented
                                (warn "Timezone processing is not yet implemented for time pattern compiler. Pattern is: ~S" pattern))
-                              (#\a
-                               ;; TODO am/pm is not yet implemented
-                               (warn "AM/PM processing is not yet implemented for time pattern compiler. Pattern is: ~S" pattern))
+                              (#\a (collect (piece-formatter
+                                             (write-string (if (>= hour 12) pm am) stream))))
                               (otherwise
                                (when (or (find directive-character +date-pattern-characters/gregorian-calendar+ :test #'char=)
                                          (find directive-character +time-pattern-characters/gregorian-calendar+ :test #'char=))

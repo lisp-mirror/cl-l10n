@@ -70,16 +70,18 @@
     :initform nil
     :accessor time-formatters-of)))
 
-(defun effective-date-related-names (calendar-slot-reader name-vector-slot-reader &optional defaults)
+(defun effective-calendar-value (calendar-slot-reader value-slot-reader &optional default)
   (setf calendar-slot-reader (ensure-function calendar-slot-reader))
-  (setf name-vector-slot-reader (ensure-function name-vector-slot-reader))
-  (bind ((result nil))
-    (do-current-locales locale
-      ;; find the first non-nil name vector
-      (awhen (funcall calendar-slot-reader locale)
-        (awhen (funcall name-vector-slot-reader it)
-          (setf result it)
-          (return))))
+  (setf value-slot-reader (ensure-function value-slot-reader))
+  (or (do-current-locales locale
+        ;;find the first non-nil value
+        (awhen (funcall calendar-slot-reader locale)
+          (awhen (funcall value-slot-reader it)
+            (return it))))
+      default))
+
+(defun effective-date-related-names (calendar-slot-reader name-vector-slot-reader &optional defaults)
+  (bind ((result (effective-calendar-value calendar-slot-reader name-vector-slot-reader)))
     (if result
         (when (some #'null result)
           ;; if it's partial then make a copy and fill it in
@@ -103,3 +105,8 @@
 (defun effective-date-related-names/gregorian-calendar (name-vector-slot-reader &optional defaults)
   (effective-date-related-names 'gregorian-calendar-of name-vector-slot-reader defaults))
 
+(defun effective-am/gregorian-calendar ()
+  (effective-calendar-value 'gregorian-calendar-of 'am-of "am"))
+
+(defun effective-pm/gregorian-calendar ()
+  (effective-calendar-value 'gregorian-calendar-of 'pm-of "pm"))

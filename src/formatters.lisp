@@ -52,7 +52,8 @@
   "Format time form local-time timestamp according to locale"
   (unless (symbolp calendar)
     (setf calendar (type-of calendar)))
-  (not-yet-implemented))
+  (ecase calendar
+    (gregorian-calendar (format-time/gregorian-calendar stream time :verbosity verbosity :pattern pattern))))
 
 (defun format-timestamp (stream timestamp &key (verbosity 'ldml:medium) pattern (calendar 'gregorian-calendar))
   (unless (symbolp calendar)
@@ -60,14 +61,7 @@
   (unless verbosity
     (setf verbosity 'ldml:medium))
   (ecase calendar
-    (gregorian-calendar
-     (with-normalized-stream-variable stream
-       (if pattern
-           (%format-date-or-time/gregorian-calendar stream timestamp "FORMAT-TIMESTAMP: Should not happen..." nil nil :verbosity verbosity :pattern pattern)
-           (progn
-             (format-date/gregorian-calendar stream timestamp :verbosity verbosity)
-             (write-char #\Space stream)
-             (format-time/gregorian-calendar stream timestamp :verbosity verbosity)))))))
+    (gregorian-calendar (format-timestamp/gregorian-calendar stream timestamp :verbosity verbosity :pattern pattern))))
 
 (defun %format-date-or-time/gregorian-calendar (stream value warning-string formatter-slot-reader fallback-pattern &key (verbosity 'ldml:medium) pattern )
   (check-type pattern (or null string function))
@@ -113,7 +107,13 @@
   (declare (ignore stream timestamp))
   (check-type pattern (or null string function))
   (setf verbosity (or (keyword-to-ldml verbosity) verbosity))
-  (not-yet-implemented))
+  (with-normalized-stream-variable stream
+    (if pattern
+        (%format-date-or-time/gregorian-calendar stream timestamp "FORMAT-TIMESTAMP: Should not happen..." nil nil :verbosity verbosity :pattern pattern)
+        (progn
+          (format-date/gregorian-calendar stream timestamp :verbosity verbosity)
+          (write-char #\Space stream)
+          (format-time/gregorian-calendar stream timestamp :verbosity verbosity)))))
 
 (defun format-number/currency (stream number currency-code &key (verbosity 'ldml:medium) pattern)
   "Format currency. number is the amount and currency-code is the currency code form the cl-l10n.ldml package."
