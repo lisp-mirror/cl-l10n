@@ -1,4 +1,4 @@
-\input texinfo          @c -*- texinfo -*-
+\input texinfo          @c -*- mode: texinfo, coding: utf-8  -*-
 @c %**start of header
 @setfilename cl-l10n.texi
 @settitle CL-L10N Manual
@@ -197,6 +197,23 @@ Otherwise the value of @emph{otherwise} is returned.
 Load all locales.
 @end deffn
 
+@anchor{Macro defresources}
+@deffn {Macro}  defresources locale-designator &body resources
+Define resources for a locale.
+@emph{locale-designator} is a symbol or string identifying the locale, ex: @code{:en_US}.
+A resource can be a simple value, or a function.
+
+For a simple value, the resource is a two-element list, where the first element is the resource key,
+as a string or unquoted symbol, and the second element is the value.
+
+For a function, the resource is a list where the first element is the resource key (an unquoted symbol),
+the second element is the lambda list for the function, and the rest of the list is the body of the function.
+
+The resource is available with lookup-resource. If the resource is a value, it can be accessed with localize,
+or the @code{#\"} macro. If the resource is a function, then a function is defined with the resources name that dispatches
+on the current locale
+@end deffn
+
 @anchor{Function localize}
 @deffn {Function} localize object
 Generic function to localize an object. The default simply calls lookup-resource.
@@ -214,15 +231,34 @@ Otherwise the value of otherwise is returned.
 If arguments are provided and the resource is a string, format is called on the string with the arguments passed.
 @end deffn
 
+@anchor{Macro lookup-first-matching-resource}
+@deffn {Macro} lookup-first-matching-resource &body specs
+Try to look up the resource keys in specs, returning the first match. If the spec is a list, the elements
+are concatenated with ``.'' to create the final key.
+
+You can control whether or not a key is tried with a @code{when} or @code{until} form. In which case, the
+key is only tried if the condition is met.
+@end deffn
+
+@anchor{Macro lookup-first-matching-resource*}
+@deffn {Macro} lookup-first-matching-resource (&key default) &body specs
+Like @code{lookup-first-matching-resource} but with an optional default if nothing matches.
+@end deffn
+
 @anchor{Function format-number/decimal}
 @deffn {Function} format-number/decimal stream number &key (verbosity 'medium) pattern
 Format a decimal number.
 @end deffn
 
+@anchor{Function %format-number.decimal}
+@deffn {Function} %format-number.decimal stream number colon-modifier? at-modifier?
+Analog to format-number/decimal for use as a format derective.
+@end deffn
+
 
 @anchor{Function format-number/currency}
 @deffn {Function} format-money stream number currency-code &key verbosity pattern
-Formats a number as a currency value.
+Formats a number as a currency value. currency-code should be a currency symbol from cl-l10n.ldml.
 @end deffn
 
 @anchor{Function format-number/percent}
@@ -230,49 +266,39 @@ Formats a number as a currency value.
 Format a number as a percentage.
 @end deffn
 
+@anchor{Function %format-number.percent}
+@deffn {Function} %format-number.percent stream number colon-modifier? at-modifier?
+Analog to format-number/percent for use as a format derective.
+@end deffn
+
+@anchor{Function format-date}
+@deffn {Function} format-date stream date &key verbosity pattern calendar
+Format localized date from local-time timestamp
+@end deffn
+
+@anchor{Function %format-date}
+@deffn {Function} %format-date stream number colon-modifier? at-modifier?
+Analog to format-date for use as a format derective.
+@end deffn
+
 @anchor{Function format-time}
-@deffn {function} format-time stream ut show-date show-time &optional (locale *locale*) fmt time-zone
-Prints the @code{universal-time} @emph{ut} as a locale specific time to @emph{stream}.
-The format of the time printed is controlled by @emph{show-time} and @emph{show-date}.
+@deffn {Function} format-time stream time &key verbosity pattern calendar
+Format localized time from local-time timestamp
+@end deffn
 
-@table @code
-@item show-time and show-date are not nil
-@code{locale-d-t-fmt}
-@item show-time and show-date are nil
-@code{locale-t-fmt-ampm} or @code{locale-t-fmt} if @code{locale-t-fmt-ampm} has
-no apparent value.
-@item show-time is not nil and show-date is nil
-locale-t-fmt
-@item show-date is not nil and show-time is nil
-locale-d-fmt
-@end table
+@anchor{Function %format-time}
+@deffn {Function} %format-time stream number colon-modifier? at-modifier?
+Analog to format-time for use as a format derective.
+@end deffn
 
-If @emph{fmt} is not nil then @emph{show-date} and @emph{show-time} are ignored
-and @emph{fmt} is used as the format control string. See the Notes Section for
-the defined control characters which can be used.
+@anchor{Function format-timestamp}
+@deffn {Function} format-timestamp stream timestamp &key verbosity pattern calendar
+Format localized date and time for a local-time timestamp
+@end deffn
 
-Examples (assuming *locale* is ``en_ZA'' and a CL -2 Time Zone)
-@verbatim
-(format t "~:/cl-l10n:format-time/" 3192624000)
-  prints `03/03/01'
-
-(format t "~@/cl-l10n:format-time/" 3192624000)
-  prints `18:00:00'
-
-(format t "~:@/cl-l10n:format-time/" 3192624000)
-  prints `Sat 03 Mar 2001 18:00:00 +0200'
-
-(format t "~v,v/cl-l10n:format-time/" "fr_FR" "%A" 3192624000)
-  prints `samedi'
-
-(format t "~,v/cl-l10n:format-time/" "%A" 3192624000)
-  prints `Saturday'
-
-; The Time Zone can be overriden with an extra v argument
-(format t "~v,v,v/cl-l10n:format-time/" "en_ZA" "%A" -8 3192624000)
-  print `Sunday'
-
-@end verbatim
+@anchor{Function %format-timestamp}
+@deffn {Function} %format-timestamp stream number colon-modifier? at-modifier?
+Analog to format-timestamp for use as a format derective.
 @end deffn
 
 @anchor{Function format}
@@ -282,28 +308,37 @@ use is to make formatting of dates, times, numbers and monetary
 values simpler.
 Shadow importing @code{cl-l10::format} into your package gives
 you a few new format directives.
-The new directives are ~U : Time and Date (universal-time),
-~N : Numbers and ~M : Monetary values. All other format directives
+The new directives are:
+~N : Numbers,
+~Y : Percentage,
+~L : Date,
+~M : Time,
+~U : Timea nd Date.
+All other format directives
 are unchanged and work as normal. These new directives are
-drop in replacements for the ~/cl-l10n:format-?/ calls.
+drop in replacements for the ~/cl-l10n:%format-?/ calls.
 
 @verbatim
-;; These examples assume an en_ZA locale and a CL -2 Time Zone
+;; These examples assume an en_ZA locale and a CL -7 Time Zone
 (in-package :cl-user)
 
-(shadowing-import 'cl-l10n::format)
+(cl-l10n:shadow-format)
+(defvar *date* (local-time:universal-to-timestamp 3192624000))
 
-(format t "~:U" 3192624000)
-  prints `03/03/2001'
-
-(format t "~,vU" "%A" 3192624000)
-  prints `Saturday'
-
-(format t "~:N" 3192624000)
+(format t "~N" 3192624000)
   prints `3,192,624,000'
 
-(format t "~:M" 3192624000)
-  prints `ZAR 3,192,624,000.00`
+(format t "~Y" 0.456)
+  prints `46%'
+
+(format t "~L" *date*)
+  prints `03 Mar 2001'
+
+(format t "~M" *date*)
+  prints `9:00:00 am'
+
+(format t "~U" *date*)
+  prints `03 Mar 2001 9:00:00 am'
 
 @end verbatim
 
@@ -316,35 +351,32 @@ Shadow importing formatter gives support for the new format
 control directives.
 @end deffn
 
-@anchor{Function parse-number}
-@deffn {Function} parse-number num-string &optional (locale *locale*)
-Parses the string @emph{num-string} into a number using @emph{locale}.
+@anchor{Macro with-locale}
+@deffn {Macro} with-locale locale &body body
+Execute @emph{body} in the locale specified by @emph{locale}.
+@emph{locale} may either be a single locale designator, or a list of locale designators.
+In the later case, resources will be looked for in each locale in the given order until a
+match is found.
 @end deffn
 
-@anchor{Function parse-time}
-@deffn {Function} parse-time time-string &key (start 0) (end (length time-string)) (error-on-mismatch nil) (patterns *default-date-time-patterns*) (default-seconds nil) (default-minutes nil) (default-hours nil) (default-day nil) (default-month nil) (default-year nil) (default-zone nil) (default-weekday nil) (locale *locale*)
-
-Tries very hard to make sense out of the argument time-string using
-locale and returns a single integer representing the universal time if
-successful.  If not, it returns nil.  If the :error-on-mismatch
-keyword is true, parse-time will signal an error instead of
-returning nil.  Default values for each part of the time/date
-can be specified by the appropriate :default- keyword.  These
-keywords can be given a numeric value or the keyword :current
-to set them to the current value.  The default-default values
-are 00:00:00 on the current date, current time-zone.
-
-Example, what date does the string ``02/03/05'' specify?
-parse-time will use the current locale or the locale-designator
-passed to it to determine the correct format for dates.
-In America (en_US) this date is the 3rd of February 2005, with an South African English (en_ZA)
-locale this date is the 2nd of March 2005 and with a Swedish locale (sv_SE) it's the 5th of March 2002.
-
-Note. This is not my work but was done by Jim Healy and is a part of the CMUCL project,
-      which has been modified to handle differt locales.
-
+@anchor{Function current-locale}
+@deffn {Function} current-locale
+Get the current locale. This is a list of @code{locale} objects.
+This is also @code{setf}-able to either a single locale designator or a list of locale designators.
 @end deffn
 
+@subsection Convenience functions
+
+@anchor{Function shadow-format}
+@deffn {Function} shadow-format &optional (package *package*)
+Shadowing import @code{cl-l10n::format} and @code{cl-l10n::formatter} into @emph{package}.
+@end deffn
+
+@anchor{Macro enable-sharpquote-reader}
+@deffn {Macro} enable-sharpquote-reader
+Enable quote reader macro dispatching on ``#"''. Example: @code{#"i18n.text"} will be shorthand for
+@code{(localize "i18n.text")}. Not that this modifies @code{*readtable*}.
+@end deffn
 
 @section Classes
 @anchor{Class locale}
@@ -352,13 +384,6 @@ Note. This is not my work but was done by Jim Healy and is a part of the CMUCL p
 Class Precedence: @code{standard-object}
 The class representing a loaded locale.
 @end deftp
-
-@anchor{Class category}
-@deftp {Class} category
-Class Precedence: @code{standard-object}
-The class representing a loaded category within a locale.
-@end deftp
-
 
 @section Conditions
 @anchor{Condition locale-error}
@@ -369,122 +394,86 @@ Root CL-L10N condition which will be signalled when an exceptional
 situation occurs.
 @end deftp
 
-@anchor{Condition parser-error}
-@deftp {Condition} parser-error
-Class Precedence: @code{error}
-Error which is signalled when an error occurs when parsing numbers
-or time strings.
-@end deftp
-
-
 @node I18N
 @chapter I18N
 
 @section Internationalisation
-CL-L10N supports internationalised strings through the use
-of bundles.
-The process is currently extremely basic, and is bound to
-change in the future, but is flexible and does what is expected of it.
+CL-L10N supports internationalised strings and other resources.
 
-First you define a bundle using @code{make-instance}.
-@lisp
-(defvar *my-bundle* (make-instance 'bundle))
-@end lisp
-
-Then you add resources to your bundle using either @code{add-resource}
-or @code{add-resources}.
+To define resources either use the @code{defresources} macro, or
+use @code{setf} on a @code{lookup-resource} form.
 
 @verbatim
-(add-resources (bundle "af_")
-  "showtime" "Dankie, die tyd is ~:@/cl-l10n:format-time/~%")
+(defresources :de_DE
+  ("showtime" "Danke, die Zeit ist ~M~%")
+  ("product.name" "Product")
+  (name "Ich heiße ~a")
+  (greetings (name &optional (formal t))
+    (format nil "Hallo ~a, ~a?" name (if formal
+                                         "wie geht es Ihnen"
+                                         "wie geht's"))))
 
-;; an empty string as the locale matcher becomes the default
-(add-resources (bundle "")
-  "showtime" "Thanks, the time is ~:@/cl-l10n:format-time/~%")
+(defresources :en
+  ("showtime" "Thanks, the time is ~M~%")
+  ("product.name" "Product")
+  (name "My name is ~a")
+  (greetings (name &optional formal)
+  	(declare (ignore formal))
+    (format nil "Hello ~a, how are you?" name)))
 
 @end verbatim
 
-Then by using @code{gettext} you can lookup locale specific strings.
-@lisp
-(defun timey () (format t (gettext "showtime" bundle) 3310880446))
-(timey) ;; with locale en_ZA
- prints `Thanks, the time is Wed 01 Dec 2004 11:00:46 +0200`
+The most generic way to look up a resource is with @code{lookup-resource}
 
-(let ((*locale* (locale "af_ZA")))
-  (timey))
- prints `Dankie, di tyd is Wo 01 Des 2004 11:00:46 +0200`
-@end lisp
+@verbatim
+(shadow-format)
 
-A useful trick is to define either a macro or reader macro wrapping
-gettext for your specific bundle
-eg.
-@lisp
-(set-dispatch-macro-character
- #\# #\"
- #'(lambda (s c1 c2)
-     (declare (ignore c2))
-     (unread-char c1 s)
-     `(cl-l10n:gettext ,(read s) bundle)))
+(format t (lookup-resource "showtime") (local-time:now))
+ prints `Thanks, the time is 10:47:16 pm'
 
-;; or this
+(lookup-resource 'greetings :arguments '("Bob" nil))
+ => "Hello Bob, how are you?"
 
-(defmacro _ (text)
-  `(cl-l10n:gettext ,text bundle))
+(with-locale :de_DE
+  (lookup-resource 'name :arguments "Johann"))
+ => "Ich heiße Johann"
 
-@end lisp
+(with-locale :de_DE
+  (lookup-resource 'greetings :arguments '("Johann"))
+ => "Hallo Johann, wie geht es Ihnen?"
 
-which would change the @code{timey} function to
-@lisp
-(defun timey () (format t #"showtime" 3310880446))
-;; or
-(defun timey () (format t (_ "showtime") 3310880446))
+@end verbatim
 
-@end lisp
+As you can see, lookup resource can look up a resource by a string or symbol,
+although function resources must always be defined and accessed with a symbol.
 
-@section API
-@anchor{Generic add-resource}
-@deffn {Generic} add-resource bundle from to locale-name
-Adds an entry to @emph{bundle} for @emph{locale-name}  mapping
-@emph{from} to @emph{to}. The @emph{locale-name} does not
-have to be a full name like ``en_US'' but can be a partial match
-like ``en_''. Adding mappings for these two locale-names will
-result in the mapping for ``en_US'' being used when the locale
-is ``en_US'' and the mapping for ``en_'' being used when using any
-other english locale. Adding a mapping for an empty locale-name
-will become the default.
-@lisp
-;; Add mapping for welcome for Afrikaans languages.
-(add-resource *my-bundle* "welcome" "welkom" "af_")
-@end lisp
-@end deffn
+@code{lookup-resource} also takes an optional list of arguments wich are
+passed to the function for function resources, and used as format parameters
+if the resource is a string. Note that the additional format directives
+cannot be used in the latter case.
 
-@anchor{Macro add-resources}
-@deffn {Macro} add-resources (bundle locale-name) &rest entries
-Utility macro to group large amounts of entries into a single
-logical block for a locale.
-@lisp
-(add-resources (bundle "af_")
-  "hello" "hallo"
-  "goodbye" "totsiens"
-  "yes" "ja"
-  "no "nee")
+In addition to @code{lookup-resource}, there are two other ways to access
+resources. The first is the localize function, which takes the name of the
+resource and looks it up without any arguments. This only works for string
+resources or functions with no arguments. For function resources, cl-l10n
+defines a function which dispatches on the current locale and calls the
+appropriate function defined in defresources. Here are some examples:
+@verbatim
+(localize "product.name")
+ => "Product"
 
-==
+(greetings "John" nil)
+ => "Hello John, how are you?
 
-(add-resource bundle "hello" "hallo" "af_")
-(add-resource bundle "goodbye" "totsiens" "af_")
-(add-resource bundle "yes" "ja" "af_")
-(add-resource bundle "no" "nee" "af_")
+(with-locale :de_DE
+  (greetings "Johann" nil))
+ => "Hallo Johann, wie geht's"
 
-@end lisp
-@end deffn
+@end verbatim
 
-@anchor{Function gettext}
-@deffn {Function} gettext name bundle &optional (*locale* *locale* )
-Looks for a mapping for @emph{name} in @emph{bundle}. If no mapping
-is found returns name.
-@end deffn
-
+Finally, you can use @code{enable-sharpquote-reader} to enable a reader
+macro that calls @code{localize} on the ``#"'' pattern. Ex: @code{#"foo"}
+becomes @code{(localize "foo")}.
 
 @node Notes
 @chapter Notes
@@ -495,7 +484,7 @@ is a locale designator. A locale designator is one of three things
 @itemize @bullet
 @item A locale object returned by @code{(locale name)}
 @item A string designating a locale, ``en_ZA''.
-@item A symbol eg. :|en_ZA|
+@item A symbol eg. :en_ZA
 @end itemize
 
 @section The Default Locale
@@ -505,108 +494,14 @@ Failing that the locale designated by the environment variable LC_CTYPE
 is loaded. If these two have failed then the POSIX locale is loaded
 as the default.
 
-@section Time Format Control Characters
-The following is a list of each legal control character in a time
-format string followed by a description of what is does.
-@itemize
-@item %%        A percentage sign.
-@item %a        locale's abbreviated weekday name (Sun..Sat)
-@item %A        locale's full weekday name, variable length (Sunday..Saturday)
-@item %b        locale's abbreviated month name (Jan..Dec)
-@item %B        locale's full month name, variable length (January..December)
-@item %c        locale's date and time (Sat Nov 04 12:02:33 EST 1989)
-@item %C        century [00-99]
-@item %d        day of month (01..31)
-@item %D        date (mm/dd/yy)
-@item %e        day of month, blank padded ( 1..31)
-@item %F        same as %Y-%m-%d
-@item %g        the 2-digit year corresponding to the %V week number
-@item %G        the 4-digit year corresponding to the %V week number
-@item %h        same as %b
-@item %H        hour (00..23)
-@item %I        hour (01..12)
-@item %j        day of year (001..366)
-@item %k        hour ( 0..23)
-@item %l        hour ( 1..12)
-@item %m        month (01..12)
-@item %M        minute (00..59)
-@item %n        a newline
-@item %N        nanoseconds (Always 000000000)
-@item %p        locale's upper case AM or PM indicator (blank in many locales)
-@item %P        locale's lower case am or pm indicator (blank in many locales)
-@item %r        time, 12-hour (hh:mm:ss [AP]M)
-@item %R        time, 24-hour (hh:mm)
-@item %s        seconds since `00:00:00 1970-01-01 UTC'
-@item %S        second (00..60)
-@item %t        a horizontal tab
-@item %T        time, 24-hour (hh:mm:ss)
-@item %u        day of week (1..7);  1 represents Monday
-@item %U        week number of year with Sunday as first day of week (00..53)
-@item %V        week number of year with Monday as first day of week (01..53)
-@item %w        day of week (0..6);  0 represents Sunday
-@item %W        week number of year with Monday as first day of week (00..53)
-@item %x        locale's date representation (locale-d-fmt)
-@item %X        locale's time representation (locale-t-fmt)
-@item %y        last two digits of year (00..99)
-@item %Y        year (1900...)
-@item %z        RFC-2822  style  numeric  timezone (-0500)
-@item %Z        RFC-2822  style  numeric  timezone (-0500)
-@end itemize
+@section Time and Number Formats
+The time and number formats use the same directive characters as
+@uref{http://unicode.org/reports/tr35/, LDML}.
 
-@section Accessors to Locale Values.
-There are a number of accessor functions to the various locale
-attributes defined. The functions are named by replacing
-underscores with hypens and prepending locale- to the name.
-The following is each defined accessor function in the format
-Category, Keyword and the accessor function for it.
-@itemize
-@item LC_MONETARY    int_curr_symbol      @code{locale-int-curr-symbol}
-@item LC_MONETARY    currency_symbol      @code{locale-currency-symbol}
-@item LC_MONETARY    mon_decimal_point    @code{locale-mon-decimal-point}
-@item LC_MONETARY    mon_thousands_sep    @code{locale-mon-thousands-sep}
-@item LC_MONETARY    mon_grouping         @code{locale-mon-grouping}
-@item LC_MONETARY    positive_sign        @code{locale-positive-sign}
-@item LC_MONETARY    negative_sign        @code{locale-negative-sign}
-@item LC_MONETARY    int_frac_digits      @code{locale-int-frac-digits }
-@item LC_MONETARY    frac_digits          @code{locale-frac-digits }
-@item LC_MONETARY    p_cs_precedes        @code{locale-p-cs-precedes }
-@item LC_MONETARY    p_sep_by_space       @code{locale-p-sep-by-space }
-@item LC_MONETARY    n_cs_precedes        @code{locale-n-cs-precedes }
-@item LC_MONETARY    n_sep_by_space       @code{locale-n-sep-by-space }
-@item LC_MONETARY    p_sign_posn          @code{locale-p-sign-posn }
-@item LC_MONETARY    n_sign_posn          @code{locale-n-sign-posn }
-@item LC_NUMERIC     decimal_point        @code{locale-decimal-point}
-@item LC_NUMERIC     thousands_sep        @code{locale-thousands-sep}
-@item LC_NUMERIC     grouping             @code{locale-grouping }
-@item LC_TIME        abday                @code{locale-abday}
-@item LC_TIME        day                  @code{locale-day}
-@item LC_TIME        abmon                @code{locale-abmon}
-@item LC_TIME        mon                  @code{locale-mon}
-@item LC_TIME        d_t_fmt              @code{locale-d-t-fmt}
-@item LC_TIME        d_fmt                @code{locale-d-fmt}
-@item LC_TIME        t_fmt                @code{locale-t-fmt}
-@item LC_TIME        am_pm                @code{locale-am-pm}
-@item LC_TIME        t_fmt_ampm           @code{locale-t-fmt-ampm}
-@item LC_TIME        date_fmt             @code{locale-date-fmt}
-@item LC_MESSAGES    yesexpr              @code{locale-yesexpr}
-@item LC_MESSAGES    noexpr               @code{locale-noexpr}
-@item LC_PAPER       height               @code{locale-height}
-@item LC_PAPER       width                @code{locale-width}
-@item LC_NAME        name_fmt             @code{locale-name-fmt}
-@item LC_NAME        name_gen             @code{locale-name-gen}
-@item LC_NAME        name_mr              @code{locale-name-mr}
-@item LC_NAME        name_mrs             @code{locale-name-mrs}
-@item LC_NAME        name_miss            @code{locale-name-miss}
-@item LC_NAME        name_ms              @code{locale-name-ms}
-@item LC_ADDRESS     postal_fmt           @code{locale-postal-fmt}
-@item LC_TELEPHONE   tel_int_fmt          @code{locale-tel-int-fmt}
-@item LC_MEASUREMENT measurement          @code{locale-measurement}
-@end itemize
 
 @section Known Issues
 @itemize @bullet
-@item  LC_COLLATE and LC_CTYPE categories in the locale files are currently ignored.
-@item  Not all time format directives are supported (U, V and W are not implemented).
+@item The z time format directive is not supported
 @end itemize
 
 

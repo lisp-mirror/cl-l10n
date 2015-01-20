@@ -148,6 +148,10 @@ Othterwise the value of OTHERWISE is returned.
                        collect (locale locale))))
 
 (defmacro with-locale (locale &body body)
+  "Execute BODY  in the locale specified by LOCALE.
+LOCALE may either be a single locale designator, or a list of locale designators.
+In the later case, resources will be looked for in each locale in the given order until a
+match is found."
   `(let ((*locale* (mapcar 'locale (ensure-list ,locale))))
      ,@body))
 

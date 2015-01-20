@@ -49,13 +49,14 @@
     (gregorian-calendar (format-date/gregorian-calendar stream date :verbosity verbosity :pattern pattern))))
 
 (defun format-time (stream time &key (verbosity 'ldml:medium) pattern (calendar 'gregorian-calendar))
-  "Format time form local-time timestamp according to locale"
+  "Format time for local-time timestamp according to locale"
   (unless (symbolp calendar)
     (setf calendar (type-of calendar)))
   (ecase calendar
     (gregorian-calendar (format-time/gregorian-calendar stream time :verbosity verbosity :pattern pattern))))
 
 (defun format-timestamp (stream timestamp &key (verbosity 'ldml:medium) pattern (calendar 'gregorian-calendar))
+  "Format localized date and time for a local-time timestamp"
   (unless (symbolp calendar)
     (setf calendar (type-of calendar)))
   (unless verbosity
