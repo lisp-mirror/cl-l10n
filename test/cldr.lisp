@@ -276,7 +276,7 @@ with CLDR 1.6.1
 (
 
 ;; TODO revive stuff here
- 
+
 (deftest load-locs
     (progn (locale "en_ZA") (locale "sv_SE") (locale "en_GB")
            (locale "en_US") (locale "af_ZA") t)
@@ -415,7 +415,7 @@ with CLDR 1.6.1
 (def-time-directive-test directive.42 "%z" "+0000")
 (def-time-directive-test directive.43 "%Z" "+0000")
 
-;;; i18n tests 
+;;; i18n tests
 
 #| TODO: obolete
 
@@ -427,7 +427,7 @@ with CLDR 1.6.1
 (add-resources (*my-bundle* "en")
   "howareyou" "How are you")
 
-(deftest i18n.1 
+(deftest i18n.1
     (gettext "howareyou" *my-bundle* "en_ZA")
   "How are you")
 
@@ -479,7 +479,7 @@ with CLDR 1.6.1
     (parse-number (format nil "~v@:n" "sv_SE" -1001231.5) "sv_SE")
   -1001231.5)
 
-;;; parse-time 
+;;; parse-time
 
 (deftest parse-time.1
     (let ((*locale* "en_ZA")
