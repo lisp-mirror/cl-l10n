@@ -1,7 +1,7 @@
 ;;; -*- Mode: LISP; Syntax: ANSI-Common-Lisp; Base: 10 -*-
 ;; See the file LICENCE for licence information.
 
-(in-package :cl-l10n.test)
+(in-package :cl-l10n/test)
 
 (defsuite* (test/cldr/formatting :in test/cldr))
 

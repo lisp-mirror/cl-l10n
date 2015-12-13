@@ -1,7 +1,7 @@
 ;;; -*- Mode: LISP; Syntax: ANSI-Common-Lisp; Base: 10 -*-
 ;; See the file LICENCE for licence information.
 
-(in-package :cl-l10n.test)
+(in-package :cl-l10n/test)
 
 (defmacro def-resource-test (name (operator &rest locales) &body body)
   `(deftest ,name ()

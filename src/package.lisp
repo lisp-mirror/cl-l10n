@@ -1,8 +1,7 @@
 ;;; -*- Mode: LISP; Syntax: ANSI-Common-Lisp; Base: 10 -*-
 ;; See the file LICENCE for licence information.
-(in-package #:cl-l10n.system)
 
-(defpackage #:cl-l10n
+(cl:defpackage #:cl-l10n
   (:use
    :common-lisp
    :metabang-bind
@@ -65,6 +64,8 @@
    #:hungarian-definite-article-for
    #:hungarian-plural-of
    ))
+
+(in-package :cl-l10n)
 
 (defpackage :cl-l10n.lang
   (:use :common-lisp :cl-l10n)
