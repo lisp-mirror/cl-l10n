@@ -7,22 +7,12 @@ CLDR: http://unicode.org/cldr/
 
 *** About
 
-cl-l10n is a localization package for common-lisp. It is meant to be
-serve the same purpose as Allegro Common Lisp's various locale
-functions. It currently runs on CMUCL, SBCL, CLISP, ECL, Lispworks and
-Allegro CL although porting to a new implementation should be trivial.
+cl-l10n is a localization package for common-lisp.
+
 It is distributed under an MIT style license although the locale files
 themselves are distributed under the LGPL.
 
 There is also i18n support, read on for details.
-
-*** Install
-
-You need to download the CLDR data files from http://unicode.org/cldr/
-(core.zip) and extract it into "cl-l10n/cldr/". There's a script that
-does that:
-
-cl-l10n/bin/update-cldr.sh
 
 *** Emacs goodies
 
@@ -46,15 +36,12 @@ indentation for DEFRESOURCES.
 
 See docs/cl-l10n.texi
 
-
 *** i18n
 
 When locales are loaded cl-l10n also tries to load locale-specific
 resource files. They are simple lisp files that are read into the
-*resource-package* package when defined. Use with-resource-package
-to define it at an appriately high level of your application (e.g.
-the request loop of web-apps after the Accept-Language header has
-been parsed. See UCW for examples.)
+*RESOURCE-PACKAGE* package. Use WITH-RESOURCE-PACKAGE
+to bind it at an appriately high level of your application.
 
 I suggest to create a separate package for language resources and
 don't import it in your app, so you can easily see/search for
@@ -85,11 +72,18 @@ http://www.unicode.org/reports/tr10/
 Consider reinstating a dwim-ish date/time parser, but it brings up
 more questions than i want to write up right now.
 
+Consider the relationship with the local-time project, and decide
+about responsibilities.
+
 *** Testing
 
-Run (asdf:oos 'asdf:test-op :cl-l10n) to test the package.
+Run (asdf:test-system :cl-l10n) to test the code.
 If you have unexpected failures, drop a mail to the mailing
 list.
 
-Enjoy
-  Sean.
+*** Troubleshooting
+
+You can find the CL-L10N:PARSE-TIME function in the old branch of
+cl-l10n:
+
+darcs get https://www.common-lisp.net/project/cl-l10n/darcs/cl-l10n.unix-locale-files/
