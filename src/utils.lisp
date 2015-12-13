@@ -241,17 +241,3 @@ ELSE will be executed."
 (defmacro acond (&rest clauses)
   "Just like cond-bind except the var is automatically IT."
   `(cond-bind it ,@clauses))
-
-;; TODO consider using UIOP:GETENV which is shipped with recent enough ASDF's
-(defun getenv (var)
-  #+allegro (sys:getenv var)
-  #+clisp (ext:getenv var)
-  #+cmu
-  (cdr (assoc var ext:*environment-list* :test #'string=))
-  #+lispworks (lw:environment-variable var)
-  #+openmcl (ccl::getenv var)
-  #+sbcl (sb-ext:posix-getenv var)
-  #+abcl (ext:getenv var)
-
-  #-(or allegro clisp cmu lispworks openmcl openmcl sbcl abcl)
-  (error "Could not define `getenv'."))

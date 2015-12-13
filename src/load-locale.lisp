@@ -157,7 +157,7 @@ match is found."
 
 (defun load-default-locale ()
   (flet ((try (env-name)
-           (let ((locale-name (getenv env-name)))
+           (let ((locale-name (uiop:getenv env-name)))
              (when locale-name
                (awhen (position #\. locale-name)
                  (setf locale-name (subseq locale-name 0 it)))

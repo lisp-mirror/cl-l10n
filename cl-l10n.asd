@@ -47,6 +47,7 @@
                :cxml
                :local-time
                :closer-mop
+               :uiop
                ))
 
 (defmethod perform :after ((o load-op) (c (eql (find-system :cl-l10n))))
