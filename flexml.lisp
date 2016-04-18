@@ -116,7 +116,7 @@
     builder))
 
 (defclass flexml-node ()
-  ((xml:id :initform nil :accessor id-of)
+  ((xml::id :initform nil :accessor id-of)
    (parent :initform nil :initarg :paren :accessor parent-of)
    (children :initform nil :initarg :children :accessor children-of)
    (attributes :initform nil :initarg :attributes :accessor attributes-of)
