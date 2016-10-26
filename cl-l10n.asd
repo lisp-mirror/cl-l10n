@@ -41,7 +41,6 @@
                :cxml
                :local-time
                :closer-mop
-               :uiop
                )
   :perform (test-op :after (o c)
              (asdf:load-system :cl-l10n/test)
