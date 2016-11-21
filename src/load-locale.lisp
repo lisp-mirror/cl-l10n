@@ -106,17 +106,13 @@ Othterwise the value of OTHERWISE is returned.
       (load-resource-file it))))
 
 (defun load-resource-file (resource-file)
-  (bind ((output-files (asdf:output-files (make-instance 'asdf::compile-op)
-                                          (make-instance 'asdf:cl-source-file :pathname resource-file :parent (asdf:find-system :cl-l10n)))))
-    ;; FIXME TODO this whole thing is a nasty kludge, we should use asdf internals...
-    ;; details: http://thread.gmane.org/gmane.lisp.asdf.devel/2862
-    (bind ((output-file (first output-files)))
-      (ensure-directories-exist output-file)
-      (when (or (not (cl-fad:file-exists-p output-file))
-                (> (file-write-date resource-file)
-                   (file-write-date output-file)))
-        (compile-file resource-file :output-file output-file))
-      (load output-file))))
+  (bind ((output-file (asdf:apply-output-translations resource-file)))
+    (ensure-directories-exist output-file)
+    (when (or (not (cl-fad:file-exists-p output-file))
+              (> (file-write-date resource-file)
+                 (file-write-date output-file)))
+      (compile-file resource-file :output-file output-file))
+    (load output-file)))
 
 (defun reload-resources ()
   (load-resource "common")
