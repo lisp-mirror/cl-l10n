@@ -118,7 +118,7 @@ on the current locale."
                  (when (> (length resource) 2)
                    (collect `(ensure-resource-lookup-stub ',name))
                    ;; avoid compile time warnings for the functional resources that are used in the same file as they are defined
-                   (collect `(declaim (ftype (function (*) *) ,name))))))
+                   (collect `(declaim (ftype (function (&rest t) t) ,name))))))
        (eval-when (:load-toplevel :execute)
          (let ((,locale (locale ,(canonical-locale-name-from locale-designator))))
            (declare (ignorable ,locale))
